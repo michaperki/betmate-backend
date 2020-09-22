@@ -13,17 +13,17 @@ router.route('/signup')
       email, password, firstName, lastName,
     } = req.body;
 
+    // Validate email and password
+    if (!email || !validator.validate(email)) {
+      return res.status(400).json({ message: 'Please enter a valid email address' });
+    } else if (!password) {
+      return res.status(400).json({ message: 'Please enter a password' });
+    }
+
     Users.findOne({ email }).then((user) => {
       // Check if a user already has this email address
       if (user) {
         return res.status(409).json({ message: 'Email address already associated to a user' });
-      }
-
-      // Validate email and password
-      if (!email || !validator.validate(email)) {
-        return res.status(409).json({ message: 'Please enter a valid email address' });
-      } else if (!password) {
-        return res.status(409).json({ message: 'Please enter a password' });
       }
 
       // Make a new user from passed data
@@ -39,7 +39,7 @@ router.route('/signup')
         .then((savedUser) => {
           const json = savedUser.toJSON();
           delete json.password;
-          res.status(201).json({ token: userController.tokenForUser(savedUser), user: json });
+          return res.status(201).json({ token: userController.tokenForUser(savedUser), user: json });
         }).catch((error) => {
           return res.status(500).json(error);
         });

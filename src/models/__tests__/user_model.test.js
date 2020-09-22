@@ -10,7 +10,7 @@ const userData = {
   resource: null,
 };
 
-describe('User Model validation', () => {
+describe('User model validation', () => {
   // Connect DB before running tests
   beforeAll(async () => {
     await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {

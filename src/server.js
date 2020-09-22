@@ -1,6 +1,6 @@
-import express from 'express';
-import bodyParser from 'body-parser';
 import cors from 'cors';
+import express from 'express';
+import bodyParser from 'body-parser'; // ! Replaced with Express-native API
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 
@@ -12,6 +12,8 @@ import { requireAuth } from './authentication';
 
 import * as constants from './constants';
 
+require('dotenv').config();
+
 // initialize
 const app = express();
 
@@ -19,7 +21,7 @@ const app = express();
 app.use(cors());
 
 // enable/disable http request logging
-app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
 
 // enable json message body for posting data to API
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -45,11 +47,11 @@ const mongooseOptions = {
 };
 
 // Connect the database
-mongoose.connect(constants.MONGODB_URI, mongooseOptions).then(() => {
+mongoose.connect(process.env.MONGODB_URI, mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
-  console.log('Connected to Database');
+  if (process.env.NODE_ENV !== 'test') console.info('Connected to Database');
 }).catch((err) => {
-  console.log('Not Connected to Database ERROR! ', err);
+  console.error('Not Connected to Database - ERROR! ', err);
 });
 
 // // Reset database route
@@ -82,8 +84,11 @@ app.use((req, res) => {
   res.status(404).json({ message: 'The route you\'ve requested doesn\'t exist' });
 });
 
+// Set mongoose promise to JS promise
+mongoose.Promise = global.Promise;
+
 // START THE SERVER
 // =============================================================================
-app.listen(constants.PORT);
-
-console.log(`listening on: ${constants.PORT}`);
+const server = app.listen(constants.PORT);
+if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
+export default server;

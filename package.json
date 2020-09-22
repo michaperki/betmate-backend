@@ -4,7 +4,6 @@
   "description": "DALI Lab CRUD template",
   "productionURL": "https://your-api-url.here",
   "productionClientURL": "https://your-app-url.here",
-  "localDatabaseURI": "mongodb://localhost/granite-state",
   "main": "src/server.js",
   "repository": "https://github.com/dali-lab/crud-template-backend",
   "author": "Adam McQuilkin <Adam.J.Mcquilkin.22@Dartmouth.edu>",
@@ -15,7 +14,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "jest",
+    "test": "NODE_ENV=test jest",
     "dev": "nodemon src/server.js --exec babel-node",
     "start": "babel-node src/server.js",
     "build": "babel src -d dist",
@@ -51,6 +50,7 @@
     "eslint-plugin-jsx-a11y": "^6.3.1",
     "eslint-plugin-react": "^7.20.6",
     "jest": "^26.4.2",
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.4",
+    "supertest": "^4.0.2"
   }
 }

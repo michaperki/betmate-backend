@@ -3,8 +3,6 @@ import readline from 'readline';
 
 import { Users, Resources } from '../models';
 
-import * as constants from '../constants';
-
 // DB Setup
 const mongooseOptions = {
   useNewUrlParser: true,
@@ -97,14 +95,13 @@ const migrateUsers = () => {
   });
 };
 
-
 /**
  * Main migration script.
  * Connects to current mongoURI and executes each schema's migration script.
  */
 const migrateDB = () => {
   return new Promise((resolve) => {
-    mongoose.connect(constants.MONGODB_URI, mongooseOptions).then(() => {
+    mongoose.connect(process.env.MONGODB_URI, mongooseOptions).then(() => {
       mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
       console.log('Connected to Database.');
       Promise.all([migrateUsers(), migrateResources()]).then(() => {
@@ -120,7 +117,7 @@ const migrateDB = () => {
 };
 
 const cli = readline.createInterface({ input: process.stdin, output: process.stdout });
-cli.question(`Migrating the DB will modify the data connected to ${constants.MONGODB_URI}, are you sure? (Y/N)`, async (answer) => {
+cli.question(`Migrating the DB will modify the data connected to ${process.env.MONGODB_URI}, are you sure? (Y/N)`, async (answer) => {
   cli.close();
   switch (answer) {
     case 'Y':

@@ -5,8 +5,6 @@ import { Users, Resources, SubResources } from '../models';
 
 import seedData from './seed-data.json';
 
-import * as constants from '../constants';
-
 // DB Setup
 const mongooseOptions = {
   useNewUrlParser: true,
@@ -136,11 +134,11 @@ const linkDocuments = () => {
 const seedDB = () => {
   return new Promise((resolve) => {
   // Connect the database
-    mongoose.connect(constants.MONGODB_URI, mongooseOptions).then(() => {
+    mongoose.connect(process.env.MONGODB_URI, mongooseOptions).then(() => {
       console.log('Connected to Database');
       mongoose.connection.db.dropDatabase(() => {
         mongoose.connection.close(() => {
-          mongoose.connect(constants.MONGODB_URI).then(() => {
+          mongoose.connect(process.env.MONGODB_URI).then(() => {
             Promise.all(
               seedData.map((schemaSet) => {
                 return new Promise((resolve, reject) => {
@@ -178,7 +176,7 @@ const seedDB = () => {
 };
 
 const cli = readline.createInterface({ input: process.stdin, output: process.stdout });
-cli.question(`Seeding the DB will delete all data connected to ${constants.MONGODB_URI}, are you sure? (Y/N)`, async (answer) => {
+cli.question(`Seeding the DB will delete all data connected to ${process.env.MONGODB_URI}, are you sure? (Y/N)`, async (answer) => {
   cli.close();
   switch (answer) {
     case 'Y':

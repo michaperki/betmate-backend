@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import * as constants from '../constants';
 import { Resources } from '../models';
 
 /**
@@ -34,7 +33,7 @@ const testPopulateAll = () => {
     useCreateIndex: true,
     loggerLevel: 'error',
   };
-  mongoose.connect(constants.MONGODB_URI, mongooseOptions).then(() => {
+  mongoose.connect(process.env.MONGODB_URI, mongooseOptions).then(() => {
     mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
     console.log('Connected to Database');
 
