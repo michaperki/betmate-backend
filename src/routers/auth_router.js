@@ -1,3 +1,4 @@
+/* eslint-disable consistent-return */
 import express from 'express';
 import validator from 'email-validator';
 
@@ -30,8 +31,8 @@ router.route('/signup')
       const newUser = new Users({
         email: email.toLowerCase(),
         password,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName || '',
+        last_name: lastName || '',
       });
 
       // Save the user then transmit to frontend

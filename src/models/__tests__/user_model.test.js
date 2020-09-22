@@ -12,12 +12,11 @@ const userData = {
 
 describe('User model validation', () => {
   // Connect DB before running tests
-  beforeAll(async () => {
+  beforeAll(async (done) => {
     await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
       if (err) {
-        console.error(err);
-        process.exit(1);
-      }
+        done(err);
+      } else done();
     });
   });
 
@@ -27,16 +26,16 @@ describe('User model validation', () => {
   // });
 
   // Close DB connection
-  afterAll(async () => {
+  afterAll(async (done) => {
     try {
       await mongoose.connection.close();
+      done();
     } catch (error) {
-      console.error(error);
-      process.exit(1);
+      done(error);
     }
   });
 
-  it('creates and saves a user successfully', async () => {
+  it('creates and saves a user successfully', async (done) => {
     try {
       // Creates a new user object
       const validUser = new UserModel(userData);
@@ -55,13 +54,13 @@ describe('User model validation', () => {
         bcrypt.compare(userData.password, savedUser.password, (err, result) => { if (err) { reject(err); } resolve(result); });
       });
       expect(passCompareResult).toBe(true);
+      done();
     } catch (error) {
-      console.error(error);
-      process.exit(1);
+      done(error);
     }
   });
 
-  it('blocks users without required fields', async () => {
+  it('blocks users without required fields', async (done) => {
     try {
       // Creates a new user object
       const invalidUser = new UserModel({}); // Needs email, password
@@ -76,19 +75,19 @@ describe('User model validation', () => {
 
       expect(savedUser._message).toBe('User validation failed');
       expect(savedUser.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
+      done();
     } catch (error) {
-      console.error(error);
-      process.exit(1);
+      done(error);
     }
   });
 
-  it('loads virtuals correctly', async () => {
+  it('loads virtuals correctly', async (done) => {
     try {
       const users = await UserModel.find({});
       expect(users[0].full_name).toBe(`${userData.first_name} ${userData.last_name}`);
+      done();
     } catch (error) {
-      console.error(error);
-      process.exit(1);
+      done(error);
     }
   });
 });
