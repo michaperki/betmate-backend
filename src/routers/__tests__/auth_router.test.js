@@ -99,18 +99,60 @@ describe('Working auth router', () => {
   });
 
   describe('signin functionality', () => {
-    it('rejects incomplete or invalid requests', () => {
-      // No email
-      // No password
-      // Invalid email
+    it('rejects requests without an email address', async (done) => {
+      try {
+        const res = await request.post(`${authPrefix}/signin`).send({});
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe('Email address not included');
+        done();
+      } catch (error) {
+        done(error);
+      }
     });
 
-    it('returns 401 on incorrect password', () => {
-
+    it('rejects requests without a password', async (done) => {
+      try {
+        const res = await request.post(`${authPrefix}/signin`).send({ email: userData.email });
+        expect(res.status).toBe(400);
+        expect(res.body.message).toBe('Password not included');
+        done();
+      } catch (error) {
+        done(error);
+      }
     });
 
-    it('returns valid token and JSON user object', () => {
+    it('rejects emails with no associated users', async (done) => {
+      try {
+        const res = await request.post(`${authPrefix}/signin`).send({ email: 'not an email', password: userData.password });
+        expect(res.status).toBe(401);
+        expect(res.body.message).toBe('Email address not associated with a user');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
 
+    it('returns 401 on incorrect password', async (done) => {
+      try {
+        const res = await request.post(`${authPrefix}/signin`).send({ email: userData.email, password: 'wrong password' });
+        expect(res.status).toBe(401);
+        expect(res.body.message).toBe('Incorrect password');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('returns valid token and JSON user object', async (done) => {
+      try {
+        const res = await request.post(`${authPrefix}/signin`).send(userData);
+        expect(res.status).toBe(200);
+        expect(res.body.token).toBeDefined();
+        expect(res.body.user).toBeDefined();
+        done();
+      } catch (error) {
+        done(error);
+      }
     });
   });
 });

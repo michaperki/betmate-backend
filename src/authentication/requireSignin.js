@@ -8,11 +8,6 @@ const localOptions = { usernameField: 'email' };
 
 // Make a login strategy to check email and password against DB
 const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
-  // Validation of parameters
-  if (!email || !password) {
-    return done(null, false, { message: 'You must provide an email address and password' });
-  }
-
   return User.findOne({ email }, (error, user) => {
     // Was a user with the given email able to be found?
     if (error) return done(error);
@@ -35,8 +30,17 @@ passport.use(localLogin);
 
 // Create function to transmit result of authenticate() call to user or next middleware
 const requireSignin = function (req, res, next) {
+  // Validation of parameters
+  if (!req.body.email) {
+    return res.status(400).json({ message: 'Email address not included' });
+  }
+
+  if (!req.body.password) {
+    return res.status(400).json({ message: 'Password not included' });
+  }
+
   // eslint-disable-next-line prefer-arrow-callback
-  passport.authenticate('local', { session: false }, function (err, user, info) {
+  return passport.authenticate('local', { session: false }, function (err, user, info) {
     // Return any existing errors
     if (err) { return next(err); }
 
