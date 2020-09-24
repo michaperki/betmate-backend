@@ -1,6 +1,6 @@
 import cors from 'cors';
 import express from 'express';
-import bodyParser from 'body-parser'; // ! Replaced with Express-native API
+import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 

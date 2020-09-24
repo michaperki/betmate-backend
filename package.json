@@ -14,7 +14,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "NODE_ENV=test jest",
+    "test": "NODE_ENV=test jest --verbose",
     "dev": "nodemon src/server.js --exec babel-node",
     "start": "babel-node src/server.js",
     "build": "babel src -d dist",
@@ -32,7 +32,7 @@
     "email-validator": "^2.0.4",
     "express": "^4.17.1",
     "jwt-simple": "^0.5.6",
-    "mongoose": "^5.10.6",
+    "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
@@ -44,12 +44,14 @@
     "babel-cli": "^6.26.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-env": "^1.7.0",
+    "babel-preset-es2020": "^1.0.2",
     "eslint": "^7.9.0",
     "eslint-config-airbnb": "^18.2.0",
     "eslint-plugin-import": "^2.22.0",
     "eslint-plugin-jsx-a11y": "^6.3.1",
-    "eslint-plugin-react": "^7.20.6",
+    "eslint-plugin-react": "^7.21.1",
     "jest": "^26.4.2",
+    "mockingoose": "^2.13.2",
     "nodemon": "^2.0.4",
     "supertest": "^4.0.2"
   }

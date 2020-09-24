@@ -17,9 +17,7 @@ describe('Working auth router', () => {
       // Close app's connection to DB and reopen to testing DB
       await mongoose.connection.close();
       await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
-        if (err) {
-          done(err);
-        }
+        if (err) done(err);
       });
 
       // Clear `users` testing DB field to prevent unintended duplicates

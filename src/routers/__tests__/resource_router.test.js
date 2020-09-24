@@ -1,0 +1,387 @@
+// import bodyParser from 'body-parser';
+import mockingoose from 'mockingoose';
+import supertest from 'supertest';
+
+import resourceRouter from '../resource_router';
+import ResourceModel from '../../models/resource_model';
+
+// // enable json message body for posting data to API
+// resourceRouter.use(bodyParser.urlencoded({ extended: true }));
+// resourceRouter.use(bodyParser.json());
+
+const request = supertest(resourceRouter);
+
+const resourceData = {
+  title: 'Test title',
+  description: 'This is a test description',
+  value: 3,
+};
+
+const mockUser = {
+  email: 'test@test.com',
+  password: 'password',
+  first_name: 'Joe',
+  last_name: 'Smith',
+};
+
+const validId = 'validId';
+const invalidId = 'invalidId';
+
+// Mock passport authentication
+jest.mock('../../authentication/requireAuth', () => {
+  return (req, res, next) => {
+    // Reject with 401 if no bearer token
+    if (!req.get('Authorization')) return res.status(401).json({ message: 'Error authenticating email and password' });
+
+    req.user = mockUser;
+    return next();
+  };
+});
+
+describe('Working resource router', () => {
+  // beforeAll(async (done) => {
+  //   try {
+  //     // Close app's connection to DB and reopen to testing DB
+  //     await mongoose.connection.close();
+  //     await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
+  //       if (err) done(err);
+  //     });
+
+  //     // Clear `resources` and `users` testing DB fields to prevent unintended duplicates
+  //     await ResourceModel.deleteMany();
+  //     await UserModel.deleteMany();
+
+  //     // Creates two testing models within the DB
+  //     await new ResourceModel(resourceData).save();
+  //     await new ResourceModel(resourceData).save();
+
+  //     done();
+  //   } catch (error) {
+  //     done(error);
+  //   }
+  // });
+
+  // Initialize all model mocks
+  beforeAll(() => {
+    mockingoose(ResourceModel)
+      .toReturn((query) => { return [resourceData, resourceData]; }, 'find')
+      .toReturn((query) => { return resourceData; }, 'save')
+      .toReturn((query) => { return { deletedCount: 3 }; }, 'deleteMany')
+      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? resourceData : Promise.reject(new Error('Resource with id:')); }, 'findOne')
+      .toReturn((query) => { console.log('update query', query.getFilter()); return (query && query.getFilter()._id !== invalidId) ? ({ title: 'New title', ...resourceData }) : {}; }, 'findOneAndUpdate')
+      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ deletedCount: 1 }) : ({ deletedCount: 0 }); }, 'findOneAndDelete');
+  });
+
+  // afterAll(async (done) => {
+  //   try {
+  //     await mongoose.connection.close();
+  //     await ResourceModel.deleteMany();
+  //     await UserModel.deleteMany();
+  //     server.close();
+  //     done();
+  //   } catch (error) {
+  //     done(error);
+  //   }
+  // });
+
+  afterAll(() => {
+    mockingoose.resetAll();
+  });
+
+  describe('single event modification', () => {
+    describe('create one', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      it('requires valid permissions', async (done) => {
+        try {
+          const res = await request.post('/')
+            .send(resourceData);
+
+          expect(res.status).toBe(401);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+
+      // * NOTE: Can require multiple checks depending on number of required fields
+      // it('requires valid data', async (done) => {
+
+      // });
+
+      // * NOTE: Can require multiple checks depending on number of non-unique fields
+      describe('blocks creation of resource with non-unique field', () => {
+        it('blocks resource creation when missing title', async (done) => {
+          try {
+            const res = await request.post('/')
+              .set('Authorization', 'Bearer dummy_token')
+              .send({ description: resourceData.description, value: resourceData.value });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toBe('Missing required "title" field');
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
+
+        it('blocks resource creation when missing description', async (done) => {
+          try {
+            const res = await request.post('/')
+              .set('Authorization', 'Bearer dummy_token')
+              .send({ title: resourceData.title, value: resourceData.value });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toBe('Missing required "description" field');
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
+
+        it('blocks resource creation when missing value', async (done) => {
+          try {
+            const res = await request.post('/')
+              .set('Authorization', 'Bearer dummy_token')
+              .send({ title: resourceData.title, description: resourceData.description });
+
+            expect(res.status).toBe(400);
+            expect(res.body.message).toBe('Missing required "value" field');
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
+      });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.post('/')
+            .set('Authorization', 'Bearer dummy_token')
+            .send(resourceData);
+
+          expect(res.status).toBe(201);
+
+          // Resource exists with all required fields
+          expect(res.body.title).toBeDefined();
+          expect(res.body.description).toBeDefined();
+          expect(res.body.value).toBeDefined();
+          expect(res.body.date_resource_created).toBeDefined();
+          expect(res.body._id).toBeDefined();
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+
+    describe('fetch one', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
+
+      // });
+
+      it('catches resource doesn\'t exist', async (done) => {
+        try {
+          const res = await request.get(`/${invalidId}`);
+          expect(res.status).toBe(404);
+          expect(res.body.message).toBe('Couldn\'t find resource with given id');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.get(`/${validId}`);
+          expect(res.status).toBe(200);
+          expect(res.body._id).toBeDefined();
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+
+    describe('update one', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
+
+      // });
+
+      // * NOTE: Can require multiple checks depending on number of required fields
+      // it('requires valid data', async (done) => {
+
+      // });
+
+      // * NOTE: Can require multiple checks depending on number of non-unique fields
+      // it('blocks creation of resource with non-unique field', async (done) => {
+
+      // });
+
+      it('catches resource doesn\'t exist', async (done) => {
+        try {
+          const res = await request.put(`/${invalidId}`)
+            .set('Authorization', 'Bearer dummy_token')
+            .send({ title: 'New title' });
+
+          expect(res.status).toBe(404);
+          expect(res.body.message).toBe('Couldn\'t find resource with given id');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.put(`/${validId}`)
+            .set('Authorization', 'Bearer dummy_token')
+            .send({ title: 'New title' });
+
+          expect(res.status).toBe(200);
+          // TODO: Mock this update
+          // expect(res.body.title).toBe('New title');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+
+    describe('delete one', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
+
+      // });
+
+      it('catches resource doesn\'t exist', async (done) => {
+        try {
+          const res = await request.delete(`/${invalidId}`)
+            .set('Authorization', 'Bearer dummy_token');
+
+          expect(res.status).toBe(404);
+          expect(res.body.message).toBe('Couldn\'t find resource with given id');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.delete(`/${validId}`)
+            .set('Authorization', 'Bearer dummy_token');
+
+          expect(res.status).toBe(200);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  });
+
+  describe('batch event modification', () => {
+    // * NOTE: Currently unimplemented
+    // describe('create multiple', () => {
+    //   // * NOTE: Can require multiple checks depending on number of user permission levels
+    //   // it('requires valid permissions', async (done) => {
+
+    //   // });
+
+    //   // * NOTE: Can require multiple checks depending on number of required fields
+    //   // it('requires valid data', async (done) => {
+
+    //   // });
+
+    //   // * NOTE: Can require multiple checks depending on number of non-unique fields
+    //   // it('blocks creation of resource with non-unique field', async (done) => {
+
+    //   // });
+
+    //   it('succeeds', async (done) => {
+
+    //   });
+    // });
+
+    describe('fetch multiple', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
+
+      // });
+
+      // * NOTE: Requires multiple checks
+      // it('valid pagination', async (done) => {
+
+      // });
+
+      // * NOTE: Not needed with only GET ALL functionality
+      // it('catches resource doesn\'t exist', async (done) => {
+
+      // });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.get('/');
+          expect(res.status).toBe(200);
+          expect(res.body.length).toBe(2);
+          expect(res.body[0]).toBeDefined();
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+
+    // * NOTE: Currently unimplemented
+    // describe('update multiple', () => {
+    //   // * NOTE: Can require multiple checks depending on number of user permission levels
+    //   // it('requires valid permissions', async (done) => {
+
+    //   // });
+
+    //   // * NOTE: Can require multiple checks depending on number of required fields
+    //   // it('requires valid data', async (done) => {
+
+    //   // });
+
+    //   // * NOTE: Can require multiple checks depending on number of non-unique fields
+    //   // it('blocks creation of resource with non-unique field', async (done) => {
+
+    //   // });
+
+    //   it('catches resource doesn\'t exist', async (done) => {
+
+    //   });
+
+    //   it('succeeds', async (done) => {
+
+    //   });
+    // });
+
+    describe('delete multiple', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
+
+      // });
+
+      // * NOTE: Not needed with only DELETE ALL functionality
+      // it('catches resource doesn\'t exist', async (done) => {
+
+      // });
+
+      it('succeeds', async (done) => {
+        try {
+          const res = await request.delete('/')
+            .set('Authorization', 'Bearer dummy_token');
+
+          expect(res.status).toBe(200);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  });
+});

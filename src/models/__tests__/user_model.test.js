@@ -14,9 +14,8 @@ describe('User model validation', () => {
   // Connect DB before running tests
   beforeAll(async (done) => {
     await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
-      if (err) {
-        done(err);
-      } else done();
+      if (err) done(err);
+      else done();
     });
   });
 

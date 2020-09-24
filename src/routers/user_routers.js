@@ -88,9 +88,9 @@ router.route('/:id')
     Users.deleteOne({ _id: req.params.id })
       .then((result) => {
         if (result.deletedCount === 1) { // Successful deletion
-          return res.json(Object.assign({ message: `User with id: ${req.params.id} was successfully deleted` }, result));
+          return res.json({ message: `User with id: ${req.params.id} was successfully deleted`, result });
         } else {
-          return res.status(500).json(Object.assign({ message: 'Resource not able to be deleted' }, result));
+          return res.status(500).json({ message: 'Resource not able to be deleted', result });
         }
       })
       .catch((error) => {
