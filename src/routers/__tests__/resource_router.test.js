@@ -42,7 +42,7 @@ describe('Working resource router', () => {
       .toReturn((query) => { return resourceData; }, 'save')
       .toReturn((query) => { return { deletedCount: 3 }; }, 'deleteMany')
       .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? resourceData : Promise.reject(new Error('Resource with id:')); }, 'findOne')
-      .toReturn((query) => { console.log('update query', query.getFilter()); return (query && query.getFilter()._id !== invalidId) ? ({ title: 'New title', ...resourceData }) : {}; }, 'findOneAndUpdate')
+      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ title: 'New title', ...resourceData }) : {}; }, 'findOneAndUpdate')
       .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ deletedCount: 1 }) : ({ deletedCount: 0 }); }, 'findOneAndDelete');
   });
 

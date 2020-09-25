@@ -1,4 +1,5 @@
 /* eslint-disable consistent-return */
+import bodyParser from 'body-parser';
 import express from 'express';
 import validator from 'email-validator';
 
@@ -7,6 +8,10 @@ import { requireSignin } from '../authentication';
 import { Users } from '../models';
 
 const router = express();
+
+// enable json message body for posting data to router
+router.use(bodyParser.urlencoded({ extended: true }));
+router.use(bodyParser.json());
 
 router.route('/signup')
   .post((req, res) => {

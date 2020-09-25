@@ -25,7 +25,7 @@ module.exports = async () => {
   const options = getMongodbMemoryOptions();
 
   const mongoConfig = {
-    mongoUri: await mongod.getConnectionString(),
+    mongoUri: await mongod.getUri(),
     mongoDBName: options.instance.dbName,
   };
 

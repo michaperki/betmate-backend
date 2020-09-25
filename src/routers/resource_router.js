@@ -75,10 +75,7 @@ router.route('/:id')
 
   // Update resource by id (SECURE)
   .put(requireAuth, (req, res) => {
-    console.log('req body update', req.body, req.params.id);
     Resources.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true }).then((resource) => {
-      console.log('update one by id', req.params.id, resource);
-
       if (Object.keys(resource).length) return res.json(resource);
       else return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
     })
@@ -91,7 +88,6 @@ router.route('/:id')
   .delete(requireAuth, (req, res) => {
     Resources.findByIdAndDelete(req.params.id)
       .then((meta) => {
-        // console.log('delete one by id', req.params.id, meta);
         if (meta.deletedCount < 1) return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
         else return res.json({ message: `Resource with id: ${req.params.id} was successfully deleted` });
       })

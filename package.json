@@ -14,7 +14,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "test": "NODE_ENV=test jest --verbose",
+    "test": "NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon src/server.js --exec babel-node",
     "start": "babel-node src/server.js",
     "build": "babel src -d dist",
@@ -39,7 +39,6 @@
     "passport-local": "^1.0.0"
   },
   "devDependencies": {
-    "@shelf/jest-mongodb": "^1.2.3",
     "babel-cli": "^6.26.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-env": "^1.7.0",
