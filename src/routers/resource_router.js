@@ -2,10 +2,12 @@ import bodyParser from 'body-parser';
 import express from 'express';
 
 import { Resources } from '../models';
-import requireAuth from '../authentication/requireAuth'; // TODO: Change back to indexed
+import { requireAuth } from '../authentication';
+import { documentNotFoundError, getFieldNotFoundError } from '../helpers/constants';
 
 const router = express();
 
+// TODO: ADD IN TESTING
 // enable json message body for posting data to router
 router.use(bodyParser.urlencoded({ extended: true }));
 router.use(bodyParser.json());
@@ -28,9 +30,9 @@ router.route('/')
 
     const { title, description, value } = req.body;
 
-    if (!title) return res.status(400).json({ message: 'Missing required "title" field' });
-    if (!description) return res.status(400).json({ message: 'Missing required "description" field' });
-    if (!value) return res.status(400).json({ message: 'Missing required "value" field' });
+    if (!title) return res.status(400).json({ message: getFieldNotFoundError('title') });
+    if (!description) return res.status(400).json({ message: getFieldNotFoundError('description') });
+    if (!value) return res.status(400).json({ message: getFieldNotFoundError('value') });
 
     resource.title = title;
     resource.description = description;
@@ -43,18 +45,18 @@ router.route('/')
       }).catch((error) => {
         return res.status(500).json({ message: error.message });
       });
-  })
-
-  // Delete all resources (SECURE, TESTING ONLY)
-  .delete(requireAuth, (req, res) => {
-    Resources.deleteMany({ })
-      .then(() => {
-        return res.json({ message: 'Successfully deleted all resources.' });
-      })
-      .catch((error) => {
-        return res.status(500).json({ message: error.message });
-      });
   });
+
+// // Delete all resources (SECURE, TESTING ONLY)
+// .delete(requireAuth, (req, res) => {
+//   Resources.deleteMany({ })
+//     .then(() => {
+//       return res.json({ message: 'Successfully deleted all resources.' });
+//     })
+//     .catch((error) => {
+//       return res.status(500).json({ message: error.message });
+//     });
+// });
 
 router.route('/:id')
 
@@ -66,7 +68,7 @@ router.route('/:id')
       })
       .catch((error) => {
         if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
+          return res.status(404).json({ message: documentNotFoundError });
         } else {
           return res.status(500).json({ message: error.message });
         }
@@ -81,7 +83,7 @@ router.route('/:id')
       })
       .catch((error) => {
         if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
+          return res.status(404).json({ message: documentNotFoundError });
         } else {
           return res.status(500).json({ message: error.message });
         }
@@ -96,7 +98,7 @@ router.route('/:id')
       })
       .catch((error) => {
         if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
+          return res.status(404).json({ message: documentNotFoundError });
         } else {
           return res.status(500).json({ message: error.message });
         }

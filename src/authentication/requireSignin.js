@@ -3,6 +3,8 @@ import passport from 'passport';
 import LocalStrategy from 'passport-local';
 import User from '../models/user_model';
 
+import { getFieldNotFoundError } from '../helpers/constants';
+
 // Configure what LocalStrategy will check for as a username
 const localOptions = { usernameField: 'email' };
 
@@ -32,11 +34,11 @@ passport.use(localLogin);
 const requireSignin = function (req, res, next) {
   // Validation of parameters
   if (!req.body.email) {
-    return res.status(400).json({ message: 'Email address not included' });
+    return res.status(400).json({ message: getFieldNotFoundError('email') });
   }
 
   if (!req.body.password) {
-    return res.status(400).json({ message: 'Password not included' });
+    return res.status(400).json({ message: getFieldNotFoundError('password') });
   }
 
   // eslint-disable-next-line prefer-arrow-callback

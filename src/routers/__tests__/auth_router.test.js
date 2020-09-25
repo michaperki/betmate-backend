@@ -1,17 +1,9 @@
-import mongoose from 'mongoose';
 import supertest from 'supertest';
 
 import authRouter from '../auth_router';
-import { connectDB, dropDB } from '../../../__jest__/helpers';
+import { mockUser, connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);
-
-const userData = {
-  email: 'test@test.com',
-  password: 'password',
-};
-
-mongoose.Promise = Promise;
 
 describe('Working auth router', () => {
   beforeAll(async (done) => {
@@ -55,9 +47,9 @@ describe('Working auth router', () => {
 
     it('rejects requests without a password', async (done) => {
       try {
-        const res = await request.post('/signup').send({ email: userData.email });
+        const res = await request.post('/signup').send({ email: mockUser.email });
         expect(res.status).toBe(400);
-        expect(res.body.message).toBe('Please enter a password');
+        expect(res.body.message).toBe('Missing required "password" field');
         done();
       } catch (error) {
         done(error);
@@ -66,7 +58,7 @@ describe('Working auth router', () => {
 
     it('creates and returns a new user JSON object', async (done) => {
       try {
-        const res = await request.post('/signup').send(userData);
+        const res = await request.post('/signup').send(mockUser);
         expect(res.status).toBe(201);
         expect(res.body.token).toBeDefined();
         expect(res.body.user).toBeDefined();
@@ -78,7 +70,7 @@ describe('Working auth router', () => {
 
     it('rejects requests with a non-unique email address', async (done) => {
       try {
-        const res = await request.post('/signup').send(userData);
+        const res = await request.post('/signup').send(mockUser);
         expect(res.status).toBe(409);
         expect(res.body.message).toBe('Email address already associated to a user');
         done();
@@ -93,7 +85,7 @@ describe('Working auth router', () => {
       try {
         const res = await request.post('/signin').send({});
         expect(res.status).toBe(400);
-        expect(res.body.message).toBe('Email address not included');
+        expect(res.body.message).toBe('Missing required "email" field');
         done();
       } catch (error) {
         done(error);
@@ -102,9 +94,9 @@ describe('Working auth router', () => {
 
     it('rejects requests without a password', async (done) => {
       try {
-        const res = await request.post('/signin').send({ email: userData.email });
+        const res = await request.post('/signin').send({ email: mockUser.email });
         expect(res.status).toBe(400);
-        expect(res.body.message).toBe('Password not included');
+        expect(res.body.message).toBe('Missing required "password" field');
         done();
       } catch (error) {
         done(error);
@@ -113,7 +105,7 @@ describe('Working auth router', () => {
 
     it('rejects emails with no associated users', async (done) => {
       try {
-        const res = await request.post('/signin').send({ email: 'not an email', password: userData.password });
+        const res = await request.post('/signin').send({ email: 'not an email', password: mockUser.password });
         expect(res.status).toBe(401);
         expect(res.body.message).toBe('Email address not associated with a user');
         done();
@@ -124,7 +116,7 @@ describe('Working auth router', () => {
 
     it('returns 401 on incorrect password', async (done) => {
       try {
-        const res = await request.post('/signin').send({ email: userData.email, password: 'wrong password' });
+        const res = await request.post('/signin').send({ email: mockUser.email, password: 'wrong password' });
         expect(res.status).toBe(401);
         expect(res.body.message).toBe('Incorrect password');
         done();
@@ -135,7 +127,7 @@ describe('Working auth router', () => {
 
     it('returns valid token and JSON user object', async (done) => {
       try {
-        const res = await request.post('/signin').send(userData);
+        const res = await request.post('/signin').send(mockUser);
         expect(res.status).toBe(200);
         expect(res.body.token).toBeDefined();
         expect(res.body.user).toBeDefined();

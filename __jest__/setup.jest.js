@@ -16,7 +16,7 @@ const mongod = new MongodbMemoryServer.default(getMongodbMemoryOptions());
 const globalConfigPath = join(cwd, 'globalConfig.json');
 
 module.exports = async () => {
-  console.info('Setting up DB instance');
+  // console.info('Setting up DB instance');
 
   if (!mongod.isRunning) {
     await mongod.start();

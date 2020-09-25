@@ -8,9 +8,7 @@ import {
   authRouter, userRouter, resourceRouter, searchRouter,
 } from './routers';
 
-import { requireAuth } from './authentication';
-
-import * as constants from './constants';
+import * as constants from './helpers/constants';
 
 require('dotenv').config();
 
@@ -29,7 +27,7 @@ app.use(bodyParser.json());
 
 // declare routers
 app.use('/auth', authRouter); // NOTE: Not secured
-app.use('/users', requireAuth, userRouter); // NOTE: Completely secured to users
+app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/resources', resourceRouter); // NOTE: Partially secured to users
 app.use('/search', searchRouter); // NOTE: Not secured
 

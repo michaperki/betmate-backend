@@ -7,6 +7,8 @@ import { userController } from '../controllers';
 import { requireSignin } from '../authentication';
 import { Users } from '../models';
 
+import { getFieldNotFoundError } from '../helpers/constants';
+
 const router = express();
 
 // enable json message body for posting data to router
@@ -23,7 +25,7 @@ router.route('/signup')
     if (!email || !validator.validate(email)) {
       return res.status(400).json({ message: 'Please enter a valid email address' });
     } else if (!password) {
-      return res.status(400).json({ message: 'Please enter a password' });
+      return res.status(400).json({ message: getFieldNotFoundError('password') });
     }
 
     Users.findOne({ email }).then((user) => {

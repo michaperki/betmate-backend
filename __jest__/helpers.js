@@ -1,5 +1,12 @@
 const mongoose = require('mongoose');
 
+const mockUser = {
+  email: 'test@test.com',
+  password: 'password',
+  first_name: 'Joe',
+  last_name: 'Smith',
+};
+
 async function connectDB(done) {
   const mongooseOpts = {
     useNewUrlParser: true,
@@ -34,4 +41,6 @@ async function dropDB(done) {
   }
 }
 
-module.exports = { connectDB, dropDB };
+module.exports = {
+  mockUser, connectDB, dropDB,
+};
