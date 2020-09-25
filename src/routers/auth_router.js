@@ -11,9 +11,12 @@ import { getFieldNotFoundError } from '../helpers/constants';
 
 const router = express();
 
-// enable json message body for posting data to router
-router.use(bodyParser.urlencoded({ extended: true }));
-router.use(bodyParser.json());
+// TODO: Move middleware attachment to test file
+if (process.env.NODE_ENV === 'test') {
+  // enable json message body for posting data to router
+  router.use(bodyParser.urlencoded({ extended: true }));
+  router.use(bodyParser.json());
+}
 
 router.route('/signup')
   .post((req, res) => {
