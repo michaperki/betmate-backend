@@ -54,7 +54,7 @@ router.route('/:id')
         return res.json(user);
       })
       .catch((error) => {
-        if (error.message && error.message.startsWith('User with id:')) {
+        if (error.kind === 'ObjectId') {
           return res.status(404).json(error.message);
         } else {
           return res.status(500).json(error.message);
@@ -75,7 +75,7 @@ router.route('/:id')
           });
       })
       .catch((error) => {
-        if (error.name === 'CastError' && error.path === '_id') {
+        if (error.kind === 'ObjectId') {
           return res.status(404).json(error.message);
         } else {
           return res.status(500).json(error);

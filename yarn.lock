@@ -4762,11 +4762,6 @@ mkdirp@^1.0.4:
   resolved "https://registry.yarnpkg.com/mkdirp/-/mkdirp-1.0.4.tgz#3eb5ed62622756d79a5f0e2a221dfebad75c2f7e"
   integrity sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==
 
-mockingoose@^2.13.2:
-  version "2.13.2"
-  resolved "https://registry.yarnpkg.com/mockingoose/-/mockingoose-2.13.2.tgz#32a23f4dd39542673ce7954583d89946be8abf7c"
-  integrity sha512-KP+rweeXjP5P1SMoBQTS7NQG4xIZLbrlJ24dKDjuRRX3kzn+pCAg4w1e+Er6UQEoBtqjbXDM9PTbQkXUk4S7iw==
-
 mongodb-memory-server-core@6.8.0:
   version "6.8.0"
   resolved "https://registry.yarnpkg.com/mongodb-memory-server-core/-/mongodb-memory-server-core-6.8.0.tgz#6349e265c693a75a88111092e8653f5b89204647"

@@ -1,9 +1,7 @@
-// import bodyParser from 'body-parser';
-import mockingoose from 'mockingoose';
 import supertest from 'supertest';
-
 import resourceRouter from '../resource_router';
-import ResourceModel from '../../models/resource_model';
+
+import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(resourceRouter);
 
@@ -20,7 +18,7 @@ const mockUser = {
   last_name: 'Smith',
 };
 
-const validId = 'validId';
+let validId = '';
 const invalidId = 'invalidId';
 
 // Mock passport authentication
@@ -35,19 +33,20 @@ jest.mock('../../authentication/requireAuth', () => {
 });
 
 describe('Working resource router', () => {
-  // Initialize all model mocks
-  beforeAll(() => {
-    mockingoose(ResourceModel)
-      .toReturn((query) => { return [resourceData, resourceData]; }, 'find')
-      .toReturn((query) => { return resourceData; }, 'save')
-      .toReturn((query) => { return { deletedCount: 3 }; }, 'deleteMany')
-      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? resourceData : Promise.reject(new Error('Resource with id:')); }, 'findOne')
-      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ title: 'New title', ...resourceData }) : {}; }, 'findOneAndUpdate')
-      .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ deletedCount: 1 }) : ({ deletedCount: 0 }); }, 'findOneAndDelete');
+  beforeAll(async (done) => {
+    try {
+      connectDB(done);
+    } catch (error) {
+      done(error);
+    }
   });
 
-  afterAll(() => {
-    mockingoose.resetAll();
+  afterAll(async (done) => {
+    try {
+      dropDB(done);
+    } catch (error) {
+      done(error);
+    }
   });
 
   describe('single event modification', () => {
@@ -129,6 +128,8 @@ describe('Working resource router', () => {
           expect(res.body.value).toBeDefined();
           expect(res.body.date_resource_created).toBeDefined();
           expect(res.body._id).toBeDefined();
+
+          validId = res.body._id;
           done();
         } catch (error) {
           done(error);
@@ -202,8 +203,7 @@ describe('Working resource router', () => {
             .send({ title: 'New title' });
 
           expect(res.status).toBe(200);
-          // TODO: Mock this update
-          // expect(res.body.title).toBe('New title');
+          expect(res.body.title).toBe('New title');
           done();
         } catch (error) {
           done(error);
@@ -285,6 +285,15 @@ describe('Working resource router', () => {
 
       it('succeeds', async (done) => {
         try {
+          // Create two new resources
+          await request.post('/')
+            .set('Authorization', 'Bearer dummy_token')
+            .send(resourceData);
+
+          await request.post('/')
+            .set('Authorization', 'Bearer dummy_token')
+            .send(resourceData);
+
           const res = await request.get('/');
           expect(res.status).toBe(200);
           expect(res.body.length).toBe(2);

@@ -65,7 +65,7 @@ router.route('/:id')
         return res.json(resource);
       })
       .catch((error) => {
-        if (error.message && error.message.startsWith('Resource with id:')) {
+        if (error.kind === 'ObjectId') {
           return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
         } else {
           return res.status(500).json({ message: error.message });
@@ -75,24 +75,31 @@ router.route('/:id')
 
   // Update resource by id (SECURE)
   .put(requireAuth, (req, res) => {
-    Resources.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true }).then((resource) => {
-      if (Object.keys(resource).length) return res.json(resource);
-      else return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
-    })
+    Resources.findOneAndUpdate({ _id: req.params.id }, req.body, { useFindAndModify: false, new: true })
+      .then((resource) => {
+        return res.json(resource);
+      })
       .catch((error) => {
-        return res.status(500).json({ message: error.message });
+        if (error.kind === 'ObjectId') {
+          return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
+        } else {
+          return res.status(500).json({ message: error.message });
+        }
       });
   })
 
   // Delete resource by id, SECURE
   .delete(requireAuth, (req, res) => {
-    Resources.findByIdAndDelete(req.params.id)
-      .then((meta) => {
-        if (meta.deletedCount < 1) return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
-        else return res.json({ message: `Resource with id: ${req.params.id} was successfully deleted` });
+    Resources.findOneAndDelete({ _id: req.params.id }, { useFindAndModify: false })
+      .then(() => {
+        return res.json({ message: `Resource with id: ${req.params.id} was successfully deleted` });
       })
       .catch((error) => {
-        return res.status(500).json({ message: error.message });
+        if (error.kind === 'ObjectId') {
+          return res.status(404).json({ message: 'Couldn\'t find resource with given id' });
+        } else {
+          return res.status(500).json({ message: error.message });
+        }
       });
   });
 
