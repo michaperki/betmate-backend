@@ -1203,7 +1203,7 @@ babel-messages@^6.23.0:
   dependencies:
     babel-runtime "^6.22.0"
 
-babel-plugin-check-es2015-constants@^6.22.0, babel-plugin-check-es2015-constants@^6.8.0:
+babel-plugin-check-es2015-constants@^6.22.0:
   version "6.22.0"
   resolved "https://registry.yarnpkg.com/babel-plugin-check-es2015-constants/-/babel-plugin-check-es2015-constants-6.22.0.tgz#35157b101426fd2ffd3da3f75c7d1e91835bbf8a"
   integrity sha1-NRV7EBQm/S/9PaP3XH0ekYNbv4o=
@@ -1255,7 +1255,7 @@ babel-plugin-transform-async-to-generator@^6.22.0:
     babel-plugin-syntax-async-functions "^6.8.0"
     babel-runtime "^6.22.0"
 
-babel-plugin-transform-es2015-arrow-functions@^6.22.0, babel-plugin-transform-es2015-arrow-functions@^6.8.0:
+babel-plugin-transform-es2015-arrow-functions@^6.22.0:
   version "6.22.0"
   resolved "https://registry.yarnpkg.com/babel-plugin-transform-es2015-arrow-functions/-/babel-plugin-transform-es2015-arrow-functions-6.22.0.tgz#452692cb711d5f79dc7f85e440ce41b9f244d221"
   integrity sha1-RSaSy3EdX3ncf4XkQM5BufJE0iE=
@@ -1269,7 +1269,7 @@ babel-plugin-transform-es2015-block-scoped-functions@^6.22.0:
   dependencies:
     babel-runtime "^6.22.0"
 
-babel-plugin-transform-es2015-block-scoping@^6.23.0, babel-plugin-transform-es2015-block-scoping@^6.9.0:
+babel-plugin-transform-es2015-block-scoping@^6.23.0:
   version "6.26.0"
   resolved "https://registry.yarnpkg.com/babel-plugin-transform-es2015-block-scoping/-/babel-plugin-transform-es2015-block-scoping-6.26.0.tgz#d70f5299c1308d05c12f463813b0a09e73b1895f"
   integrity sha1-1w9SmcEwjQXBL0Y4E7CgnnOxiV8=
@@ -1422,7 +1422,7 @@ babel-plugin-transform-es2015-sticky-regex@^6.22.0:
     babel-runtime "^6.22.0"
     babel-types "^6.24.1"
 
-babel-plugin-transform-es2015-template-literals@^6.22.0, babel-plugin-transform-es2015-template-literals@^6.8.0:
+babel-plugin-transform-es2015-template-literals@^6.22.0:
   version "6.22.0"
   resolved "https://registry.yarnpkg.com/babel-plugin-transform-es2015-template-literals/-/babel-plugin-transform-es2015-template-literals-6.22.0.tgz#a84b3450f7e9f8f1f6839d6d687da84bb1236d8d"
   integrity sha1-qEs0UPfp+PH2g51taH2oS7EjbY0=
@@ -1530,16 +1530,6 @@ babel-preset-env@^1.7.0:
     browserslist "^3.2.6"
     invariant "^2.2.2"
     semver "^5.3.0"
-
-babel-preset-es2020@^1.0.2:
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/babel-preset-es2020/-/babel-preset-es2020-1.0.2.tgz#489272ca9c8b1fca59b2cfc4b2a2fab02eedeb79"
-  integrity sha1-SJJyypyLH8pZss/EsqL6sC7t63k=
-  dependencies:
-    babel-plugin-check-es2015-constants "^6.8.0"
-    babel-plugin-transform-es2015-arrow-functions "^6.8.0"
-    babel-plugin-transform-es2015-block-scoping "^6.9.0"
-    babel-plugin-transform-es2015-template-literals "^6.8.0"
 
 babel-preset-jest@^26.3.0:
   version "26.3.0"
@@ -2231,7 +2221,7 @@ debug@3.1.0:
   dependencies:
     ms "2.0.0"
 
-debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1:
+debug@4, debug@^4.0.1, debug@^4.1.0, debug@^4.1.1, debug@^4.2.0:
   version "4.2.0"
   resolved "https://registry.yarnpkg.com/debug/-/debug-4.2.0.tgz#7f150f93920e94c58f5574c2fd01a3110effe7f1"
   integrity sha512-IX2ncY78vDTjZMFUdmsvIRFY2Cf4FnD0wRs+nQwJU8Lu99/tPFdb0VybiiMTPe3I6rQmwsqQqRBvxU+bZ/I8sg==
@@ -2643,10 +2633,10 @@ eslint-plugin-jsx-a11y@^6.3.1:
     jsx-ast-utils "^2.4.1"
     language-tags "^1.0.5"
 
-eslint-plugin-react@^7.21.1:
-  version "7.21.1"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-react/-/eslint-plugin-react-7.21.1.tgz#3d9fe506eab78756f67c671bb2a9aa9c20990a39"
-  integrity sha512-TGtWzWrFjZtrD1giMz0O6a9ul++YR9vZSzIL/a7qlb5I/ra/O5RkMGMJK+KKYnJrzz884kyAkEyWiU4Hg2HTrg==
+eslint-plugin-react@^7.21.2:
+  version "7.21.2"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-react/-/eslint-plugin-react-7.21.2.tgz#3bd5d2c4c36d5a0428d0d6dda301ac9a84d681b2"
+  integrity sha512-j3XKvrK3rpBzveKFbgAeGsWb9uz6iUOrR0jixRfjwdFeGSRsXvVTFtHDQYCjsd1/6Z/xvb8Vy3LiI5Reo7fDrg==
   dependencies:
     array-includes "^3.1.1"
     array.prototype.flatmap "^1.2.3"
@@ -4883,12 +4873,43 @@ mongodb-memory-server-core@6.6.7:
   optionalDependencies:
     mongodb "^3.5.9"
 
+mongodb-memory-server-core@6.8.0:
+  version "6.8.0"
+  resolved "https://registry.yarnpkg.com/mongodb-memory-server-core/-/mongodb-memory-server-core-6.8.0.tgz#6349e265c693a75a88111092e8653f5b89204647"
+  integrity sha512-cw8TX3iKhmXPiPQDcmIftHl1WvuCn970nomeQKgpcJZOYIUI87zD97apNIWfajkEduIe+24yYoqIwbwLbA19gQ==
+  dependencies:
+    "@types/tmp" "^0.2.0"
+    camelcase "^6.0.0"
+    cross-spawn "^7.0.3"
+    debug "^4.1.1"
+    find-cache-dir "^3.3.1"
+    find-package-json "^1.2.0"
+    get-port "^5.1.1"
+    https-proxy-agent "^5.0.0"
+    lockfile "^1.0.4"
+    md5-file "^5.0.0"
+    mkdirp "^1.0.4"
+    semver "^7.3.2"
+    tar-stream "^2.1.4"
+    tmp "^0.2.1"
+    uuid "8.3.0"
+    yauzl "^2.10.0"
+  optionalDependencies:
+    mongodb "3.6.2"
+
 mongodb-memory-server@6.6.7:
   version "6.6.7"
   resolved "https://registry.yarnpkg.com/mongodb-memory-server/-/mongodb-memory-server-6.6.7.tgz#fa5f1e8153f4248c7c166f99b5143662699f40d6"
   integrity sha512-azRGr5csTAl0MCLR/amPCJrmV5TFwRcVtal56dHrPy1o2T8wZRc3AaJyukob8a/JP38JYa/pQnw1AQH7lFA2Cg==
   dependencies:
     mongodb-memory-server-core "6.6.7"
+
+mongodb-memory-server@^6.8.0:
+  version "6.8.0"
+  resolved "https://registry.yarnpkg.com/mongodb-memory-server/-/mongodb-memory-server-6.8.0.tgz#4bdf9f70e818297bd32f9de7f3db27e582ce8476"
+  integrity sha512-jAJwx9yrRjB3XDFDA0DBYSHbMSvhPssDdnbEg70O2gp0qfTRtgQTaAUvTGCawj2d/iDuEJgFHJkuczHQG33a0Q==
+  dependencies:
+    mongodb-memory-server-core "6.8.0"
 
 mongodb@3.6.2, mongodb@^3.5.9:
   version "3.6.2"
@@ -5518,14 +5539,6 @@ path-type@^2.0.0:
   dependencies:
     pify "^2.0.0"
 
-path@^0.12.7:
-  version "0.12.7"
-  resolved "https://registry.yarnpkg.com/path/-/path-0.12.7.tgz#d4dc2a506c4ce2197eb481ebfcd5b36c0140b10f"
-  integrity sha1-1NwqUGxM4hl+tIHr/NWzbAFAsQ8=
-  dependencies:
-    process "^0.11.1"
-    util "^0.10.3"
-
 pause@0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/pause/-/pause-0.0.1.tgz#1d408b3fdb76923b9543d96fb4c9dfd535d9cb5d"
@@ -5616,11 +5629,6 @@ process-nextick-args@~2.0.0:
   version "2.0.1"
   resolved "https://registry.yarnpkg.com/process-nextick-args/-/process-nextick-args-2.0.1.tgz#7820d9b16120cc55ca9ae7792680ae7dba6d7fe2"
   integrity sha512-3ouUOpQhtgrbOa17J7+uxOTpITYWaGP7/AhoR3+A+/1e9skrzelGi/dXzEYyvbxubEF6Wn2ypscTKiKJFFn1ag==
-
-process@^0.11.1:
-  version "0.11.10"
-  resolved "https://registry.yarnpkg.com/process/-/process-0.11.10.tgz#7332300e840161bda3e69a1d1d91a7d4bc16f182"
-  integrity sha1-czIwDoQBYb2j5podHZGn1LwW8YI=
 
 progress@^2.0.0:
   version "2.0.3"
@@ -6634,7 +6642,7 @@ table@^5.2.3:
     slice-ansi "^2.1.0"
     string-width "^3.0.0"
 
-tar-stream@^2.1.3:
+tar-stream@^2.1.3, tar-stream@^2.1.4:
   version "2.1.4"
   resolved "https://registry.yarnpkg.com/tar-stream/-/tar-stream-2.1.4.tgz#c4fb1a11eb0da29b893a5b25476397ba2d053bfa"
   integrity sha512-o3pS2zlG4gxr67GmFYBLlq+dM8gyRGUOvsrHclSkvtVtQbjV0s/+ZE8OpICbaj8clrX3tjeHngYGP7rweaBnuw==
@@ -6950,13 +6958,6 @@ util-deprecate@^1.0.1, util-deprecate@~1.0.1:
   version "1.0.2"
   resolved "https://registry.yarnpkg.com/util-deprecate/-/util-deprecate-1.0.2.tgz#450d4dc9fa70de732762fbd2d4a28981419a0ccf"
   integrity sha1-RQ1Nyfpw3nMnYvvS1KKJgUGaDM8=
-
-util@^0.10.3:
-  version "0.10.4"
-  resolved "https://registry.yarnpkg.com/util/-/util-0.10.4.tgz#3aa0125bfe668a4672de58857d3ace27ecb76901"
-  integrity sha512-0Pm9hTQ3se5ll1XihRic3FDIku70C+iHUdT/W926rSgHV5QgXsYbKZN8MSC3tJtSkhuROzvsQjAaFENRXr+19A==
-  dependencies:
-    inherits "2.0.3"
 
 utils-merge@1.0.1:
   version "1.0.1"

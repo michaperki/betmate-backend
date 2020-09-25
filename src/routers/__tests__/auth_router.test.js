@@ -1,41 +1,17 @@
-import mongoose from 'mongoose';
 import supertest from 'supertest';
 
-import server from '../../server';
-import UserModel from '../../models/user_model';
+import authRouter from '../auth_router';
 
 const authPrefix = '/auth';
-const request = supertest(server);
+const request = supertest(authRouter);
 const userData = {
   email: 'test@test.com',
   password: 'password',
 };
 
 describe('Working auth router', () => {
-  beforeAll(async (done) => {
-    try {
-      // Close app's connection to DB and reopen to testing DB
-      await mongoose.connection.close();
-      await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
-        if (err) done(err);
-      });
-
-      // Clear `users` testing DB field to prevent unintended duplicates
-      await UserModel.deleteMany();
-      done();
-    } catch (error) {
-      done(error);
-    }
-  });
-
-  afterAll(async (done) => {
-    try {
-      await mongoose.connection.close();
-      server.close();
-      done();
-    } catch (error) {
-      done(error);
-    }
+  afterAll(() => {
+    authRouter.close();
   });
 
   describe('signup functionality', () => {

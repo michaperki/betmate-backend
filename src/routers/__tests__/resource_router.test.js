@@ -5,10 +5,6 @@ import supertest from 'supertest';
 import resourceRouter from '../resource_router';
 import ResourceModel from '../../models/resource_model';
 
-// // enable json message body for posting data to API
-// resourceRouter.use(bodyParser.urlencoded({ extended: true }));
-// resourceRouter.use(bodyParser.json());
-
 const request = supertest(resourceRouter);
 
 const resourceData = {
@@ -39,28 +35,6 @@ jest.mock('../../authentication/requireAuth', () => {
 });
 
 describe('Working resource router', () => {
-  // beforeAll(async (done) => {
-  //   try {
-  //     // Close app's connection to DB and reopen to testing DB
-  //     await mongoose.connection.close();
-  //     await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
-  //       if (err) done(err);
-  //     });
-
-  //     // Clear `resources` and `users` testing DB fields to prevent unintended duplicates
-  //     await ResourceModel.deleteMany();
-  //     await UserModel.deleteMany();
-
-  //     // Creates two testing models within the DB
-  //     await new ResourceModel(resourceData).save();
-  //     await new ResourceModel(resourceData).save();
-
-  //     done();
-  //   } catch (error) {
-  //     done(error);
-  //   }
-  // });
-
   // Initialize all model mocks
   beforeAll(() => {
     mockingoose(ResourceModel)
@@ -72,19 +46,8 @@ describe('Working resource router', () => {
       .toReturn((query) => { return (query && query.getFilter()._id !== invalidId) ? ({ deletedCount: 1 }) : ({ deletedCount: 0 }); }, 'findOneAndDelete');
   });
 
-  // afterAll(async (done) => {
-  //   try {
-  //     await mongoose.connection.close();
-  //     await ResourceModel.deleteMany();
-  //     await UserModel.deleteMany();
-  //     server.close();
-  //     done();
-  //   } catch (error) {
-  //     done(error);
-  //   }
-  // });
-
   afterAll(() => {
+    resourceRouter.close();
     mockingoose.resetAll();
   });
 
