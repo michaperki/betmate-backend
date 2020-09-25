@@ -47,7 +47,6 @@ describe('Working resource router', () => {
   });
 
   afterAll(() => {
-    resourceRouter.close();
     mockingoose.resetAll();
   });
 

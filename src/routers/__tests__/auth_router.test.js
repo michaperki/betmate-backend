@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import supertest from 'supertest';
 
 import authRouter from '../auth_router';
+import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);
 
@@ -14,31 +15,19 @@ mongoose.Promise = Promise;
 
 describe('Working auth router', () => {
   beforeAll(async (done) => {
-    const mongooseOpts = {
-      useNewUrlParser: true,
-      useCreateIndex: true,
-      useUnifiedTopology: true,
-    };
-
-    mongoose.connect(process.env.MONGO_URL, mongooseOpts);
-
-    mongoose.connection.on('error', (e) => {
-      console.error(e);
-      if (e.message.code === 'ETIMEDOUT') {
-        mongoose.connect(process.env.MONGO_URL, mongooseOpts);
-      } else {
-        done(e);
-      }
-    });
-
-    mongoose.connection.once('open', () => {
-      console.log(`MongoDB successfully connected to ${process.env.MONGO_URL}`);
-      done();
-    });
+    try {
+      connectDB(done);
+    } catch (error) {
+      done(error);
+    }
   });
 
-  afterAll(() => {
-    authRouter.close();
+  afterAll(async (done) => {
+    try {
+      dropDB(done);
+    } catch (error) {
+      done(error);
+    }
   });
 
   describe('signup functionality', () => {

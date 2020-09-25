@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
-import mongoose from 'mongoose';
 import UserModel from '../user_model';
+
+import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const userData = {
   email: 'test@test.com',
@@ -11,24 +12,17 @@ const userData = {
 };
 
 describe('User model validation', () => {
-  // Connect DB before running tests
   beforeAll(async (done) => {
-    await mongoose.connect(global.__MONGO_URI__, { useNewUrlParser: true, useCreateIndex: true, useUnifiedTopology: true }, (err) => {
-      if (err) done(err);
-      else done();
-    });
+    try {
+      connectDB(done);
+    } catch (error) {
+      done(error);
+    }
   });
 
-  // // Clean DB after each test
-  // afterEach(async () => {
-  //   UserModel.deleteMany();
-  // });
-
-  // Close DB connection
   afterAll(async (done) => {
     try {
-      await mongoose.connection.close();
-      done();
+      dropDB(done);
     } catch (error) {
       done(error);
     }
