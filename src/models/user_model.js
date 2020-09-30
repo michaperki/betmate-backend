@@ -1,6 +1,6 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcrypt';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },

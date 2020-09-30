@@ -15,8 +15,8 @@ One to two sentence description.
 
 ## Referenced Issue(s)
 
-- [Issue Number](Link)
-- [Issue Number](Link)
+- [Issue](Link)
+- [Issue](Link)
 
 ## Screenshots/Screen Recordings
 

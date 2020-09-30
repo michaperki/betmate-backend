@@ -4,7 +4,8 @@
   "env": {
     "browser": false,
     "node": true,
-    "es6": true
+    "es6": true,
+    "jest": true
   },
   "rules": {
     "strict": 0,
@@ -20,7 +21,8 @@
     "no-use-before-define": ["error", { "functions": false }],
     "max-len": 0,
     "no-param-reassign": 0,
-    "linebreak-style": "off"
+    "linebreak-style": "off",
+    "camelcase": 0
   },
   "plugins": [
     "import"
