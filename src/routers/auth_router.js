@@ -19,23 +19,22 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router.route('/signup')
-  .post((req, res) => {
-    const {
-      email, password, firstName, lastName,
-    } = req.body;
+  .post(async (req, res) => {
+    try {
+      const {
+        email, password, firstName, lastName,
+      } = req.body;
 
-    // Validate email and password
-    if (!email || !validator.validate(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address' });
-    } else if (!password) {
-      return res.status(400).json({ message: getFieldNotFoundError('password') });
-    }
-
-    Users.findOne({ email }).then((user) => {
-      // Check if a user already has this email address
-      if (user) {
-        return res.status(409).json({ message: 'Email address already associated to a user' });
+      // Validate email and password
+      if (!email || !validator.validate(email)) {
+        return res.status(400).json({ message: 'Please enter a valid email address' });
+      } else if (!password) {
+        return res.status(400).json({ message: getFieldNotFoundError('password') });
       }
+
+      // Check if a user already has this email address
+      const user = await Users.findOne({ email });
+      if (user) { return res.status(409).json({ message: 'Email address already associated to a user' }); }
 
       // Make a new user from passed data
       const newUser = new Users({
@@ -46,17 +45,13 @@ router.route('/signup')
       });
 
       // Save the user then transmit to frontend
-      return newUser.save()
-        .then((savedUser) => {
-          const json = savedUser.toJSON();
-          delete json.password;
-          return res.status(201).json({ token: userController.tokenForUser(savedUser), user: json });
-        }).catch((error) => {
-          return res.status(500).json(error);
-        });
-    }).catch((error) => {
-      return res.status(500).json(error);
-    });
+      const savedUser = await newUser.save();
+      const json = savedUser.toJSON();
+      delete json.password;
+      return res.status(201).json({ token: userController.tokenForUser(savedUser), user: json });
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
   });
 
 // Send user object and server will send back authToken and user object

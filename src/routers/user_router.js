@@ -4,7 +4,7 @@ import express from 'express';
 import { Users } from '../models';
 
 import { requireAuth } from '../authentication';
-import { documentNotFoundError, getFieldNotFoundError } from '../helpers/constants';
+import { documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage } from '../helpers/constants';
 
 const router = express();
 
@@ -19,118 +19,100 @@ router.use(requireAuth);
 
 // find and return all users
 router.route('/')
-
-  // Get all users
-  .get((req, res) => {
-    Users.find({}).then((users) => {
-      Promise.all(users.map((user) => {
+  .get(async (req, res) => {
+    try {
+      const users = await Users.find({});
+      const cleanedUsers = await Promise.all(users.map((user) => {
         return new Promise((resolve) => {
-          user = user.toObject();
+          user = user.toJSON();
           delete user.password;
           resolve(user);
         });
-      })).then((cleanedUsers) => {
-        return res.json(cleanedUsers);
-      });
-    }).catch((error) => {
+      }));
+      return res.status(200).json(cleanedUsers);
+    } catch (error) {
       return res.status(500).json({ message: error.message });
-    });
+    }
   })
 
   // Create new user
-  .post((req, res) => {
-    const user = new Users();
+  .post(async (req, res) => {
+    try {
+      const user = new Users();
 
-    const {
-      email, password, first_name, last_name,
-    } = req.body;
+      const {
+        email, password, first_name, last_name,
+      } = req.body;
 
-    if (!email) return res.status(400).json({ message: getFieldNotFoundError('email') });
-    if (!password) return res.status(400).json({ message: getFieldNotFoundError('password') });
+      if (!email) return res.status(400).json({ message: getFieldNotFoundError('email') });
+      if (!password) return res.status(400).json({ message: getFieldNotFoundError('password') });
 
-    user.email = email;
-    user.password = password;
-    user.first_name = first_name || '';
-    user.last_name = last_name || '';
+      user.email = email;
+      user.password = password;
+      user.first_name = first_name || '';
+      user.last_name = last_name || '';
 
-    user.save()
-      .then((savedUser) => {
-        savedUser = savedUser.toObject();
-        delete savedUser.password;
-        return res.status(201).json(savedUser);
-      }).catch((error) => {
-        return res.status(500).json({ message: error.message });
-      });
+      const savedUser = await user.save();
+      const json = savedUser.toJSON();
+      delete json.password;
+      return res.status(201).json(json);
+    } catch (error) {
+      return res.status(500).json({ message: error.message });
+    }
   });
 
-// // Delete all resources (SECURE, TESTING ONLY)
-// .delete(requireAuth, (req, res) => {
-//   Users.deleteMany({ })
-//     .then(() => {
-//       return res.json({ message: 'Successfully deleted all users.' });
-//     })
-//     .catch((error) => {
-//       return res.status(500).json({ message: error.message });
-//     });
+// // ! TESTING ONLY
+// .delete(requireAuth, async (req, res) => {
+//   try {
+//     await Users.deleteMany({ });
+//     return res.status(200).json({ message: 'Successfully deleted all users.' });
+//   } catch (error) {
+//     return res.status(500).json({ message: error.message });
+//   }
 // });
 
 router.route('/:id')
-
-  // Get user by ID
-  .get((req, res) => {
-    Users.findById(req.params.id)
-      .then((user) => {
-        user = user.toObject();
-        delete user.password;
-        return res.json(user);
-      })
-      .catch((error) => {
-        if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: documentNotFoundError });
-        } else {
-          return res.status(500).json({ message: error.message });
-        }
-      });
+  .get(async (req, res) => {
+    try {
+      const user = await Users.findById(req.params.id);
+      const json = user.toJSON();
+      delete json.password;
+      return res.status(200).json(json);
+    } catch (error) {
+      if (error.kind === 'ObjectId') {
+        return res.status(404).json({ message: documentNotFoundError });
+      } else {
+        return res.status(500).json({ message: error.message });
+      }
+    }
   })
 
-  // Update user by ID
-  .put((req, res) => {
-    Users.updateOne({ _id: req.params.id }, req.body)
-      .then(() => {
-        // Fetch user object and send
-        Users.findById(req.params.id)
-          .then((updatedUser) => {
-            updatedUser = updatedUser.toObject();
-            delete updatedUser.password;
-            return res.json(updatedUser);
-          });
-      })
-      .catch((error) => {
-        if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: documentNotFoundError });
-        } else {
-          return res.status(500).json({ message: error.message });
-        }
-      });
+  .put(async (req, res) => {
+    try {
+      const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, req.body, { useFindAndModify: false, new: true });
+      const json = updatedUser.toJSON();
+      delete json.password;
+      return res.status(200).json(json);
+    } catch (error) {
+      if (error.kind === 'ObjectId') {
+        return res.status(404).json({ message: documentNotFoundError });
+      } else {
+        return res.status(500).json({ message: error.message });
+      }
+    }
   })
 
-  // Delete user by ID
-  .delete((req, res) => {
-    Users.deleteOne({ _id: req.params.id })
-      .then((result) => {
-        if (result.deletedCount === 1) { // Successful deletion
-          return res.json({ message: `User with id: ${req.params.id} was successfully deleted` });
-        } else {
-          return res.status(500).json({ message: 'Resource not able to be deleted' });
-        }
-      })
-      .catch((error) => {
-        if (error.kind === 'ObjectId') {
-          return res.status(404).json({ message: documentNotFoundError });
-        } else {
-          return res.status(500).json({ message: error.message });
-        }
-      });
+  .delete(async (req, res) => {
+    try {
+      await Users.findOneAndDelete({ _id: req.params.id }, { useFindAndModify: false });
+      return res.json({ message: getSuccessfulDeletionMessage(req.params.id) });
+    } catch (error) {
+      if (error.kind === 'ObjectId') {
+        return res.status(404).json({ message: documentNotFoundError });
+      } else {
+        return res.status(500).json({ message: error.message });
+      }
+    }
   });
 
 export default router;
