@@ -73,7 +73,7 @@ router.route('/:id')
 
   .put(requireAuth, async (req, res) => {
     try {
-      const resource = await Resources.findOneAndUpdate({ _id: req.params.id }, req.body, { useFindAndModify: false, new: true });
+      const resource = await Resources.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
       return res.status(200).json(resource);
     } catch (error) {
       if (error.kind === 'ObjectId') {

@@ -1,6 +1,6 @@
 /* eslint-disable consistent-return */
 import bodyParser from 'body-parser';
-import express, {Request} from 'express';
+import express from 'express';
 import validator from 'email-validator';
 
 import { userController } from '../controllers';

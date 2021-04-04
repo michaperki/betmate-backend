@@ -89,7 +89,7 @@ router.route('/:id')
 
   .put(async (req, res) => {
     try {
-      const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, req.body, { useFindAndModify: false, new: true });
+      const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
       const json = updatedUser?.toJSON();
       delete json.password;
       return res.status(200).json(json);

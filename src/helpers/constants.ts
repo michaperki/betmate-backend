@@ -1,8 +1,8 @@
-export function getFieldNotFoundError(fieldName) {
+export function getFieldNotFoundError(fieldName: string) {
   return `Missing required "${fieldName}" field`;
 }
 
-export function getSuccessfulDeletionMessage(id) {
+export function getSuccessfulDeletionMessage(id: string) {
   return `User with id: ${id} was successfully deleted`;
 }
 
