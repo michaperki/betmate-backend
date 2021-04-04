@@ -8,7 +8,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 
 import {
-  authRouter, userRouter, resourceRouter
+  authRouter, userRouter, resourceRouter, chessRouter
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -36,9 +36,10 @@ app.use(bodyParser.json());
 app.use('/auth', authRouter); // NOTE: Not secured
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/resources', resourceRouter); // NOTE: Partially secured to users
+app.use('/chess', chessRouter);
 
 // declare websockets
-io.of('/chess').on('connection', chessWS);
+io.of('/chessws').on('connection', chessWS);
 
 // default index route
 app.get('/', (req, res) => {

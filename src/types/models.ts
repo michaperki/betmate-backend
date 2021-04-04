@@ -24,3 +24,19 @@ export interface IResource extends mongoose.Document {
     date_resource_created: Date | number,
     child_resources?: any
 }
+
+export interface IWager extends mongoose.Document {
+    game_id: mongoose.Types.ObjectId,
+    data: string,
+    resolved: boolean,
+    bettors: string[]
+}
+
+export interface IChess extends mongoose.Document {
+    title: string,
+    state: string,
+    players: [string, string],
+    move_hist: string[],
+    wagers: mongoose.Types.ObjectId[],
+    times: [number, number]
+}

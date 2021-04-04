@@ -4,14 +4,14 @@ import { Strategy as LocalStrategy } from 'passport-local';
 import User from '../models/user_model';
 
 import { getFieldNotFoundError } from '../helpers/constants';
-import { UserPW } from 'types/models';
+import { IUser } from 'types/models';
 
 // Configure what LocalStrategy will check for as a username
 const localOptions = { usernameField: 'email' };
 
 // Make a login strategy to check email and password against DB
 const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
-  return User.findOne({ email }, (error, user: UserPW) => {
+  return User.findOne({ email }, (error, user: IUser) => {
     // Was a user with the given email able to be found?
     if (error) return done(error);
     if (!user) return done(null, false, { message: 'Email address not associated with a user' });

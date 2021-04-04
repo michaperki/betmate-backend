@@ -4,7 +4,6 @@ import express from 'express';
 import { Resources } from '../models';
 import { requireAuth } from '../authentication';
 import { documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage } from '../helpers/constants';
-import { IResource } from 'types/models';
 
 const router = express();
 
