@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-export interface IUser extends mongoose.Document {
+export interface IUserBase extends mongoose.Document {
     email?: string,
     password?: string,
     first_name?: string,
@@ -8,14 +8,14 @@ export interface IUser extends mongoose.Document {
     full_name?: string,
     resource?: any,
     message?: string,
-    _message?: string
+    _message?: string,
 }
 
-type compareCallback = (err: any, isMatch: boolean) => void
-
-export interface UserPW extends mongoose.Document {
-    comparePassword: (password: string, callback: compareCallback) => void
+export type CompareCallback = (err: Error, isMatch?: boolean) => void
+export interface IUser extends IUserBase {
+    comparePassword: (password: string, callback: CompareCallback) => void
 }
+
 
 export interface IResource extends mongoose.Document {
     title: string,
