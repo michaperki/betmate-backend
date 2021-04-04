@@ -3,5 +3,5 @@ import userRouter from './user_router';
 import resourceRouter from './resource_router';
 
 export {
-  authRouter, userRouter, resourceRouter, 
+  authRouter, userRouter, resourceRouter
 };

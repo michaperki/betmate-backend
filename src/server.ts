@@ -4,17 +4,23 @@ import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import env from 'env-var';
+import http from 'http';
+import { Server } from 'socket.io';
 
 import {
-  authRouter, userRouter, resourceRouter,
+  authRouter, userRouter, resourceRouter
 } from './routers';
 
 import * as constants from './helpers/constants';
+import { chessWS } from './websockets';
 
 require('dotenv').config();
-
+ 
 // initialize
 const app = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer);
+
 
 // enable/disable cross origin resource sharing if necessary
 app.use(cors());
@@ -31,9 +37,12 @@ app.use('/auth', authRouter); // NOTE: Not secured
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/resources', resourceRouter); // NOTE: Partially secured to users
 
+// declare websockets
+io.of('/chess').on('connection', chessWS);
+
 // default index route
 app.get('/', (req, res) => {
-  res.send('Welcome to backend!');
+  res.sendFile(`${__dirname}/index.html`)
 });
 
 // DB Setup
@@ -63,6 +72,6 @@ mongoose.Promise = global.Promise;
 
 // START THE SERVER
 // =============================================================================
-const server = app.listen(constants.PORT);
+const server = httpServer.listen(constants.PORT);
 if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
 export default server;
