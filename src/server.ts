@@ -3,10 +3,10 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
-import * as env from 'env-var';
+import env from 'env-var';
 
 import {
-  authRouter, userRouter, resourceRouter, searchRouter,
+  authRouter, userRouter, resourceRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -30,7 +30,6 @@ app.use(bodyParser.json());
 app.use('/auth', authRouter); // NOTE: Not secured
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/resources', resourceRouter); // NOTE: Partially secured to users
-app.use('/search', searchRouter); // NOTE: Not secured
 
 // default index route
 app.get('/', (req, res) => {
@@ -42,6 +41,7 @@ const mongooseOptions = {
   useNewUrlParser: true,
   useUnifiedTopology: true,
   useCreateIndex: true,
+  useFindAndModify: false,
   loggerLevel: 'error',
 };
 

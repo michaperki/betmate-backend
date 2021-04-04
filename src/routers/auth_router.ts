@@ -1,6 +1,6 @@
 /* eslint-disable consistent-return */
 import bodyParser from 'body-parser';
-import express from 'express';
+import express, {Request} from 'express';
 import validator from 'email-validator';
 
 import { userController } from '../controllers';
@@ -8,6 +8,7 @@ import { requireSignin } from '../authentication';
 import { Users } from '../models';
 
 import { getFieldNotFoundError } from '../helpers/constants';
+import { SignInRequest } from 'types/requests';
 
 const router = express();
 
@@ -56,7 +57,7 @@ router.route('/signup')
 
 // Send user object and server will send back authToken and user object
 router.route('/signin')
-  .post(requireSignin, (req, res) => {
+  .post(requireSignin, (req: SignInRequest, res) => {
     // This information is loaded or rejected by passport
     const json = req.user.toJSON();
     delete json.password;

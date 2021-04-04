@@ -1,4 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
+import { IResource } from 'types/models';
 
 const ResourceSchema = new Schema({
   title: { type: String, default: 'Untitled' },
@@ -8,6 +9,6 @@ const ResourceSchema = new Schema({
   child_resources: [{ type: Schema.Types.ObjectId, ref: 'SubResource' }],
 });
 
-const ResourceModel = mongoose.model('Resource', ResourceSchema);
+const ResourceModel = mongoose.model<IResource>('Resource', ResourceSchema);
 
 export default ResourceModel;

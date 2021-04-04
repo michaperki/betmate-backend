@@ -6,7 +6,7 @@
       "node_modules/@types",
       "src/types/modules",
     ],
-    "baseUrl": "./src",
+    "baseUrl": "src",
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,

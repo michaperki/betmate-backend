@@ -2,6 +2,7 @@ import * as bcrypt from 'bcrypt';
 import UserModel from '../user_model';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
+import { IUser } from 'types/models';
 
 const userData = {
   email: 'test@test.com',
@@ -44,7 +45,7 @@ describe('User model validation', () => {
       // Compares hashed to expected password
       let passCompareResult = false;
       passCompareResult = await new Promise((resolve, reject) => {
-        bcrypt.compare(userData.password, savedUser.password, (err, result) => { if (err) { reject(err); } resolve(result); });
+        bcrypt.compare(userData.password, savedUser.password!, (err, result) => { if (err) { reject(err); } resolve(result); });
       });
       expect(passCompareResult).toBe(true);
       done();
@@ -58,7 +59,7 @@ describe('User model validation', () => {
       // Creates a new user object
       const invalidUser = new UserModel({}); // Needs email, password
 
-      const savedUser = await new Promise((resolve, reject) => {
+      const savedUser = await new Promise<IUser>((resolve, reject) => {
         invalidUser.save().then((user) => {
           reject(user);
         }).catch((err) => {

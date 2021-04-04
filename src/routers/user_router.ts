@@ -75,7 +75,7 @@ router.route('/:id')
   .get(async (req, res) => {
     try {
       const user = await Users.findById(req.params.id);
-      const json = user.toJSON();
+      const json = user?.toJSON();
       delete json.password;
       return res.status(200).json(json);
     } catch (error) {
@@ -90,7 +90,7 @@ router.route('/:id')
   .put(async (req, res) => {
     try {
       const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, req.body, { useFindAndModify: false, new: true });
-      const json = updatedUser.toJSON();
+      const json = updatedUser?.toJSON();
       delete json.password;
       return res.status(200).json(json);
     } catch (error) {
@@ -104,7 +104,7 @@ router.route('/:id')
 
   .delete(async (req, res) => {
     try {
-      await Users.findOneAndDelete({ _id: req.params.id }, { useFindAndModify: false });
+      await Users.findOneAndDelete({ _id: req.params.id });
       return res.json({ message: getSuccessfulDeletionMessage(req.params.id) });
     } catch (error) {
       if (error.kind === 'ObjectId') {

@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 import User from '../models/user_model';
 
-dotenv.config({ silent: true });
+dotenv.config();
 
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),

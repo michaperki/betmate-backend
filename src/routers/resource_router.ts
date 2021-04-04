@@ -4,6 +4,7 @@ import express from 'express';
 import { Resources } from '../models';
 import { requireAuth } from '../authentication';
 import { documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage } from '../helpers/constants';
+import { IResource } from 'types/models';
 
 const router = express();
 
@@ -85,7 +86,7 @@ router.route('/:id')
 
   .delete(requireAuth, async (req, res) => {
     try {
-      await Resources.findOneAndDelete({ _id: req.params.id }, { useFindAndModify: false });
+      await Resources.findOneAndDelete({ _id: req.params.id });
       return res.status(200).json({ message: getSuccessfulDeletionMessage(req.params.id) });
     } catch (error) {
       if (error.kind === 'ObjectId') {
