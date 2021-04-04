@@ -2,7 +2,7 @@
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
 
-import { IUser } from 'types/models';
+import { CompareCallback, IUser, IUserBase } from 'types/models';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -25,7 +25,7 @@ const saltRounds = 10;
 UserSchema.pre('save', function (next) {
   // Check if password needs to be rehashed
   if (this.isNew || this.isModified('password')) {
-    const document: IUser = this; // Save reference to current scope
+    const document: IUserBase = this; // Save reference to current scope
 
     // Hash and save document password
     bcrypt.hash(document.password, saltRounds, (error, hashedPassword) => {
@@ -43,7 +43,7 @@ UserSchema.pre('save', function (next) {
 
 // Add a method to the user model to compare passwords
 // Boolean "same" returns whether or not the passwords match to callback function
-UserSchema.methods.comparePassword = function (password, callback) {
+UserSchema.methods.comparePassword = function (password: string, callback: CompareCallback) {
   bcrypt.compare(password, this.password, (error, same) => {
     if (error) {
       callback(error);
