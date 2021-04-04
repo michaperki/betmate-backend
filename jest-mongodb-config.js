@@ -7,6 +7,6 @@ module.exports = {
       version: '4.1.6',
       skipMD5: true,
     },
-    autoStart: false,
+    // autoStart: false,
   },
 };
