@@ -1,8 +1,8 @@
 import { Chess } from '../models';
-import { RequestFn } from 'types/express';
-import { IChess } from 'types/models';
+import { IChess } from '../types/models';
 import { UpdateQuery } from 'mongoose';
 import { requestWithValidation } from '../helpers/validation';
+import { RequestHandler } from 'express';
 
 const getChessGame = async (gameId: string) => {
     return await Chess
@@ -18,7 +18,7 @@ const updateChessGame = async (gameId: string, fields: UpdateQuery<IChess>) => {
         .catch((_) => null);
 }
 
-const createChessGameRequest: RequestFn = (req, res) => {
+const createChessGameRequest: RequestHandler = (req, res) => {
     const { players }: { players: string[] } = req.body;
 
     const chessGame = new Chess({ players });
