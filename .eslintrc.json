@@ -26,11 +26,12 @@
     "no-shadow": "off",
     "@typescript-eslint/no-shadow": ["error"],
     "@typescript-eslint/no-empty-interface": "off",
+    "no-unused-vars": ["error", { "vars": "all", "args": "none" }],
 
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/interface-name-prefix": "off",
     "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/ban-ts-ignore": "off",
+    "@typescript-eslint/ban-ts-ignore": "off"
   },
   "settings": {
     "import/resolver": {

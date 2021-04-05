@@ -1,8 +1,6 @@
 import bodyParser from 'body-parser';
 import express from 'express';
-import { body} from 'express-validator';
 
-import { Chess } from '../models';
 import { requireAuth } from '../authentication';
 import { playersValidation } from '../helpers/validation';
 import { chessController } from '../controllers';
