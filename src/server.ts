@@ -45,10 +45,8 @@ const mongooseOptions = {
   loggerLevel: 'error',
 };
 
-const MONGODB_URI = env.get('MONGODB_URI').required().asString() || "mongodb://localhost:27017/betmate"
-
 // Connect the database
-mongoose.connect(MONGODB_URI, mongooseOptions).then(() => {
+mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') console.info('Connected to Database');
 }).catch((err) => {
