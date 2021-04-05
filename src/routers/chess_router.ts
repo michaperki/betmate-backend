@@ -4,7 +4,7 @@ import { body} from 'express-validator';
 
 import { Chess } from '../models';
 import { requireAuth } from '../authentication';
-import { documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage } from '../helpers/constants';
+import { playersValidation } from '../helpers/validation';
 import { chessController } from '../controllers';
 
 const router = express();
@@ -17,12 +17,11 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router
+    .route('/')
     .post(
-        '/create',
         // requireAuth,
-        body('players').isArray({ min: 2, max: 2 }).withMessage('Must be array of length 2'),
-        body('players.*').isString().withMessage('Elements must be strings'),
-        chessController.createChessGame
+        ...playersValidation,
+        chessController.createChessGameRequest
     )
 
 export default router;

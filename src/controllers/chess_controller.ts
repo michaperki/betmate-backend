@@ -1,11 +1,24 @@
 import { Chess } from '../models';
 import { RequestFn } from 'types/express';
-import { validationResult } from 'express-validator';
+import { IChess } from 'types/models';
+import { UpdateQuery } from 'mongoose';
+import { requestWithValidation } from '../helpers/validation';
 
-const createChessGame: RequestFn = (req, res) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+const getChessGame = async (gameId: string) => {
+    return await Chess
+        .findById(gameId)
+        .then((doc) => doc)
+        .catch((_) => null);
+}
 
+const updateChessGame = async (gameId: string, fields: UpdateQuery<IChess>) => {
+    return await Chess
+        .findByIdAndUpdate(gameId, fields)
+        .then((doc) => doc)
+        .catch((_) => null);
+}
+
+const createChessGameRequest: RequestFn = (req, res) => {
     const { players }: { players: string[] } = req.body;
 
     const chessGame = new Chess({ players });
@@ -17,7 +30,9 @@ const createChessGame: RequestFn = (req, res) => {
 }
 
 const chessController = {
-    createChessGame
+    getChessGame,
+    updateChessGame,
+    createChessGameRequest: requestWithValidation(createChessGameRequest)
 }
 
 export default chessController;

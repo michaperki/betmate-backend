@@ -25,11 +25,47 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         var socket = io("http://localhost:9090/chessws");
+        var gameId = '606a4380ab7927357b35d934'
 
-        socket.on('welcome', (msg) => console.log(msg));
-        socket.on('success', (msg) => console.log(msg))
+        socket.emit('join_game', gameId)
 
-        socket.emit('join_game', 'magnus_vs_hikaru');
+        // socket.on('welcome', (msg) => console.log(msg));
+        // socket.on('success', (msg) => console.log(msg))
+
+        // socket.emit('join_game', 'magnus_vs_hikaru');
+
+        
+
+        var form = document.getElementById('form');
+        var input = document.getElementById('input');
+        var messages = document.getElementById('messages');
+
+        function createMessageElement(msg) {
+          var item = document.createElement('li');
+          item.textContent = msg;
+          messages.appendChild(item);
+        }
+
+        form.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (input.value) {
+            createMessageElement(input.value)
+            const body = {
+              gameId,
+              data: input.value
+            };
+            socket.emit('new_move', body);
+            input.value = '';
+          }
+        })
+
+        socket.on('new_move', function(msg) {
+          createMessageElement(msg);
+          console.log(`New Move ${msg}`)
+        })
+        socket.on('error', function(msg) {
+          console.log(msg);
+        })
         
     </script>
   </body>
