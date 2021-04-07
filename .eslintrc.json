@@ -4,6 +4,9 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
   "env": {
     "browser": false,
     "node": true,
@@ -35,7 +38,9 @@
   },
   "settings": {
     "import/resolver": {
-      "typescript": {} // this loads <rootdir>/tsconfig.json to eslint
+      "node": {
+        "extensions": [".js", ".ts"]
+      } // this loads <rootdir>/tsconfig.json to eslint
     }
   },
   "plugins": [

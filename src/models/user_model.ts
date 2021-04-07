@@ -12,7 +12,7 @@ const UserSchema = new Schema({
   resource: { type: Schema.Types.ObjectId, ref: 'Resource' },
   rating: { type: Number, default: 800 },
   account: { type: Number, default: 1000 },
-  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'Wager' }]
+  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
 }, {
   toObject: {
     virtuals: true,
@@ -28,6 +28,7 @@ const saltRounds = 10;
 UserSchema.pre('save', function (next) {
   // Check if password needs to be rehashed
   if (this.isNew || this.isModified('password')) {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const document: IUserBase = this; // Save reference to current scope
 
     // Hash and save document password

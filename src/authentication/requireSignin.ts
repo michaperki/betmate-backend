@@ -1,38 +1,37 @@
 /* eslint-disable func-names */
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
+import { IUser } from 'types/models';
+import { RequestHandler } from 'express';
 import User from '../models/user_model';
 
 import { getFieldNotFoundError } from '../helpers/constants';
-import { IUser } from 'types/models';
 
 // Configure what LocalStrategy will check for as a username
 const localOptions = { usernameField: 'email' };
 
 // Make a login strategy to check email and password against DB
-const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
-  return User.findOne({ email }, (error, user: IUser) => {
-    // Was a user with the given email able to be found?
-    if (error) return done(error);
-    if (!user) return done(null, false, { message: 'Email address not associated with a user' });
+const localLogin = new LocalStrategy(localOptions, (email, password, done) => User.findOne({ email }, (error, user: IUser) => {
+  // Was a user with the given email able to be found?
+  if (error) return done(error);
+  if (!user) return done(null, false, { message: 'Email address not associated with a user' });
 
-    // Compare password associated with email and passed password
-    return user.comparePassword(password, (err, isMatch) => {
-      if (err) {
-        done(err);
-      } else if (!isMatch) {
-        done(null, false, { message: 'Incorrect password' });
-      } else {
-        done(null, user);
-      }
-    });
+  // Compare password associated with email and passed password
+  return user.comparePassword(password, (err, isMatch) => {
+    if (err) {
+      done(err);
+    } else if (!isMatch) {
+      done(null, false, { message: 'Incorrect password' });
+    } else {
+      done(null, user);
+    }
   });
-});
+}));
 
 passport.use(localLogin);
 
 // Create function to transmit result of authenticate() call to user or next middleware
-const requireSignin = function (req, res, next) {
+const requireSignin: RequestHandler = (req, res, next) => {
   // Validation of parameters
   if (!req.body.email) {
     return res.status(400).json({ message: getFieldNotFoundError('email') });

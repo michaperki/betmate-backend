@@ -3,6 +3,7 @@ import passport from 'passport';
 import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import dotenv from 'dotenv';
 
+import { RequestHandler } from 'express';
 import User from '../models/user_model';
 
 dotenv.config();
@@ -19,18 +20,17 @@ const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
     // This logic can be modified to check for user attributes
     if (err) {
       return done(err, false); // Error return
-    } else if (user) {
+    } if (user) {
       return done(null, user); // Valid user return
-    } else {
-      return done(null, false); // Catch no valid user return
     }
+    return done(null, false); // Catch no valid user return
   });
 });
 
 passport.use(jwtLogin);
 
 // Create function to transmit result of authenticate() call to user or next middleware
-const requireAuth = function (req, res, next) {
+const requireAuth: RequestHandler = (req, res, next) => {
   // eslint-disable-next-line prefer-arrow-callback
   passport.authenticate('jwt', { session: false }, function (err, user, info) {
   // Return any existing errors

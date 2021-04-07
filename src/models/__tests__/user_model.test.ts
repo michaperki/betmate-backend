@@ -1,8 +1,8 @@
 import * as bcrypt from 'bcrypt';
+import { IUser } from 'types/models';
 import UserModel from '../user_model';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
-import { IUser } from 'types/models';
 
 const userData = {
   email: 'test@test.com',
@@ -45,6 +45,7 @@ describe('User model validation', () => {
       // Compares hashed to expected password
       let passCompareResult = false;
       passCompareResult = await new Promise((resolve, reject) => {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
         bcrypt.compare(userData.password, savedUser.password!, (err, result) => { if (err) { reject(err); } resolve(result); });
       });
       expect(passCompareResult).toBe(true);

@@ -1,7 +1,6 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { requireAuth } from '../authentication';
 import { playersValidation } from '../helpers/validation';
 import { chessController } from '../controllers';
 
@@ -15,11 +14,11 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router
-    .route('/')
-    .post(
-        // requireAuth,
-        ...playersValidation,
-        chessController.createChessGameRequest
-    )
+  .route('/')
+  .post(
+    // requireAuth,
+    ...playersValidation,
+    chessController.createChessGameRequest,
+  );
 
 export default router;

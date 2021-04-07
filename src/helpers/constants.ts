@@ -1,11 +1,10 @@
-export function getFieldNotFoundError(fieldName: string) {
+export function getFieldNotFoundError(fieldName: string): string {
   return `Missing required "${fieldName}" field`;
 }
 
-export function getSuccessfulDeletionMessage(id: string) {
+export function getSuccessfulDeletionMessage(id: string): string {
   return `User with id: ${id} was successfully deleted`;
 }
-
 
 export const documentNotFoundError = 'Couldn\'t find resource with given id';
 
