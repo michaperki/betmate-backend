@@ -7,7 +7,7 @@ const ChessSchema = new Schema({
     state: { type: String, default: CHESS_START },
     players: [{ type: String, required: true }],
     move_hist: { type: [String], default: [] },
-    wagers: { type: [Schema.Types.ObjectId], default: [] },
+    wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
     times: { type: [Number], default: [600, 600] }
 });
 
