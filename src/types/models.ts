@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { Move } from 'chess.js'
 
 export interface IUserBase extends mongoose.Document {
     email?: string,
@@ -25,11 +26,17 @@ export interface IResource extends mongoose.Document {
     child_resources?: any
 }
 
+export type wagerWDL = 'win' | 'draw' | 'loss';
+export type wagerMove = [Move, number, boolean]
+
 export interface IWager extends mongoose.Document {
     game_id: mongoose.Types.ObjectId,
-    data: string,
+    bettor_id: mongoose.Types.ObjectId,
+    wdl: boolean,
+    amount: number,
+    odds: number,
+    data: wagerWDL | wagerMove,
     resolved: boolean,
-    bettors: string[]
 }
 
 export interface IChess extends mongoose.Document {
