@@ -43,6 +43,7 @@ io.of('/chessws').on('connection', chessWS);
 
 // default index route
 app.get('/', (req, res) => {
+  // For testing
   res.sendFile(`${__dirname}/index.html`)
 });
 
