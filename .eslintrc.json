@@ -4,6 +4,9 @@
     "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
   "env": {
     "browser": false,
     "node": true,
@@ -26,6 +29,7 @@
     "no-shadow": "off",
     "@typescript-eslint/no-shadow": ["error"],
     "@typescript-eslint/no-empty-interface": "off",
+    "no-unused-vars": ["error", { "vars": "all", "args": "none" }],
 
     "@typescript-eslint/explicit-function-return-type": "off",
     "@typescript-eslint/interface-name-prefix": "off",
@@ -34,7 +38,9 @@
   },
   "settings": {
     "import/resolver": {
-      "typescript": {} // this loads <rootdir>/tsconfig.json to eslint
+      "node": {
+        "extensions": [".js", ".ts"]
+      } // this loads <rootdir>/tsconfig.json to eslint
     }
   },
   "plugins": [

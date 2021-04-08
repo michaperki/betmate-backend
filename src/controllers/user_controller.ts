@@ -1,39 +1,37 @@
 import jwt from 'jwt-simple';
 import env from 'env-var';
-import { IUser } from '../types/models';
 import { RequestHandler } from 'express';
+import { IUser } from '../types/models';
 import { Users } from '../models';
 import {
-  documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage
+  documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
 } from '../helpers/constants';
 
-function tokenForUser(user: IUser) {
+const tokenForUser = (user: IUser): string => {
   const timestamp = new Date().getTime();
   return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
-}
+};
 
 const getAllUsers: RequestHandler = async (req, res) => {
   try {
     const users = await Users.find({});
-    const cleanedUsers = await Promise.all(users.map((user) => {
-      return new Promise((resolve) => {
-        user = user.toJSON();
-        delete user.password;
-        resolve(user);
-      });
-    }));
+    const cleanedUsers = await Promise.all(users.map((user) => new Promise((resolve) => {
+      const userJSON = user.toJSON();
+      delete userJSON.password;
+      resolve(user);
+    })));
     return res.status(200).json(cleanedUsers);
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
 
 const createNewUser: RequestHandler = async (req, res) => {
   try {
     const user = new Users();
 
     const {
-      email, password, first_name, last_name,
+      email, password, first_name: firstName, last_name: lastName,
     } = req.body;
 
     if (!email) return res.status(400).json({ message: getFieldNotFoundError('email') });
@@ -41,8 +39,8 @@ const createNewUser: RequestHandler = async (req, res) => {
 
     user.email = email;
     user.password = password;
-    user.first_name = first_name || '';
-    user.last_name = last_name || '';
+    user.first_name = firstName || '';
+    user.last_name = lastName || '';
 
     const savedUser = await user.save();
     const json = savedUser.toJSON();
@@ -51,7 +49,7 @@ const createNewUser: RequestHandler = async (req, res) => {
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
-}
+};
 
 const getUser: RequestHandler = async (req, res) => {
   try {
@@ -62,11 +60,10 @@ const getUser: RequestHandler = async (req, res) => {
   } catch (error) {
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: documentNotFoundError });
-    } else {
-      return res.status(500).json({ message: error.message });
     }
+    return res.status(500).json({ message: error.message });
   }
-}
+};
 
 const updateUser: RequestHandler = async (req, res) => {
   try {
@@ -77,11 +74,10 @@ const updateUser: RequestHandler = async (req, res) => {
   } catch (error) {
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: documentNotFoundError });
-    } else {
-      return res.status(500).json({ message: error.message });
     }
+    return res.status(500).json({ message: error.message });
   }
-}
+};
 
 const deleteUser: RequestHandler = async (req, res) => {
   try {
@@ -90,11 +86,10 @@ const deleteUser: RequestHandler = async (req, res) => {
   } catch (error) {
     if (error.kind === 'ObjectId') {
       return res.status(404).json({ message: documentNotFoundError });
-    } else {
-      return res.status(500).json({ message: error.message });
     }
+    return res.status(500).json({ message: error.message });
   }
-}
+};
 
 const userController = {
   tokenForUser,
@@ -102,7 +97,7 @@ const userController = {
   createNewUser,
   getUser,
   updateUser,
-  deleteUser
+  deleteUser,
 };
 
 export default userController;

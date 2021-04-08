@@ -1,9 +1,9 @@
 import supertest from 'supertest';
 import resourceRouter from '../resource_router';
 
-const {
+import {
   connectDB, dropDB,
-} = require('../../../__jest__/helpers');
+} from '../../../__jest__/helpers';
 
 const request = supertest(resourceRouter);
 

@@ -4,17 +4,23 @@ import bodyParser from 'body-parser';
 import morgan from 'morgan';
 import mongoose from 'mongoose';
 import env from 'env-var';
+import http from 'http';
+import * as dotenv from 'dotenv';
+import { Server } from 'socket.io';
 
 import {
-  authRouter, userRouter, resourceRouter,
+  authRouter, userRouter, resourceRouter, chessRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
+import { chessWS } from './websockets';
 
-require('dotenv').config();
+dotenv.config();
 
 // initialize
 const app = express();
+const httpServer = http.createServer(app);
+const io = new Server(httpServer);
 
 // enable/disable cross origin resource sharing if necessary
 app.use(cors());
@@ -30,10 +36,15 @@ app.use(bodyParser.json());
 app.use('/auth', authRouter); // NOTE: Not secured
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/resources', resourceRouter); // NOTE: Partially secured to users
+app.use('/chess', chessRouter);
+
+// declare websockets
+io.of('/chessws').on('connection', chessWS);
 
 // default index route
 app.get('/', (req, res) => {
-  res.send('Welcome to backend!');
+  // For testing
+  res.sendFile(`${__dirname}/index.html`);
 });
 
 // DB Setup
@@ -48,8 +59,12 @@ const mongooseOptions = {
 // Connect the database
 mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
-  if (process.env.NODE_ENV !== 'test') console.info('Connected to Database');
+  if (process.env.NODE_ENV !== 'test') {
+    // eslint-disable-next-line no-console
+    console.info('Connected to Database');
+  }
 }).catch((err) => {
+  // eslint-disable-next-line no-console
   console.error('Not Connected to Database - ERROR! ', err);
 });
 
@@ -63,6 +78,7 @@ mongoose.Promise = global.Promise;
 
 // START THE SERVER
 // =============================================================================
-const server = app.listen(constants.PORT);
+const server = httpServer.listen(constants.PORT);
+// eslint-disable-next-line no-console
 if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
 export default server;
