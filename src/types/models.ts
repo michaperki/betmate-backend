@@ -39,8 +39,8 @@ export interface IWager extends mongoose.Document {
 }
 
 export interface IChess extends mongoose.Document {
-  title: string,
   state: string,
+  completed: boolean,
   players: [string, string],
   move_hist: string[],
   wagers: mongoose.Types.ObjectId[],
