@@ -42,7 +42,7 @@ const requireSignin: RequestHandler = (req, res, next) => {
   }
 
   // eslint-disable-next-line prefer-arrow-callback
-  return passport.authenticate('local', { session: false }, function (err, user, info) {
+  return passport.authenticate('local', { session: false }, (err, user, info) => {
     // Return any existing errors
     if (err) { return next(err); }
 
