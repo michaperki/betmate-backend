@@ -1,6 +1,7 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { chessController } from '../controllers';
+import { getWDL } from '../services/microservice';
 
 const websocket = (socket: Socket): void => {
   socket.emit('on_connect', 'connected to /chess');
@@ -29,6 +30,9 @@ const websocket = (socket: Socket): void => {
     // send board state to ML model
     // ...
     // on return send new wagers
+    const probs = await getWDL(chessGame.fen(), chessDoc.times[0], chessDoc.times[1]);
+
+    console.log(probs);
 
     const fields = {
       state: chessGame.fen(),
