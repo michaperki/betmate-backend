@@ -1,8 +1,8 @@
 import authRouter from './auth_router';
 import userRouter from './user_router';
-import resourceRouter from './resource_router';
 import chessRouter from './chess_router';
+import wagerRouter from './wager_router';
 
 export {
-  authRouter, userRouter, resourceRouter, chessRouter,
+  authRouter, userRouter, chessRouter, wagerRouter,
 };
