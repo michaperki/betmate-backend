@@ -65,10 +65,6 @@
           console.log(`New Move ${msg}`)
         })
 
-        socket.on('game_over', function(gameId, gameStatus) {
-          createMessageElement(`Game Over: ${gameStatus}`);
-          console.log(`Game Over: ${gameStatus}`);
-        })
         socket.on('error', function(msg) {
           console.log(msg);
         })

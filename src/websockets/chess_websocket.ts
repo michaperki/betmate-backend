@@ -1,8 +1,7 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
-import { DocumentQuery } from 'mongoose';
-import { IUser, IWager } from 'types/models';
+import { IWager } from 'types/models';
 import { Users, Wager } from '../models';
 import { chessController } from '../controllers';
 import { GameStatus } from '../helpers/constants';
@@ -86,10 +85,9 @@ const websocket = (socket: Socket): void => {
       Promise
         .all(wagerUpdatePromises)
         .then(() => {
-          console.log('all bets have been resolved');
+          // console.log('all bets have been resolved');
         })
         .catch((error) => {
-          console.log(error);
           socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
         });
     }

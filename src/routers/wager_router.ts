@@ -15,13 +15,8 @@ if (process.env.NODE_ENV === 'test') {
 
 router.use(requireAuth);
 
-// find and return all users
+// creates a wager for a user
 router.route('/:id')
   .post(wagerController.createWager);
-
-// router.route('/:id')
-//   .get()
-//   .put()
-//   .delete();
 
 export default router;
