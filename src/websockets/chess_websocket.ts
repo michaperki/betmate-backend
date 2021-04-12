@@ -39,7 +39,7 @@ const websocket = (socket: Socket): void => {
     if (chessGame.game_over()) {
       if (chessGame.in_checkmate()) {
         gameStatus = chessGame.turn() === 'b' ? GameStatus.WHITE_WIN : GameStatus.BLACK_WIN;
-      } else if (chessGame.in_draw() || chessGame.in_stalemate || chessGame.in_threefold_repetition()) {
+      } else {
         gameStatus = GameStatus.DRAW;
       }
     }
@@ -58,28 +58,23 @@ const websocket = (socket: Socket): void => {
     if (!result) socket.to(move.gameId).emit('error', 'There was an error saving');
 
     socket.to(move.gameId).emit('new_move', move.data);
-    // console.log(chessGame.ascii());
-    // console.log([...chessDoc.move_hist, move.data]);
 
-    // check wagers
     // update wagers for each user
     if (complete) {
       const wagers = await Wager.find({ game_id: move.gameId, wdl: true, resolved: false });
       if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
-      const wagerUpdatePromises: Promise<IWager | null>[] = [];
-      wagers.forEach((wager) => {
+
+      const wagerUpdatePromises: Promise<IWager | null>[] = wagers.map((wager) => {
         const { odds } = wager;
         const wonBet = wager.data === gameStatus;
         let winnings = 0;
-        // using moneyline notation for odds
-        if (wonBet && odds <= -100) {
-          winnings = 100 / Math.abs(odds) * wager.amount;
-        } else if (wonBet && odds >= 100) {
-          winnings = odds / 100 * wager.amount;
-        }
-        wagerUpdatePromises.push(
-          Users.findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
-            .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true })),
+        // using decimal notation for odds
+        if (wonBet) winnings = odds * wager.amount;
+
+        return (
+          Users
+            .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
+            .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true }))
         );
       });
       Promise
