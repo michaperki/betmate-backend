@@ -10,9 +10,15 @@ const getChessGame = async (gameId: string): Promise<IChess | null> => Chess
   .catch(() => null);
 
 const updateChessGame = async (gameId: string, fields: UpdateQuery<IChess>): Promise<IChess | null> => Chess
-  .findByIdAndUpdate(gameId, fields)
+  .findByIdAndUpdate(gameId, fields, { new: true })
   .then((doc) => doc)
   .catch(() => null);
+
+const updateChessGameRequest: RequestHandler = async (req, res) => {
+  updateChessGame(req.params.id, req.body)
+    .then((result) => res.send(result))
+    .catch((error) => res.status(500).json({ errors: [error] }));
+};
 
 const createChessGameRequest: RequestHandler = (req, res) => {
   const { players }: { players: string[] } = req.body;
@@ -28,6 +34,7 @@ const chessController = {
   getChessGame,
   updateChessGame,
   createChessGameRequest: requestWithValidation(createChessGameRequest),
+  updateChessGameRequest,
 };
 
 export default chessController;

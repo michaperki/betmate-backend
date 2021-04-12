@@ -1,5 +1,6 @@
 import { Request } from 'express';
+import { IUser } from './models';
 
-export interface SignInRequest extends Request {
-  user: any
+export interface RequestWithJWT extends Request {
+  user: IUser
 }

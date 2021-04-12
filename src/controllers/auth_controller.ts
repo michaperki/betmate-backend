@@ -3,7 +3,7 @@ import validator from 'email-validator';
 import { getFieldNotFoundError } from '../helpers/constants';
 import { Users } from '../models';
 import userController from './user_controller';
-import { SignInRequest } from '../types/requests';
+import { RequestWithJWT } from '../types/requests';
 
 const signUpUser: RequestHandler = async (req, res) => {
   try {
@@ -40,7 +40,7 @@ const signUpUser: RequestHandler = async (req, res) => {
   }
 };
 
-const signInUser: RequestHandler = (req: SignInRequest, res) => {
+const signInUser: RequestHandler = (req: RequestWithJWT, res) => {
   // This information is loaded or rejected by passport
   const json = req.user.toJSON();
   delete json.password;

@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { playersValidation } from '../helpers/validation';
-import { chessController } from '../controllers';
+import { requireAuth } from '../authentication';
+import { wagerController } from '../controllers';
 
 const router = express();
 
@@ -13,16 +13,10 @@ if (process.env.NODE_ENV === 'test') {
   router.use(bodyParser.json());
 }
 
-router
-  .route('/')
-  .post(
-    // requireAuth,
-    ...playersValidation,
-    chessController.createChessGameRequest,
-  );
+router.use(requireAuth);
 
-// FOR TESTING ONLY
+// creates a wager for a user
 router.route('/:id')
-  .put(chessController.updateChessGameRequest);
+  .post(wagerController.createWager);
 
 export default router;

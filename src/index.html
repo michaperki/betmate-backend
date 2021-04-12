@@ -26,7 +26,7 @@
     <script>
       // FOR TESTING
         var socket = io("http://localhost:9090/chessws");
-        var gameId = '606a4380ab7927357b35d934'
+        var gameId = '60724c895bb628623b20b637'
 
         socket.emit('join_game', gameId)
 
@@ -64,6 +64,7 @@
           createMessageElement(msg);
           console.log(`New Move ${msg}`)
         })
+
         socket.on('error', function(msg) {
           console.log(msg);
         })

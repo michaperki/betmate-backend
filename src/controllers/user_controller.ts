@@ -67,8 +67,16 @@ const getUser: RequestHandler = async (req, res) => {
 
 const updateUser: RequestHandler = async (req, res) => {
   try {
-    const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, req.body, { new: true });
+    // this makes sure the user isn't updating something illegal like their balance
+    const allowedChanges = ['first_name', 'last_name', 'email', 'password'];
+    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => {
+      if (allowedChanges.includes(key)) return { ...currBody, [key]: req.body[key] };
+      return currBody;
+    }, {});
+
+    const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, whitelistedBody, { new: true });
     const json = updatedUser?.toJSON();
+
     delete json.password;
     return res.status(200).json(json);
   } catch (error) {
