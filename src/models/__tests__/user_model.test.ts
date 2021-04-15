@@ -40,7 +40,6 @@ describe('User model validation', () => {
       expect(savedUser.email).toBe(userData.email);
       expect(savedUser.first_name).toBe(userData.first_name);
       expect(savedUser.last_name).toBe(userData.last_name);
-      expect(savedUser.resource).toBe(null);
 
       // Compares hashed to expected password
       let passCompareResult = false;
