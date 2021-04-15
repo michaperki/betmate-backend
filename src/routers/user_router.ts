@@ -17,10 +17,10 @@ router.use(requireAuth);
 
 // find and return all users
 router.route('/')
-  .get(userController.getAllUsers);
+  .get(userController.getAllUsers)
+  .post(userController.createNewUser);
 
 // Create new user
-// .post(userController.createNewUser);
 
 // // ! TESTING ONLY
 // .delete(requireAuth, async (req, res) => {
