@@ -36,7 +36,10 @@ const websocket = (socket: Socket): void => {
     // on return send new wagers
     microservice.getWDL(chessGame.fen(), chessDoc.times[0], chessDoc.times[1]).then((res) => {
       // console.log(res);
-      if (res) socket.to(move.gameId).emit('wagers', res);
+      if (res) {
+        socket.to(move.gameId).emit('wagers', res);
+        // save probabilities to chessDoc
+      }
     });
 
     let gameStatus = GameStatus.IN_PROGRESS;
