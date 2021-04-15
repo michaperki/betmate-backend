@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import { Move } from 'chess.js';
+import { GameStatus } from '../helpers/constants';
 
 export interface IUserBase extends mongoose.Document {
   email?: string,
@@ -7,6 +8,8 @@ export interface IUserBase extends mongoose.Document {
   first_name?: string,
   last_name?: string,
   full_name?: string,
+  account?: number,
+  wager_hist?: [string],
   resource?: any,
   message?: string,
   _message?: string,
@@ -25,7 +28,7 @@ export interface IResource extends mongoose.Document {
   child_resources?: any
 }
 
-export type WagerWDL = 'win' | 'draw' | 'loss';
+export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
 export type WagerMove = [Move, number, boolean];
 
 export interface IWager extends mongoose.Document {
@@ -41,6 +44,7 @@ export interface IWager extends mongoose.Document {
 export interface IChess extends mongoose.Document {
   state: string,
   completed: boolean,
+  game_status: string,
   players: [string, string],
   move_hist: string[],
   wagers: mongoose.Types.ObjectId[],

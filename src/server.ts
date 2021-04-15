@@ -9,7 +9,7 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
 import {
-  authRouter, userRouter, resourceRouter, chessRouter,
+  authRouter, userRouter, chessRouter, wagerRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -35,8 +35,8 @@ app.use(bodyParser.json());
 // declare routers
 app.use('/auth', authRouter); // NOTE: Not secured
 app.use('/users', userRouter); // NOTE: Completely secured to users
-app.use('/resources', resourceRouter); // NOTE: Partially secured to users
 app.use('/chess', chessRouter);
+app.use('/wager', wagerRouter);
 
 // declare websockets
 io.of('/chessws').on('connection', chessWS);
