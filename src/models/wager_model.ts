@@ -8,7 +8,7 @@ const WagerSchema = new Schema({
   amount: { type: Number, min: 0, required: true },
   odds: { type: Number, default: 0 },
   data: { type: String, required: true },
-  move_number: { type: Number, default: -1 },
+  move_number: { type: Number, required: true },
   resolved: { type: Boolean, default: false },
 });
 
