@@ -76,8 +76,8 @@ describe('Wager model validation', () => {
       const invalidWager = new Wager({}); // Needs game_id, better_id, wdl, amount, odds, data
 
       const savedWager = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then((user) => {
-          reject(user);
+        invalidWager.save().then((wager) => {
+          reject(wager);
         }).catch((err: Error) => {
           resolve(err);
         });
@@ -85,6 +85,37 @@ describe('Wager model validation', () => {
 
       // eslint-disable-next-line max-len
       expect(savedWager.message).toBe('Wager validation failed: data: Path `data` is required., odds: Path `odds` is required., amount: Path `amount` is required., wdl: Path `wdl` is required., better_id: Path `better_id` is required., game_id: Path `game_id` is required.');
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  it('blocks WDL wager with incorrect value types', async (done) => {
+    try {
+      // Set up environment
+      const user = await new Users({ ...userData, email: 'test2@test.com' }).save();
+      const game = await new Chess(chessData).save();
+
+      // Create a new wager model
+      const invalidWager = new Wager({
+        wdl: 'wdl', // should be boolean
+        amount: -10, // should be positive number
+        odds: 'good', // should be number
+        data: GameStatus.WHITE_WIN, // takes any data type
+        game_id: game._id,
+        better_id: user._id,
+      });
+      const savedWager = await new Promise<Error>((resolve, reject) => {
+        invalidWager.save().then((wager) => {
+          reject(wager);
+        }).catch((err: Error) => {
+          resolve(err);
+        });
+      });
+
+      // eslint-disable-next-line max-len
+      expect(savedWager.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", odds: Cast to Number failed for value "good" at path "odds", amount: Path `amount` (-10) is less than minimum allowed value (0).');
       done();
     } catch (error) {
       done(error);
@@ -100,8 +131,8 @@ describe('Wager model validation', () => {
         better_id: 'fakeUserID', // does not exist in db
       });
       const savedWager = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then((user) => {
-          reject(user);
+        invalidWager.save().then((wager) => {
+          reject(wager);
         }).catch((err: Error) => {
           resolve(err);
         });

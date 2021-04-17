@@ -106,4 +106,33 @@ describe('Chess model validation', () => {
       done(error);
     }
   });
+
+  it('blocks chess game without invalid field types', async (done) => {
+    try {
+      // Creates a new chess game object
+      const invalidGame = new Chess({
+        state: 'r2qkbnr/pppbp1pp/2n2p3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1', // bad fen
+        game_status: 'begun', // Not in enum GameStatus
+        wagers: ['fakeWagerID'], // Not a real id for wager
+        time_white: -10, // Should be positive
+        time_black: -10, // Should be positive
+        player_white: 'playerA',
+        player_black: 'playerB',
+      });
+
+      const savedGame = await new Promise<Error>((resolve, reject) => {
+        invalidGame.save().then((user) => {
+          reject(user);
+        }).catch((err: Error) => {
+          resolve(err);
+        });
+      });
+
+      // eslint-disable-next-line max-len
+      expect(savedGame.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
 });
