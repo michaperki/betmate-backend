@@ -91,7 +91,7 @@ describe('Wager model validation', () => {
     }
   });
 
-  it('blocks WDL wager with incorrect value types', async (done) => {
+  it('blocks WDL wager with invalid domain values', async (done) => {
     try {
       // Set up environment
       const user = await new Users({ ...userData, email: 'test2@test.com' }).save();

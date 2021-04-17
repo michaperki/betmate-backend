@@ -107,7 +107,7 @@ describe('Chess model validation', () => {
     }
   });
 
-  it('blocks chess game without invalid field types', async (done) => {
+  it('blocks chess game with invalid domain values', async (done) => {
     try {
       // Creates a new chess game object
       const invalidGame = new Chess({
