@@ -5,11 +5,11 @@ import { Wager, Chess, Users } from '../models';
 import { RequestWithJWT } from '../types/requests';
 
 type WagerRequestBody = {
-  game_id: string,
   wdl: boolean,
   amount: number,
   data: WagerWDL | WagerMove,
   odds: number,
+  move_number: number,
 };
 
 const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
@@ -19,6 +19,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
       amount,
       data,
       odds,
+      move_number,
     } : WagerRequestBody = req.body;
 
     const bettor_id = req.user._id;
@@ -32,7 +33,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
     if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'insufficient funds' });
 
     const wager = new Wager({
-      game_id, bettor_id, wdl, amount, data, odds,
+      game_id, bettor_id, wdl, amount, data, odds, move_number,
     });
 
     await Users.findByIdAndUpdate(req.user._id, { $inc: { account: -amount } });
