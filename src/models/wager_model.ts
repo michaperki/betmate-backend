@@ -1,5 +1,5 @@
 import mongoose, { Schema } from 'mongoose';
-import { IWagerDocument } from '../types/models';
+import { IWager } from '../types/models';
 
 const WagerSchema = new Schema({
   game_id: { type: Schema.Types.ObjectId, required: true, ref: 'Chess' },
@@ -12,6 +12,6 @@ const WagerSchema = new Schema({
   resolved: { type: Boolean, default: false },
 });
 
-const WagerModel = mongoose.model<IWagerDocument>('Wager', WagerSchema);
+const WagerModel = mongoose.model<IWager>('Wager', WagerSchema);
 
 export default WagerModel;

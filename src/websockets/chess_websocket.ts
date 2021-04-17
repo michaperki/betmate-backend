@@ -1,7 +1,7 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
-import { IWagerDocument } from 'types/models';
+import { IWager } from 'types/models';
 import { Users, Wager } from '../models';
 import { chessController } from '../controllers';
 import { microservice } from '../services';
@@ -62,7 +62,7 @@ const websocket = (socket: Socket): void => {
     Promise
       .all(moveWagerUpdates)
       .then(() => {
-        console.log('all critical move bets have been resolved');
+        // console.log('all critical move bets have been resolved');
       })
       .catch(() => {
         socket.to(move.gameId).emit('error', 'There was an error updating the critical move wagers');
@@ -109,7 +109,7 @@ const websocket = (socket: Socket): void => {
       const wagers = await Wager.find({ game_id: move.gameId, wdl: true, resolved: false });
       if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
 
-      const wdlWagerUpdates: Promise<IWagerDocument | null>[] = wagers.map((wager) => {
+      const wdlWagerUpdates: Promise<IWager | null>[] = wagers.map((wager) => {
         const { odds } = wager;
         const wonBet = wager.data === gameStatus;
         let winnings = 0;
