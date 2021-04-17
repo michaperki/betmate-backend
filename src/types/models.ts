@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import { Document, Types } from 'mongoose';
 import { Move } from 'chess.js';
 import { GameStatus } from '../helpers/constants';
 
-export interface IUserBase extends mongoose.Document {
+export interface IUserBase extends Document {
   email?: string,
   password?: string,
   first_name?: string,
@@ -20,7 +20,7 @@ export interface IUser extends IUserBase {
   comparePassword: (password: string, callback: CompareCallback) => void
 }
 
-export interface IResource extends mongoose.Document {
+export interface IResource extends Document {
   title: string,
   description: string,
   value: number,
@@ -31,9 +31,9 @@ export interface IResource extends mongoose.Document {
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
 export type WagerMove = [Move, number, boolean];
 
-export interface IWager extends mongoose.Document {
-  game_id: mongoose.Types.ObjectId,
-  bettor_id: mongoose.Types.ObjectId,
+export interface IWager extends Document {
+  game_id: Types.ObjectId,
+  bettor_id: Types.ObjectId,
   wdl: boolean,
   amount: number,
   odds: number,
@@ -41,12 +41,19 @@ export interface IWager extends mongoose.Document {
   resolved: boolean,
 }
 
-export interface IChess extends mongoose.Document {
+export interface Chess {
   state: string,
-  completed: boolean,
+  complete: boolean,
   game_status: string,
-  players: [string, string],
+  player_white: string,
+  player_black: string,
   move_hist: string[],
-  wagers: mongoose.Types.ObjectId[],
-  times: [number, number]
+  wagers: Types.ObjectId[],
+  time_white: number,
+  time_black: number
+}
+
+export interface ChessDoc extends Chess, Document {
+  move_hist: Types.Array<string>,
+  wagers: Types.Array<Types.ObjectId>,
 }

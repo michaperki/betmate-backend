@@ -9,6 +9,6 @@ export const requestWithValidation: ValidationWrapper = (requestHandler) => (req
 };
 
 export const playersValidation = [
-  body('players').isArray({ min: 2, max: 2 }).withMessage('Must be array of length 2'),
-  body('players.*').isString().withMessage('Elements must be strings'),
+  body('player_white').isString().withMessage('Must specify white player'),
+  body('player_black').isString().withMessage('Must specify black player'),
 ];

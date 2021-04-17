@@ -11,6 +11,6 @@ const WagerSchema = new Schema({
   resolved: { type: Boolean, default: false },
 });
 
-const WagerModel = mongoose.model<IWager>('Wager', WagerSchema);
+const WagerModel = mongoose.model<IWager>('WagerModel', WagerSchema);
 
 export default WagerModel;

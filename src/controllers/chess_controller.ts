@@ -1,15 +1,15 @@
 import { UpdateQuery } from 'mongoose';
 import { RequestHandler } from 'express';
 import { Chess } from '../models';
-import { IChess } from '../types/models';
+import { ChessDoc } from '../types/models';
 import { requestWithValidation } from '../helpers/validation';
 
-const getChessGame = async (gameId: string): Promise<IChess | null> => Chess
+const getChessGame = async (gameId: string): Promise<ChessDoc | null> => Chess
   .findById(gameId)
   .then((doc) => doc)
   .catch(() => null);
 
-const updateChessGame = async (gameId: string, fields: UpdateQuery<IChess>): Promise<IChess | null> => Chess
+const updateChessGame = async (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc | null> => Chess
   .findByIdAndUpdate(gameId, fields, { new: true })
   .then((doc) => doc)
   .catch(() => null);

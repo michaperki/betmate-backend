@@ -10,7 +10,7 @@ const UserSchema = new Schema({
   first_name: String,
   last_name: String,
   account: { type: Number, default: 1000 },
-  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
+  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'WagerModel' }],
 }, {
   toObject: {
     virtuals: true,
@@ -59,6 +59,6 @@ UserSchema.virtual('full_name').get(function () {
   return `${this.first_name} ${this.last_name}`;
 });
 
-const UserModel = mongoose.model<IUser>('User', UserSchema);
+const UserModel = mongoose.model<IUser>('UserModel', UserSchema);
 
 export default UserModel;
