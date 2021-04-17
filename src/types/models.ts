@@ -1,5 +1,4 @@
 import mongoose from 'mongoose';
-import { Move } from 'chess.js';
 import { GameStatus } from '../helpers/constants';
 
 export interface IUserBase extends mongoose.Document {
