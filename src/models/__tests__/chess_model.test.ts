@@ -1,5 +1,5 @@
 import { CHESS_START, GameStatus } from '../../helpers/constants';
-import ChessModel from '../chess_model';
+import { Chess } from '..';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
@@ -42,7 +42,7 @@ describe('Chess model validation', () => {
   it('creates and saves a chess game successfully with minimal requirements', async (done) => {
     try {
       // Creates a new chess object
-      const validGame = new ChessModel(chessDataA);
+      const validGame = new Chess(chessDataA);
       const savedGame = await validGame.save();
 
       // Checks chess has been saved to testing DB
@@ -57,8 +57,6 @@ describe('Chess model validation', () => {
       expect(savedGame.time_white).toBe(600);
       expect(savedGame.time_black).toBe(600);
 
-      // const arr = [...savedGame.move_hist];
-
       done();
     } catch (error) {
       done(error);
@@ -68,7 +66,7 @@ describe('Chess model validation', () => {
   it('creates and saves a chess game successfully with all fields', async (done) => {
     try {
       // Creates a new chess object
-      const validGame = new ChessModel(chessDataB);
+      const validGame = new Chess(chessDataB);
       const savedGame = await validGame.save();
 
       // Checks chess has been saved to testing DB
@@ -92,7 +90,7 @@ describe('Chess model validation', () => {
   it('blocks chess game without required fields', async (done) => {
     try {
       // Creates a new chess game object
-      const invalidGame = new ChessModel({}); // Needs player_white, player_black
+      const invalidGame = new Chess({}); // Needs player_white, player_black
 
       const savedGame = await new Promise<Error>((resolve, reject) => {
         invalidGame.save().then((user) => {
@@ -102,7 +100,6 @@ describe('Chess model validation', () => {
         });
       });
 
-      // expect(savedGame._message).toBe('Chess validation failed');
       expect(savedGame.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
       done();
     } catch (error) {

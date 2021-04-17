@@ -82,7 +82,7 @@ const websocket = (socket: Socket): void => {
 
         return (
           Users
-            .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
+            .findByIdAndUpdate(wager.better_id, { $inc: { account: winnings } })
             .then(() => WagerModel.findByIdAndUpdate(wager.id, { resolved: true }))
         );
       });
