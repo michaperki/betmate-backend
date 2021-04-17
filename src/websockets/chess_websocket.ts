@@ -4,6 +4,7 @@ import { Chess as ChessGame } from 'chess.js';
 import { IWager } from 'types/models';
 import { Users, Wager } from '../models';
 import { chessController } from '../controllers';
+import { microservice } from '../services';
 import { GameStatus } from '../helpers/constants';
 
 const websocket = (socket: Socket): void => {
@@ -33,6 +34,13 @@ const websocket = (socket: Socket): void => {
     // send board state to ML model
     // ...
     // on return send new wagers
+    microservice.getWDL(chessGame.fen(), chessDoc.times[0], chessDoc.times[1]).then((res) => {
+      // console.log(res);
+      if (res) {
+        socket.to(move.gameId).emit('wagers', res);
+        // save probabilities to chessDoc
+      }
+    });
 
     let gameStatus = GameStatus.IN_PROGRESS;
 
@@ -82,7 +90,7 @@ const websocket = (socket: Socket): void => {
         .then(() => {
           // console.log('all bets have been resolved');
         })
-        .catch((error) => {
+        .catch(() => {
           socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
         });
     }

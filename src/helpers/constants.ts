@@ -15,3 +15,5 @@ export enum GameStatus {
   WHITE_WIN = 'white_win',
   IN_PROGRESS = 'in_progress',
 }
+
+export const MICROSERVICE_URL = 'http://localhost:5000';

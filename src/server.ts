@@ -5,7 +5,7 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import env from 'env-var';
 import http from 'http';
-import * as dotenv from 'dotenv';
+import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
 import {
