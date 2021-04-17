@@ -4,7 +4,7 @@ import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import dotenv from 'dotenv';
 
 import { RequestHandler } from 'express';
-import { IUser } from 'types/models';
+import { UserDoc } from 'types/models';
 import User from '../models/user_model';
 
 dotenv.config();
@@ -17,7 +17,7 @@ const jwtOptions = {
 const jwtLogin = new JwtStrategy(jwtOptions, (payload, done) => {
   // See if the token matches any user document in the DB
   // Done function in the form -> "done(resulting error, resulting user)"
-  User.findById(payload.sub, (err, user: IUser) => {
+  User.findById(payload.sub, (err, user: UserDoc) => {
     // This logic can be modified to check for user attributes
     if (err) {
       return done(err, false); // Error return
@@ -33,7 +33,7 @@ passport.use(jwtLogin);
 // Create function to transmit result of authenticate() call to user or next middleware
 const requireAuth: RequestHandler = (req, res, next) => {
   // eslint-disable-next-line prefer-arrow-callback
-  passport.authenticate('jwt', { session: false }, (err, user: IUser, info) => {
+  passport.authenticate('jwt', { session: false }, (err, user: UserDoc, info) => {
   // Return any existing errors
     if (err) { return next(err); }
 

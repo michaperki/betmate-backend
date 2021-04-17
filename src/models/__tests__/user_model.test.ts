@@ -1,5 +1,4 @@
 import * as bcrypt from 'bcrypt';
-import { IUser } from 'types/models';
 import UserModel from '../user_model';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
@@ -59,7 +58,7 @@ describe('User model validation', () => {
       // Creates a new user object
       const invalidUser = new UserModel({}); // Needs email, password
 
-      const savedUser = await new Promise<IUser>((resolve, reject) => {
+      const savedUser = await new Promise<Error>((resolve, reject) => {
         invalidUser.save().then((user) => {
           reject(user);
         }).catch((err) => {
@@ -67,7 +66,6 @@ describe('User model validation', () => {
         });
       });
 
-      expect(savedUser._message).toBe('User validation failed');
       expect(savedUser.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
       done();
     } catch (error) {

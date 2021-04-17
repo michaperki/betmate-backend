@@ -9,11 +9,11 @@ const ChessSchema = new Schema({
   player_white: { type: String, required: true },
   player_black: { type: String, required: true },
   move_hist: { type: [String], default: [] },
-  wagers: [{ type: Schema.Types.ObjectId, ref: 'WagerModel' }],
+  wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
   time_white: { type: Number, default: 600 },
   time_black: { type: Number, default: 600 },
 });
 
-const ChessModel = mongoose.model<ChessDoc>('ChessModel', ChessSchema);
+const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);
 
 export default ChessModel;

@@ -1,13 +1,13 @@
 import jwt from 'jwt-simple';
 import env from 'env-var';
 import { RequestHandler } from 'express';
-import { IUser } from '../types/models';
+import { UserDoc } from '../types/models';
 import { Users } from '../models';
 import {
   documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
 } from '../helpers/constants';
 
-const tokenForUser = (user: IUser): string => {
+const tokenForUser = (user: UserDoc): string => {
   const timestamp = new Date().getTime();
   return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
 };
