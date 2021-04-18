@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { playersValidation } from '../helpers/validation';
+import { containsPlayers, optionalChessFieldsValid } from '../helpers/validation';
 import { chessController } from '../controllers';
 
 const router = express();
@@ -17,7 +17,8 @@ router
   .route('/')
   .post(
     // requireAuth,
-    ...playersValidation,
+    ...containsPlayers,
+    ...optionalChessFieldsValid,
     chessController.createChessGameRequest,
   );
 

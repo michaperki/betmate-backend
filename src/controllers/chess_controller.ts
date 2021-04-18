@@ -21,9 +21,7 @@ const updateChessGameRequest: RequestHandler = async (req, res) => {
 };
 
 const createChessGameRequest: RequestHandler = (req, res) => {
-  const { players }: { players: string[] } = req.body;
-
-  const chessGame = new Chess({ players });
+  const chessGame = new Chess(req.body);
   chessGame
     .save()
     .then((doc) => res.status(200).json(doc.toJSON()))
