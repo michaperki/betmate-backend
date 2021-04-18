@@ -23,6 +23,13 @@ const wagerDataWDL = {
   data: GameStatus.WHITE_WIN,
 };
 
+const badWagerDataWDL = {
+  wdl: 'wdl', // should be boolean
+  amount: -10, // should be positive number
+  odds: 'good', // should be number
+  data: GameStatus.WHITE_WIN, // takes any data type
+};
+
 describe('Wager model validation', () => {
   beforeAll(async (done) => {
     try {
@@ -99,23 +106,20 @@ describe('Wager model validation', () => {
 
       // Create a new wager model
       const invalidWager = new Wager({
-        wdl: 'wdl', // should be boolean
-        amount: -10, // should be positive number
-        odds: 'good', // should be number
-        data: GameStatus.WHITE_WIN, // takes any data type
+        ...badWagerDataWDL,
         game_id: game._id,
         better_id: user._id,
       });
-      const savedWager = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then((wager) => {
-          reject(wager);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidWager.save().then(() => {
+          reject(Error('Invalid wager was successfully saved'));
         }).catch((err: Error) => {
           resolve(err);
         });
       });
 
       // eslint-disable-next-line max-len
-      expect(savedWager.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", odds: Cast to Number failed for value "good" at path "odds", amount: Path `amount` (-10) is less than minimum allowed value (0).');
+      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", odds: Cast to Number failed for value "good" at path "odds", amount: Path `amount` (-10) is less than minimum allowed value (0).');
       done();
     } catch (error) {
       done(error);
@@ -130,16 +134,16 @@ describe('Wager model validation', () => {
         game_id: 'fakeGameID', // does not exist in db
         better_id: 'fakeUserID', // does not exist in db
       });
-      const savedWager = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then((wager) => {
-          reject(wager);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidWager.save().then(() => {
+          reject(Error('Invalid wager was successfully saved'));
         }).catch((err: Error) => {
           resolve(err);
         });
       });
 
       // eslint-disable-next-line max-len
-      expect(savedWager.message).toBe('Wager validation failed: game_id: Cast to ObjectId failed for value "fakeGameID" at path "game_id", better_id: Cast to ObjectId failed for value "fakeUserID" at path "better_id"');
+      expect(saveError.message).toBe('Wager validation failed: game_id: Cast to ObjectId failed for value "fakeGameID" at path "game_id", better_id: Cast to ObjectId failed for value "fakeUserID" at path "better_id"');
       done();
     } catch (error) {
       done(error);

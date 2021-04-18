@@ -59,15 +59,15 @@ describe('User model validation', () => {
       // Creates a new user object
       const invalidUser = new UserModel({}); // Needs email, password
 
-      const savedUser = await new Promise<Error>((resolve, reject) => {
-        invalidUser.save().then((user) => {
-          reject(user);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidUser.save().then(() => {
+          reject(Error('Invalid user was successfully saved'));
         }).catch((err) => {
           resolve(err);
         });
       });
 
-      expect(savedUser.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
+      expect(saveError.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
       done();
     } catch (error) {
       done(error);
@@ -80,17 +80,17 @@ describe('User model validation', () => {
       const validUser = new UserModel({ ...userData, email: 'test2@test.com' });
       const savedUser = await validUser.save();
 
-      const updatedUser = await new Promise<Error>((resolve, reject) => {
+      const updateError = await new Promise<Error>((resolve, reject) => {
         UserModel
           .findByIdAndUpdate(savedUser._id, { wager_hist: [...savedUser.wager_hist, 'fakeWageID'] as Types.Array<string> })
-          .then((user) => {
-            reject(user);
+          .then(() => {
+            reject(Error('Invalid user update was sucessfully saved'));
           }).catch((err) => {
             resolve(err);
           });
       });
 
-      expect(updatedUser.message).toBe('Cast to ObjectId failed for value "fakeWageID" at path "wager_hist"');
+      expect(updateError.message).toBe('Cast to ObjectId failed for value "fakeWageID" at path "wager_hist"');
       done();
     } catch (error) {
       done(error);

@@ -22,6 +22,17 @@ const chessDataB = {
   time_black: 291,
 };
 
+// invalid game
+const badChessData = {
+  state: 'r2qkbnr/pppbp1pp/2n2p3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1', // bad fen
+  game_status: 'begun', // Not in enum GameStatus
+  wagers: ['fakeWagerID'], // Not a real id for wager
+  time_white: -10, // Should be positive
+  time_black: -10, // Should be positive
+  player_white: 'playerA',
+  player_black: 'playerB',
+};
+
 describe('Chess model validation', () => {
   beforeAll(async (done) => {
     try {
@@ -92,15 +103,15 @@ describe('Chess model validation', () => {
       // Creates a new chess game object
       const invalidGame = new Chess({}); // Needs player_white, player_black
 
-      const savedGame = await new Promise<Error>((resolve, reject) => {
-        invalidGame.save().then((user) => {
-          reject(user);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidGame.save().then(() => {
+          reject(Error('Invalid chess game was successfully saved'));
         }).catch((err: Error) => {
           resolve(err);
         });
       });
 
-      expect(savedGame.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
+      expect(saveError.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
       done();
     } catch (error) {
       done(error);
@@ -110,26 +121,18 @@ describe('Chess model validation', () => {
   it('blocks chess game with invalid domain values', async (done) => {
     try {
       // Creates a new chess game object
-      const invalidGame = new Chess({
-        state: 'r2qkbnr/pppbp1pp/2n2p3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1', // bad fen
-        game_status: 'begun', // Not in enum GameStatus
-        wagers: ['fakeWagerID'], // Not a real id for wager
-        time_white: -10, // Should be positive
-        time_black: -10, // Should be positive
-        player_white: 'playerA',
-        player_black: 'playerB',
-      });
+      const invalidGame = new Chess(badChessData);
 
-      const savedGame = await new Promise<Error>((resolve, reject) => {
-        invalidGame.save().then((user) => {
-          reject(user);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidGame.save().then(() => {
+          reject(Error('Invalid chess game was successfully saved'));
         }).catch((err: Error) => {
           resolve(err);
         });
       });
 
       // eslint-disable-next-line max-len
-      expect(savedGame.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
+      expect(saveError.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
       done();
     } catch (error) {
       done(error);
