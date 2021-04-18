@@ -28,7 +28,6 @@ export interface IResource extends mongoose.Document {
 }
 
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
-export type WagerMove = [string, number];
 
 export interface IWager extends mongoose.Document{
   game_id: mongoose.Types.ObjectId,

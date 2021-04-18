@@ -1,8 +1,8 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
-import { IWager } from 'types/models';
-import { Users, Wager } from '../models';
+import { resolveCriticalMoveBets, resolveWdlBets } from '../helpers/resolve_bets';
+import { Wager } from '../models';
 import { chessController } from '../controllers';
 import { microservice } from '../services';
 import { GameStatus } from '../helpers/constants';
@@ -39,28 +39,9 @@ const websocket = (socket: Socket): void => {
     const moveWagers = await Wager.find({
       game_id: move.gameId, wdl: false, move_number: moveNum, resolved: false,
     });
+    if (!moveWagers) socket.to(move.gameId).emit('error', 'There was an error updating the critical move wagers');
 
-    let totalPool = 0;
-    let winningPool = 0;
-    moveWagers.forEach((wager) => {
-      // wager.data is assumed to always be in SAN notation
-      if (wager.data === lastMove) winningPool += wager.amount;
-      totalPool += wager.amount;
-    });
-
-    const moveWagerUpdates = (
-      moveWagers
-        .map((wager) => {
-          let winnings = 0;
-          if (wager.data === lastMove) winnings = wager.amount / winningPool * totalPool;
-          return Users
-            .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
-            .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true }));
-        })
-    );
-
-    Promise
-      .all(moveWagerUpdates)
+    resolveCriticalMoveBets(moveWagers, lastMove)
       .then(() => {
         // console.log('all critical move bets have been resolved');
       })
@@ -107,24 +88,9 @@ const websocket = (socket: Socket): void => {
     // update wagers for each user
     if (complete) {
       const wagers = await Wager.find({ game_id: move.gameId, wdl: true, resolved: false });
-      if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
+      if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the win/draw/loss wagers');
 
-      const wdlWagerUpdates: Promise<IWager | null>[] = wagers.map((wager) => {
-        const { odds } = wager;
-        const wonBet = wager.data === gameStatus;
-        let winnings = 0;
-        // using decimal notation for odds
-        if (wonBet) winnings = odds * wager.amount;
-
-        return (
-          Users
-            .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
-            .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true }))
-        );
-      });
-
-      Promise
-        .all(wdlWagerUpdates)
+      resolveWdlBets(wagers, gameStatus)
         .then(() => {
           // console.log('all wdl bets have been resolved');
         })

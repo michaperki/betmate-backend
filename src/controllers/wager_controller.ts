@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import { WagerMove, WagerWDL } from 'types/models';
 import { Wager, Chess, Users } from '../models';
 import { RequestWithJWT } from '../types/requests';
 
 type WagerRequestBody = {
   wdl: boolean,
   amount: number,
-  data: WagerWDL | WagerMove,
+  data: string,
   odds: number,
   move_number: number,
 };
