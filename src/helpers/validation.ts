@@ -1,5 +1,7 @@
 import { Chess } from 'chess.js';
-import { body, ValidationChain, validationResult } from 'express-validator';
+import {
+  body, param, ValidationChain, validationResult,
+} from 'express-validator';
 
 import { ValidationWrapper } from '../types/express';
 import { GameStatus } from './constants';
@@ -60,4 +62,8 @@ export const optionalChessFieldsValid = [
   createBodyField('state', 'string', false)
     .custom((value: string) => Chess().validate_fen(value).valid)
     .withMessage((value: string) => Chess().validate_fen(value).error),
+];
+
+export const chessFilterParams = [
+  param('completed').isBoolean().optional(),
 ];

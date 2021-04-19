@@ -15,6 +15,7 @@ if (process.env.NODE_ENV === 'test') {
 
 router
   .route('/')
+  .get(chessController.getManyChessGamesRequest)
   .post(
     // requireAuth,
     ...containsPlayers,
@@ -24,6 +25,7 @@ router
 
 // FOR TESTING ONLY
 router.route('/:id')
-  .put(chessController.updateChessGameRequest);
+  .get(chessController.getChessGameRequest)
+  .put(...optionalChessFieldsValid, chessController.updateChessGameRequest);
 
 export default router;
