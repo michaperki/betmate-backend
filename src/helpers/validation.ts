@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import {
-  body, param, ValidationChain, validationResult,
+  body, query, ValidationChain, validationResult,
 } from 'express-validator';
 
 import { ValidationWrapper } from '../types/express';
@@ -26,6 +26,10 @@ const createBodyField = (field: string, type: Field, isRequired = true): Validat
     .optional(!isRequired)
     .withMessage(`'${field}' ${isRequired ? 'is required with ' : 'must be '}type ${type}`)
     .bail()
+);
+
+const queryNotAllowed = (field: string) => (
+  query(field).not().exists().withMessage(`Cannot search by '${field}'`)
 );
 
 export const containsPlayers = [
@@ -57,7 +61,7 @@ export const optionalChessFieldsValid = [
 
   createBodyField('game_status', 'string', false)
     .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
-    .withMessage((value: string) => `Value '${value}' is not a game status.`),
+    .withMessage((value: string) => `Value '${value}' is not a game status`),
 
   createBodyField('state', 'string', false)
     .custom((value: string) => Chess().validate_fen(value).valid)
@@ -65,5 +69,21 @@ export const optionalChessFieldsValid = [
 ];
 
 export const chessFilterParams = [
-  param('completed').isBoolean().optional(),
+  query('game_status')
+    .optional()
+    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
+    .withMessage((value: string) => `Value '${value}' is not a game status`),
+
+  query('complete')
+    .optional()
+    .isBoolean()
+    .withMessage("'complete' must be type boolean"),
+
+  queryNotAllowed('player_white'),
+  queryNotAllowed('player_black'),
+  queryNotAllowed('state'),
+  queryNotAllowed('move_hist'),
+  queryNotAllowed('wagers'),
+  queryNotAllowed('time_white'),
+  queryNotAllowed('time_black'),
 ];

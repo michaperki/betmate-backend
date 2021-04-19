@@ -20,24 +20,26 @@ const chessDataB = {
   player_white: 'playerC',
   player_black: 'playerD',
   move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
-  wagers: [],
   time_white: 293,
   time_black: 291,
 };
 
-// invalid game
-const badChessData = {
-  state: 'r2qkbnr/pppbp1pp/2n2p3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1', // bad fen
-  game_status: 'begun', // Not in enum GameStatus
-  wagers: ['fakeWagerID'], // Not a real id for wager
-  time_white: -10, // Should be positive
-  time_black: -10, // Should be positive
-  player_white: 'playerA',
-  player_black: 'playerB',
-};
-
 let validID = '';
 const invalidID = 'invalidID';
+
+const validateBody = (body: any) => {
+  expect(body.state).toBeDefined();
+  expect(body.complete).toBeDefined();
+  expect(body.game_status).toBeDefined();
+  expect(body.move_hist).toBeDefined();
+  expect(body.wagers).toBeDefined();
+  expect(body.time_white).toBeDefined();
+  expect(body.time_black).toBeDefined();
+  expect(body.player_white).toBeDefined();
+  expect(body.player_black).toBeDefined();
+  expect(body._id).toBeDefined();
+  expect(body.__v).toBeUndefined();
+};
 
 // Mocks requireAuth server middleware
 jest.mock('../../authentication/requireAuth');
@@ -89,7 +91,7 @@ describe('Working resource router', () => {
               .send({ ...chessDataA, state: 'badFEN' });
 
             expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe('FEN string must contain six space-delimited fields');
+            expect(res.body.errors[0].msg).toBe('FEN string must contain six space-delimited fields.');
             done();
           } catch (error) {
             done(error);
@@ -133,16 +135,7 @@ describe('Working resource router', () => {
             expect(res.status).toBe(200);
 
             // Resource exists with all required fields
-            expect(res.body.state).toBeDefined();
-            expect(res.body.complete).toBeDefined();
-            expect(res.body.game_status).toBeDefined();
-            expect(res.body.move_hist).toBeDefined();
-            expect(res.body.wagers).toBeDefined();
-            expect(res.body.time_white).toBeDefined();
-            expect(res.body.time_black).toBeDefined();
-            expect(res.body.player_white).toBeDefined();
-            expect(res.body.player_black).toBeDefined();
-            expect(res.body._id).toBeDefined();
+            validateBody(res.body);
 
             validID = res.body._id;
 
@@ -160,16 +153,7 @@ describe('Working resource router', () => {
             expect(res.status).toBe(200);
 
             // Resource exists with all required fields
-            expect(res.body.state).toBeDefined();
-            expect(res.body.complete).toBeDefined();
-            expect(res.body.game_status).toBeDefined();
-            expect(res.body.move_hist).toBeDefined();
-            expect(res.body.wagers).toBeDefined();
-            expect(res.body.time_white).toBeDefined();
-            expect(res.body.time_black).toBeDefined();
-            expect(res.body.player_white).toBeDefined();
-            expect(res.body.player_black).toBeDefined();
-            expect(res.body._id).toBeDefined();
+            validateBody(res.body);
 
             done();
           } catch (error) {
@@ -200,16 +184,7 @@ describe('Working resource router', () => {
         try {
           const res = await request.get(`/${validID}`);
           expect(res.status).toBe(200);
-          expect(res.body._id).toBeDefined();
-          expect(res.body.state).toBeDefined();
-          expect(res.body.complete).toBeDefined();
-          expect(res.body.game_status).toBeDefined();
-          expect(res.body.move_hist).toBeDefined();
-          expect(res.body.wagers).toBeDefined();
-          expect(res.body.time_white).toBeDefined();
-          expect(res.body.time_black).toBeDefined();
-          expect(res.body.player_white).toBeDefined();
-          expect(res.body.player_black).toBeDefined();
+          validateBody(res.body);
           done();
         } catch (error) {
           done(error);
@@ -239,7 +214,7 @@ describe('Working resource router', () => {
             .send({ time_black: 40 });
 
           expect(res.status).toBe(404);
-          expect(res.body.message).toBe('Couldn\'t find resource with given id');
+          expect(res.body.errors[0]).toBe('Couldn\'t find resource with given id');
           done();
         } catch (error) {
           done(error);
@@ -254,49 +229,8 @@ describe('Working resource router', () => {
           expect(res.status).toBe(200);
           expect(res.body.time_black).toBe(40);
 
-          expect(res.body._id).toBeDefined();
-          expect(res.body.state).toBeDefined();
-          expect(res.body.complete).toBeDefined();
-          expect(res.body.game_status).toBeDefined();
-          expect(res.body.move_hist).toBeDefined();
-          expect(res.body.wagers).toBeDefined();
-          expect(res.body.time_white).toBeDefined();
-          expect(res.body.time_black).toBeDefined();
-          expect(res.body.player_white).toBeDefined();
-          expect(res.body.player_black).toBeDefined();
+          validateBody(res.body);
 
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-    });
-
-    describe('delete one', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
-
-      // });
-
-      it('catches resource doesn\'t exist', async (done) => {
-        try {
-          const res = await request.delete(`/${invalidId}`)
-            .set('Authorization', 'Bearer dummy_token');
-
-          expect(res.status).toBe(404);
-          expect(res.body.message).toBe('Couldn\'t find resource with given id');
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
-      it('succeeds', async (done) => {
-        try {
-          const res = await request.delete(`/${validId}`)
-            .set('Authorization', 'Bearer dummy_token');
-
-          expect(res.status).toBe(200);
           done();
         } catch (error) {
           done(error);
@@ -346,19 +280,11 @@ describe('Working resource router', () => {
 
       it('succeeds', async (done) => {
         try {
-          // Create two new resources
-          await request.post('/')
-            .set('Authorization', 'Bearer dummy_token')
-            .send(resourceData);
-
-          await request.post('/')
-            .set('Authorization', 'Bearer dummy_token')
-            .send(resourceData);
-
           const res = await request.get('/');
           expect(res.status).toBe(200);
           expect(res.body.length).toBe(2);
-          expect(res.body[0]).toBeDefined();
+          validateBody(res.body[0]);
+          validateBody(res.body[1]);
           done();
         } catch (error) {
           done(error);

@@ -1,7 +1,7 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { containsPlayers, optionalChessFieldsValid } from '../helpers/validation';
+import { chessFilterParams, containsPlayers, optionalChessFieldsValid } from '../helpers/validation';
 import { chessController } from '../controllers';
 
 const router = express();
@@ -15,7 +15,7 @@ if (process.env.NODE_ENV === 'test') {
 
 router
   .route('/')
-  .get(chessController.getManyChessGamesRequest)
+  .get(...chessFilterParams, chessController.getManyChessGamesRequest)
   .post(
     // requireAuth,
     ...containsPlayers,
