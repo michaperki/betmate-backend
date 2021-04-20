@@ -1,5 +1,4 @@
 import { Document, Types } from 'mongoose';
-import { Move } from 'chess.js';
 import { GameStatus } from '../helpers/constants';
 
 export interface User {
@@ -19,7 +18,6 @@ export interface UserDoc extends User, Document {
 }
 
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
-export type WagerMove = [Move, number, boolean];
 
 export interface Wager {
   game_id: Types.ObjectId,
@@ -27,7 +25,8 @@ export interface Wager {
   wdl: boolean,
   amount: number,
   odds: number,
-  data: WagerWDL | WagerMove,
+  data: string,
+  move_number: number,
   resolved: boolean,
 }
 

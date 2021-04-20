@@ -1,15 +1,14 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import { WagerMove, WagerWDL } from 'types/models';
 import { Wager, Chess, Users } from '../models';
 import { RequestWithJWT } from '../types/requests';
 
 type WagerRequestBody = {
-  game_id: string,
   wdl: boolean,
   amount: number,
-  data: WagerWDL | WagerMove,
+  data: string,
   odds: number,
+  move_number: number,
 };
 
 const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
@@ -19,6 +18,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
       amount,
       data,
       odds,
+      move_number,
     } : WagerRequestBody = req.body;
 
     const bettor_id = req.user._id;
@@ -31,14 +31,30 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
     // check user has enough money to place bet
     if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'insufficient funds' });
 
+    // fetch live status of the game after bet was placed
+    // this makes it harder for betters to exploit any lag in the chess model being updated via the websocket
+    await new Promise<void>((resolve, reject) => {
+      setTimeout(async () => {
+        // TODO: get currentMove from 3rd party API rather than chess model
+        const currentMove = await Chess.findById(game_id).then((doc) => doc?.toJSON().move_hist.length);
+        if (currentMove === null) reject(new Error('error getting live update of the game'));
+
+        if (move_number !== currentMove + 1) {
+          reject(new Error('outdated bet'));
+        } else {
+          resolve();
+        }
+      }, 3000); // timeout accounts for any lag in the API used to get live game updates
+    });
     const wager = new Wager({
-      game_id, bettor_id, wdl, amount, data, odds,
+      game_id, bettor_id, wdl, amount, data, odds, move_number,
     });
 
     await Users.findByIdAndUpdate(req.user._id, { $inc: { account: -amount } });
     const doc = await wager.save();
     return res.status(200).json(doc.toJSON());
   } catch (error) {
+    if (error.message === 'outdated bet') return res.status(401).send({ error: error.message });
     return res.status(500).json({ error });
   }
 };
