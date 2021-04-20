@@ -2,8 +2,9 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc, Wager } from 'types/models';
-import { Users, Wager as WagerModel } from '../models';
+import { ChessDoc } from 'types/models';
+import { resolveCriticalMoveBets, resolveWdlBets } from '../helpers/resolve_bets';
+import { Wager as WagerModel } from '../models';
 import { chessController } from '../controllers';
 import { microservice } from '../services';
 import { GameStatus } from '../helpers/constants';
@@ -32,6 +33,24 @@ const websocket = (socket: Socket): void => {
     const moveResult = chessGame.move(move.data);
 
     if (!moveResult) return socket.emit('error', 'Invalid move');
+
+    // resolve wagers on the move just played, if any
+    const moveNum = chessGame.history().length;
+    const [lastMove] = chessGame.history().slice(-1);
+
+    const moveWagers = await WagerModel.find({
+      game_id: move.gameId, wdl: false, move_number: moveNum, resolved: false,
+    });
+    if (!moveWagers) socket.to(move.gameId).emit('error', 'There was an error updating the critical move wagers');
+
+    resolveCriticalMoveBets(moveWagers, lastMove)
+      .then(() => {
+        // console.log('all critical move bets have been resolved');
+      })
+      .catch(() => {
+        socket.to(move.gameId).emit('error', 'There was an error updating the critical move wagers');
+      });
+
     // send board state to ML model
     // ...
     // on return send new wagers
@@ -71,28 +90,14 @@ const websocket = (socket: Socket): void => {
     // update wagers for each user
     if (complete) {
       const wagers = await WagerModel.find({ game_id: move.gameId, wdl: true, resolved: false });
-      if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
+      if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the win/draw/loss wagers');
 
-      const wagerUpdatePromises: Promise<Wager | null>[] = wagers.map((wager) => {
-        const { odds } = wager;
-        const wonBet = wager.data === gameStatus;
-        let winnings = 0;
-        // using decimal notation for odds
-        if (wonBet) winnings = odds * wager.amount;
-
-        return (
-          Users
-            .findByIdAndUpdate(wager.better_id, { $inc: { account: winnings } })
-            .then(() => WagerModel.findByIdAndUpdate(wager.id, { resolved: true }))
-        );
-      });
-      Promise
-        .all(wagerUpdatePromises)
+      resolveWdlBets(wagers, gameStatus)
         .then(() => {
-          // console.log('all bets have been resolved');
+          // console.log('all wdl bets have been resolved');
         })
         .catch(() => {
-          socket.to(move.gameId).emit('error', 'There was an error updating the wagers');
+          socket.to(move.gameId).emit('error', 'There was an error updating the win/draw/loss wagers');
         });
     }
     return true;
