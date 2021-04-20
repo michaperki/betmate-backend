@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { IUser } from 'types/models';
+import { Types } from 'mongoose';
 import UserModel from '../user_model';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
@@ -59,16 +59,38 @@ describe('User model validation', () => {
       // Creates a new user object
       const invalidUser = new UserModel({}); // Needs email, password
 
-      const savedUser = await new Promise<IUser>((resolve, reject) => {
-        invalidUser.save().then((user) => {
-          reject(user);
+      const saveError = await new Promise<Error>((resolve, reject) => {
+        invalidUser.save().then(() => {
+          reject(Error('Invalid user was successfully saved'));
         }).catch((err) => {
           resolve(err);
         });
       });
 
-      expect(savedUser._message).toBe('User validation failed');
-      expect(savedUser.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
+      expect(saveError.message).toBe('User validation failed: password: Path `password` is required., email: Path `email` is required.');
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  it('blocks users from adding invalid wager ids', async (done) => {
+    try {
+      // Creates a new user object
+      const validUser = new UserModel({ ...userData, email: 'test2@test.com' });
+      const savedUser = await validUser.save();
+
+      const updateError = await new Promise<Error>((resolve, reject) => {
+        UserModel
+          .findByIdAndUpdate(savedUser._id, { wager_hist: [...savedUser.wager_hist, 'fakeWageID'] as Types.Array<string> })
+          .then(() => {
+            reject(Error('Invalid user update was sucessfully saved'));
+          }).catch((err) => {
+            resolve(err);
+          });
+      });
+
+      expect(updateError.message).toBe('Cast to ObjectId failed for value "fakeWageID" at path "wager_hist"');
       done();
     } catch (error) {
       done(error);

@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
 
-import { CompareCallback, IUser, IUserBase } from 'types/models';
+import { CompareCallback, UserDoc, User } from 'types/models';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -27,7 +27,7 @@ UserSchema.pre('save', function (next) {
   // Check if password needs to be rehashed
   if (this.isNew || this.isModified('password')) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const document: IUserBase = this; // Save reference to current scope
+    const document: Partial<User> & Document = this; // Save reference to current scope
 
     // Hash and save document password
     bcrypt.hash(document.password, saltRounds, (error, hashedPassword) => {
@@ -59,6 +59,6 @@ UserSchema.virtual('full_name').get(function () {
   return `${this.first_name} ${this.last_name}`;
 });
 
-const UserModel = mongoose.model<IUser>('User', UserSchema);
+const UserModel = mongoose.model<UserDoc>('User', UserSchema);
 
 export default UserModel;

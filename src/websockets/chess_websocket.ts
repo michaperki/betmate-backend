@@ -1,8 +1,10 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
+import { Types, UpdateQuery } from 'mongoose';
+import { ChessDoc } from 'types/models';
 import { resolveCriticalMoveBets, resolveWdlBets } from '../helpers/resolve_bets';
-import { Wager } from '../models';
+import { Wager as WagerModel } from '../models';
 import { chessController } from '../controllers';
 import { microservice } from '../services';
 import { GameStatus } from '../helpers/constants';
@@ -36,7 +38,7 @@ const websocket = (socket: Socket): void => {
     const moveNum = chessGame.history().length;
     const [lastMove] = chessGame.history().slice(-1);
 
-    const moveWagers = await Wager.find({
+    const moveWagers = await WagerModel.find({
       game_id: move.gameId, wdl: false, move_number: moveNum, resolved: false,
     });
     if (!moveWagers) socket.to(move.gameId).emit('error', 'There was an error updating the critical move wagers');
@@ -52,7 +54,7 @@ const websocket = (socket: Socket): void => {
     // send board state to ML model
     // ...
     // on return send new wagers
-    microservice.getWDL(chessGame.fen(), chessDoc.times[0], chessDoc.times[1]).then((res) => {
+    microservice.getWDL(chessGame.fen(), chessDoc.time_white, chessDoc.time_black).then((res) => {
       // console.log(res);
       if (res) {
         socket.to(move.gameId).emit('wagers', res);
@@ -72,9 +74,9 @@ const websocket = (socket: Socket): void => {
 
     const complete = gameStatus !== GameStatus.IN_PROGRESS;
 
-    const fields = {
+    const fields: UpdateQuery<ChessDoc> = {
       state: chessGame.fen(),
-      move_hist: [...chessDoc.move_hist, move.data],
+      move_hist: [...chessDoc.move_hist, move.data] as Types.Array<string>,
       game_status: gameStatus,
       complete,
     };
@@ -87,7 +89,7 @@ const websocket = (socket: Socket): void => {
 
     // update wagers for each user
     if (complete) {
-      const wagers = await Wager.find({ game_id: move.gameId, wdl: true, resolved: false });
+      const wagers = await WagerModel.find({ game_id: move.gameId, wdl: true, resolved: false });
       if (!wagers) socket.to(move.gameId).emit('error', 'There was an error updating the win/draw/loss wagers');
 
       resolveWdlBets(wagers, gameStatus)

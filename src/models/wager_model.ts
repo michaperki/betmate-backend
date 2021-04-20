@@ -1,9 +1,9 @@
 import mongoose, { Schema } from 'mongoose';
-import { IWager } from '../types/models';
+import { WagerDoc } from '../types/models';
 
 const WagerSchema = new Schema({
   game_id: { type: Schema.Types.ObjectId, required: true, ref: 'Chess' },
-  bettor_id: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+  better_id: { type: Schema.Types.ObjectId, required: true, ref: 'User' },
   wdl: { type: Boolean, required: true },
   amount: { type: Number, min: 0, required: true },
   odds: { type: Number, default: 0 },
@@ -12,6 +12,6 @@ const WagerSchema = new Schema({
   resolved: { type: Boolean, default: false },
 });
 
-const WagerModel = mongoose.model<IWager>('Wager', WagerSchema);
+const WagerModel = mongoose.model<WagerDoc>('Wager', WagerSchema);
 
 export default WagerModel;

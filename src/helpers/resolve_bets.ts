@@ -1,7 +1,7 @@
 import { Users, Wager } from '../models';
-import { IWager } from '../types/models';
+import { WagerDoc } from '../types/models';
 
-export const resolveCriticalMoveBets = async (wagers: IWager[], lastMove: string): Promise<(IWager|null)[]> => {
+export const resolveCriticalMoveBets = async (wagers: WagerDoc[], lastMove: string): Promise<(WagerDoc|null)[]> => {
   let totalPool = 0;
   let winningPool = 0;
   wagers.forEach((wager) => {
@@ -16,7 +16,7 @@ export const resolveCriticalMoveBets = async (wagers: IWager[], lastMove: string
         let winnings = 0;
         if (wager.data === lastMove) winnings = (wager.amount / winningPool) * totalPool;
         return Users
-          .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
+          .findByIdAndUpdate(wager.better_id, { $inc: { account: winnings } })
           .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true }));
       })
   );
@@ -24,7 +24,7 @@ export const resolveCriticalMoveBets = async (wagers: IWager[], lastMove: string
   return Promise.all(moveWagerUpdates);
 };
 
-export const resolveWdlBets = async (wagers: IWager[], gameStatus: string): Promise<(IWager|null)[]> => {
+export const resolveWdlBets = async (wagers: WagerDoc[], gameStatus: string): Promise<(WagerDoc|null)[]> => {
   const wdlWagerUpdates = wagers.map((wager) => {
     const { odds } = wager;
     const wonBet = wager.data === gameStatus;
@@ -34,7 +34,7 @@ export const resolveWdlBets = async (wagers: IWager[], gameStatus: string): Prom
 
     return (
       Users
-        .findByIdAndUpdate(wager.bettor_id, { $inc: { account: winnings } })
+        .findByIdAndUpdate(wager.better_id, { $inc: { account: winnings } })
         .then(() => Wager.findByIdAndUpdate(wager.id, { resolved: true }))
     );
   });
