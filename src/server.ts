@@ -39,7 +39,13 @@ app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
 
 // declare websockets
-io.of('/chessws').on('connection', chessWS);
+const chessWebsocket = io.of('/chessws');
+chessWebsocket.on('connection', chessWS);
+
+// setInterval(() => {
+//   console.log('starting new game');
+//   chessWebsocket.to('asdf').emit('new_game', 'starting game');
+// }, 3000);
 
 // default index route
 app.get('/', (req, res) => {

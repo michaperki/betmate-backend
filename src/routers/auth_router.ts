@@ -2,9 +2,9 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { requireSignin } from '../authentication';
+import { requireSignin } from 'authentication';
 
-import { authController } from '../controllers';
+import { authController } from 'controllers';
 
 const router = express();
 

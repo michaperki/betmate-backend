@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { chessFilterParams, containsPlayers, optionalChessFieldsValid } from '../helpers/validation';
-import { chessController } from '../controllers';
+import { chessFilterParams, containsPlayers, optionalChessFieldsValid } from 'helpers/validation';
+import { chessController } from 'controllers';
 
 const router = express();
 

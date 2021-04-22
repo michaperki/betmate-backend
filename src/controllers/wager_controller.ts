@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import { Wager, Chess, Users } from '../models';
-import { RequestWithJWT } from '../types/requests';
+import { documentNotFoundError } from 'helpers/constants';
+import { WagerDoc } from 'types/models';
+import { Wager, Chess, Users } from 'models';
+import { RequestWithJWT } from 'types/requests';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -11,7 +13,21 @@ type WagerRequestBody = {
   move_number: number,
 };
 
-const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
+const getWager = (id: string): Promise<WagerDoc | null> => (
+  Wager
+    .findById(id)
+    .then((doc) => doc)
+    .catch(() => null)
+);
+
+const getUserWagers = (userID: string): Promise<WagerDoc[] | null> => (
+  Wager
+    .find({ better_id: userID })
+    .then((docs) => docs)
+    .catch(() => null)
+);
+
+const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
     const {
       wdl,
@@ -21,7 +37,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
       move_number,
     } : WagerRequestBody = req.body;
 
-    const bettor_id = req.user._id;
+    const better_id = req.user._id;
     const game_id = req.params.id;
 
     // check game exists and hasn't ended
@@ -44,10 +60,10 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
         } else {
           resolve();
         }
-      }, 3000); // timeout accounts for any lag in the API used to get live game updates
+      }, 1000); // timeout accounts for any lag in the API used to get live game updates
     });
     const wager = new Wager({
-      game_id, bettor_id, wdl, amount, data, odds, move_number,
+      game_id, better_id, wdl, amount, data, odds, move_number,
     });
 
     await Users.findByIdAndUpdate(req.user._id, { $inc: { account: -amount } });
@@ -59,8 +75,23 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
   }
 };
 
+const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
+  const wager = await getWager(req.params.id);
+  if (!wager) { res.status(404).send({ error: documentNotFoundError }); return; }
+  if (wager.better_id !== req.user._id) { res.status(400).send({ error: 'Unauthorized' }); return; }
+  res.status(200).send(wager);
+};
+
+const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
+  const wagers = await getUserWagers(req.user._id);
+  if (!wagers) res.status(500).send({ error: 'An issue occured' });
+  else res.status(200).send(wagers);
+};
+
 const wagerController = {
-  createWager,
+  createWagerRequest,
+  getWagerRequest,
+  getUserWagersRequest,
 };
 
 export default wagerController;

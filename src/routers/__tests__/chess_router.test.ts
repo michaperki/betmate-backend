@@ -44,7 +44,7 @@ const validateBody = (body: any) => {
 // Mocks requireAuth server middleware
 jest.mock('../../authentication/requireAuth');
 
-describe('Working resource router', () => {
+describe('Working chess router', () => {
   beforeAll(async (done) => {
     try {
       connectDB(done);

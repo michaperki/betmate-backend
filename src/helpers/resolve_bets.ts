@@ -1,5 +1,5 @@
-import { Users, Wager } from '../models';
-import { WagerDoc } from '../types/models';
+import { Users, Wager } from 'models';
+import { WagerDoc } from 'types/models';
 
 export const resolveCriticalMoveBets = async (wagers: WagerDoc[], lastMove: string): Promise<(WagerDoc|null)[]> => {
   let totalPool = 0;

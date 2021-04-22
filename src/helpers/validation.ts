@@ -3,7 +3,7 @@ import {
   body, query, ValidationChain, validationResult,
 } from 'express-validator';
 
-import { ValidationWrapper } from '../types/express';
+import { ValidationWrapper } from 'types/express';
 import { GameStatus } from './constants';
 
 export const requestWithValidation: ValidationWrapper = (requestHandler) => (req, res, next) => {

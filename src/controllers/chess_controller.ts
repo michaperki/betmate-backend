@@ -1,9 +1,9 @@
 import { CreateQuery, FilterQuery, UpdateQuery } from 'mongoose';
 import { RequestHandler } from 'express';
-import { documentNotFoundError } from '../helpers/constants';
-import { Chess } from '../models';
-import { ChessDoc } from '../types/models';
-import { requestWithValidation } from '../helpers/validation';
+import { documentNotFoundError } from 'helpers/constants';
+import { Chess } from 'models';
+import { ChessDoc } from 'types/models';
+import { requestWithValidation } from 'helpers/validation';
 
 const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
   Chess
@@ -26,12 +26,14 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
     .catch(() => null)
 );
 
-const createChessGame = (fields: CreateQuery<ChessDoc>): Promise<ChessDoc | null> => {
+const createChessGame = async (fields: CreateQuery<ChessDoc>): Promise<ChessDoc | null> => {
   const chessGame = new Chess(fields);
-  return chessGame
-    .save()
-    .then((doc) => doc)
-    .catch(() => null);
+  try {
+    const doc = await chessGame.save();
+    return doc;
+  } catch (e) {
+    return null;
+  }
 };
 
 const getChessGameRequest: RequestHandler = (req, res) => {

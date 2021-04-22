@@ -3,11 +3,11 @@ import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
 import { ChessDoc } from 'types/models';
-import { resolveCriticalMoveBets, resolveWdlBets } from '../helpers/resolve_bets';
-import { Wager as WagerModel } from '../models';
-import { chessController } from '../controllers';
-import { microservice } from '../services';
-import { GameStatus } from '../helpers/constants';
+import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
+import { Wager as WagerModel } from 'models';
+import { chessController } from 'controllers';
+import { microservice } from 'services';
+import { GameStatus } from 'helpers/constants';
 
 const websocket = (socket: Socket): void => {
   socket.emit('on_connect', 'connected to /chess');

@@ -3,9 +3,9 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import { UserDoc } from 'types/models';
 import { RequestHandler } from 'express';
-import User from '../models/user_model';
+import User from 'models/user_model';
 
-import { getFieldNotFoundError } from '../helpers/constants';
+import { getFieldNotFoundError } from 'helpers/constants';
 
 // Configure what LocalStrategy will check for as a username
 const localOptions = { usernameField: 'email' };
