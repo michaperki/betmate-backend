@@ -40,7 +40,6 @@ const requireAuth: RequestHandler = (req, res, next) => {
     if (!user) { return res.status(401).json({ message: info.message || 'Error authenticating email and password' }); }
 
     req.user = user;
-    console.log('USER', user);
 
     return next();
   })(req, res, next);

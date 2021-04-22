@@ -3,7 +3,7 @@ import express from 'express';
 
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
-import { createWagerFieldsValid } from 'helpers/validation';
+import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation';
 
 const router = express();
 
@@ -18,7 +18,7 @@ router.use(requireAuth);
 
 // get all wagers
 router.route('/')
-  .get(wagerController.getUserWagersRequest);
+  .get(...wagerFilterParams, wagerController.getUserWagersRequest);
 
 // create or get a wager for a user
 router.route('/:id')

@@ -5,6 +5,7 @@ import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
 import { requestWithValidation } from 'helpers/validation';
+import { FilterQuery } from 'mongoose';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -16,14 +17,14 @@ type WagerRequestBody = {
 
 const getWager = (id: string): Promise<WagerDoc | null> => (
   Wager
-    .findById(id, { __v: 0 })
+    .findById(id)
     .then((doc) => doc)
     .catch(() => null)
 );
 
-const getUserWagers = (userID: string): Promise<WagerDoc[] | null> => (
+const getUserWagers = (userID: string, fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> => (
   Wager
-    .find({ better_id: userID }, { __v: 0 })
+    .find({ better_id: userID, ...fields })
     .then((docs) => docs)
     .catch(() => null)
 );
@@ -85,7 +86,7 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
 };
 
 const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const wagers = await getUserWagers(req.user._id);
+  const wagers = await getUserWagers(req.user._id, req.query);
   if (!wagers) res.status(500).send({ error: 'An issue occured' });
   else res.status(200).send(wagers);
 };
@@ -93,7 +94,7 @@ const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) =>
 const wagerController = {
   createWagerRequest: requestWithValidation(createWagerRequest),
   getWagerRequest,
-  getUserWagersRequest,
+  getUserWagersRequest: requestWithValidation(getUserWagersRequest),
 };
 
 export default wagerController;

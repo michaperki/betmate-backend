@@ -169,9 +169,19 @@ describe('Working wager router', () => {
 
     describe('fetch one', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
+      it('requires valid permissions', async (done) => {
+        try {
+          const res = await request
+            .get(`/${validID}`)
+            .send(wagerData);
 
-      // });
+          expect(res.status).toBe(401);
+          expect(res.body.message).toBe('Error authenticating email and password');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
       it("catches resource doesn't exist", async (done) => {
         try {
@@ -228,9 +238,19 @@ describe('Working wager router', () => {
 
     describe('fetch multiple', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
+      it('requires valid permissions', async (done) => {
+        try {
+          const res = await request
+            .get('/')
+            .send(wagerData);
 
-      // });
+          expect(res.status).toBe(401);
+          expect(res.body.message).toBe('Error authenticating email and password');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
       // * NOTE: Requires multiple checks
       // it('valid pagination', async (done) => {

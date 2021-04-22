@@ -70,7 +70,7 @@ describe('Working chess router', () => {
 
       // * NOTE: Can require multiple checks depending on number of non-unique fields
       describe('blocks creation of resource with invalid field', () => {
-        it('blocks chess game creation when player fields', async (done) => {
+        it('blocks chess game creation without player fields', async (done) => {
           try {
             const res = await request.post('/')
               .send({});
@@ -85,40 +85,22 @@ describe('Working chess router', () => {
           }
         });
 
-        it('blocks resource creation when chess state in invalid FEN notation', async (done) => {
+        it('blocks resource creation when chess state in invalid fields', async (done) => {
           try {
             const res = await request.post('/')
-              .send({ ...chessDataA, state: 'badFEN' });
-
-            expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe('FEN string must contain six space-delimited fields.');
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-
-        it('blocks resource creation with invalid game status', async (done) => {
-          try {
-            const res = await request.post('/')
-              .send({ ...chessDataA, game_status: 'winning' });
-
-            expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe("Value 'winning' is not a game status");
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-
-        it('blocks resource creation with invalid times', async (done) => {
-          try {
-            const res = await request.post('/')
-              .send({ ...chessDataA, time_white: -10, time_black: -20 });
+              .send({
+                ...chessDataA,
+                state: 'badFEN',
+                game_status: 'winning',
+                time_white: -10,
+                time_black: -20,
+              });
 
             expect(res.status).toBe(400);
             expect(res.body.errors[0].msg).toBe("'time_white' must be at least 0");
             expect(res.body.errors[1].msg).toBe("'time_black' must be at least 0");
+            expect(res.body.errors[2].msg).toBe("Value 'winning' is not a game status");
+            expect(res.body.errors[3].msg).toBe('FEN string must contain six space-delimited fields.');
             done();
           } catch (error) {
             done(error);

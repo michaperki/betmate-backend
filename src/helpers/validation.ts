@@ -28,6 +28,20 @@ const createBodyField = (field: string, type: Field, isRequired = true): Validat
     .bail()
 );
 
+const queryWithType = (field: string, type: Field): ValidationChain => ({
+  string: query(field).isString(),
+  boolean: query(field).isBoolean(),
+  number: query(field).isFloat(),
+  array: query(field).isArray(),
+}[type]);
+
+const createQueryField = (field: string, type: Field, isRequired = true): ValidationChain => (
+  queryWithType(field, type)
+    .optional(!isRequired)
+    .withMessage(`'${field}' ${isRequired ? 'is required with ' : 'must be '}type ${type}`)
+    .bail()
+);
+
 const queryNotAllowed = (field: string) => (
   query(field).not().exists().withMessage(`Cannot search by '${field}'`)
 );
@@ -86,6 +100,8 @@ export const chessFilterParams = [
   queryNotAllowed('wagers'),
   queryNotAllowed('time_white'),
   queryNotAllowed('time_black'),
+  queryNotAllowed('_id'),
+  queryNotAllowed('__v'),
 ];
 
 export const createWagerFieldsValid = [
@@ -103,4 +119,17 @@ export const createWagerFieldsValid = [
   createBodyField('move_number', 'number')
     .isFloat({ min: 0 })
     .withMessage("'move_number' must be at least 0"),
+];
+
+export const wagerFilterParams = [
+  createQueryField('resolved', 'boolean', false),
+  createQueryField('wdl', 'boolean', false),
+  createQueryField('game_id', 'string', false),
+
+  queryNotAllowed('_id'),
+  queryNotAllowed('better_id'),
+  queryNotAllowed('odds'),
+  queryNotAllowed('amount'),
+  queryNotAllowed('move_number'),
+  queryNotAllowed('__v'),
 ];
