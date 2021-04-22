@@ -7,21 +7,21 @@ import { requestWithValidation } from 'helpers/validation';
 
 const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
   Chess
-    .findById(gameId, { __v: 0 })
+    .findById(gameId)
     .then((doc) => doc)
     .catch(() => null)
 );
 
 const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[] | null> => (
   Chess
-    .find(fields, { __v: 0 })
+    .find(fields)
     .then((result) => result)
     .catch(() => null)
 );
 
 const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc | null> => (
   Chess
-    .findByIdAndUpdate(gameId, fields, { new: true, projection: { __v: 0 } })
+    .findByIdAndUpdate(gameId, fields, { new: true })
     .then((doc) => doc)
     .catch(() => null)
 );
@@ -57,9 +57,7 @@ const updateChessGameRequest: RequestHandler = async (req, res) => {
 const createChessGameRequest: RequestHandler = async (req, res) => {
   const chessGame = await createChessGame(req.body);
   if (!chessGame) { res.status(500).json({ errors: ['Failed to create chess game'] }); return; }
-  getChessGame(chessGame._id)
-    .then((result) => (result ? res.status(200).send(result) : res.status(500).json({ errors: [documentNotFoundError] })))
-    .catch((error) => res.status(500).json({ errors: [error] }));
+  res.status(200).send(chessGame);
 };
 
 const chessController = {

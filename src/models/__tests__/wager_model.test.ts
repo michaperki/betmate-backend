@@ -21,13 +21,13 @@ const wagerDataWDL = {
   amount: 10,
   odds: 1.5,
   data: GameStatus.WHITE_WIN,
-  move: 10,
+  move_number: 10,
 };
 
 const badWagerDataWDL = {
   wdl: 'wdl', // should be boolean
   amount: -10, // should be positive number
-  odds: 'good', // should be number
+  odds: 0.5, // should be greater than 1
   data: GameStatus.WHITE_WIN, // takes any data type
   move: -10, // should be positive number
 };
@@ -93,7 +93,7 @@ describe('Wager model validation', () => {
       });
 
       // eslint-disable-next-line max-len
-      expect(savedWager.message).toBe('Wager validation failed: move_number: Path `move_number` is required., data: Path `data` is required., amount: Path `amount` is required., wdl: Path `wdl` is required., better_id: Path `better_id` is required., game_id: Path `game_id` is required.');
+      expect(savedWager.message).toBe('Wager validation failed: move_number: Path `move_number` is required., data: Path `data` is required., odds: Path `odds` is required., amount: Path `amount` is required., wdl: Path `wdl` is required., better_id: Path `better_id` is required., game_id: Path `game_id` is required.');
       done();
     } catch (error) {
       done(error);
@@ -121,7 +121,7 @@ describe('Wager model validation', () => {
       });
 
       // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", odds: Cast to Number failed for value "good" at path "odds", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0).');
+      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0.01)., odds: Path `odds` (0.5) is less than minimum allowed value (1).');
       done();
     } catch (error) {
       done(error);

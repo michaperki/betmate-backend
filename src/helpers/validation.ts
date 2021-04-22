@@ -87,3 +87,20 @@ export const chessFilterParams = [
   queryNotAllowed('time_white'),
   queryNotAllowed('time_black'),
 ];
+
+export const createWagerFieldsValid = [
+  createBodyField('wdl', 'boolean'),
+  createBodyField('data', 'string'),
+
+  createBodyField('amount', 'number')
+    .isFloat({ min: 0.01 })
+    .withMessage("'amount' must be at least 0.01"),
+
+  createBodyField('odds', 'number')
+    .isFloat({ min: 1 })
+    .withMessage("'odds' must be at least 1"),
+
+  createBodyField('move_number', 'number')
+    .isFloat({ min: 0 })
+    .withMessage("'move_number' must be at least 0"),
+];

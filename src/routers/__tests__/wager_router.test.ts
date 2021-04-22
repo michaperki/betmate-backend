@@ -1,288 +1,261 @@
-// import supertest from 'supertest';
-// import chessRouter from '../chess_router';
+import supertest from 'supertest';
+import { Chess, Wager } from 'models';
+import wagerRouter from '../wager_router';
 
-// import { connectDB, dropDB } from '../../../__jest__/helpers';
-// import { GameStatus } from '../../helpers/constants';
+import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
+import { documentNotFoundError, GameStatus } from '../../helpers/constants';
 
-// const request = supertest(chessRouter);
+const request = supertest(wagerRouter);
 
-// const chessData = {
-//   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
-//   complete: false,
-//   game_status: GameStatus.IN_PROGRESS,
-//   player_white: 'playerC',
-//   player_black: 'playerD',
-//   move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
-//   time_white: 293,
-//   time_black: 291,
-// };
+const chessData = {
+  state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
+  complete: false,
+  game_status: GameStatus.IN_PROGRESS,
+  player_white: 'playerC',
+  player_black: 'playerD',
+  move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
+  time_white: 293,
+  time_black: 291,
+};
 
-// let validID = '';
-// const invalidID = 'invalidID';
+const wagerData = {
+  odds: 2.5,
+  wdl: true,
+  amount: 10,
+  data: 'white_win',
+  move_number: 9,
+};
 
-// const validateBody = (body: any) => {
-//   expect(body.game_id).toBeDefined();
-//   expect(body.better_id).toBeDefined();
-//   expect(body.wdl).toBeDefined();
-//   expect(body.amount).toBeDefined();
-//   expect(body.odds).toBeDefined();
-//   expect(body.data).toBeDefined();
-//   expect(body.move_number).toBeDefined();
-//   expect(body.resolved).toBeDefined();
-//   expect(body._id).toBeDefined();
-//   expect(body.__v).toBeUndefined();
-// };
+const badWagerData = {
+  odds: 0.5, // needs to be greater than 1
+  wdl: true,
+  amount: -10, // needs to be positive
+  data: 'black_win',
+  move_number: -10, // needs to be positive
+};
 
-// // Mocks requireAuth server middleware
-// jest.mock('../../authentication/requireAuth');
+let validID = '';
+const invalidID = 'invalidID';
+let chessGameID = '';
 
-// describe('Working wager router', () => {
-//   beforeAll(async (done) => {
-//     try {
-//       connectDB(done);
-//     } catch (error) {
-//       done(error);
-//     }
-//   });
+const validateBody = (body: any) => {
+  expect(body.game_id).toBeDefined();
+  expect(body.better_id).toBeDefined();
+  expect(body.wdl).toBeDefined();
+  expect(body.amount).toBeDefined();
+  expect(body.odds).toBeDefined();
+  expect(body.data).toBeDefined();
+  expect(body.move_number).toBeDefined();
+  expect(body.resolved).toBeDefined();
+  expect(body._id).toBeDefined();
+  expect(body.__v).toBeUndefined();
+};
 
-//   afterAll(async (done) => {
-//     try {
-//       dropDB(done);
-//     } catch (error) {
-//       done(error);
-//     }
-//   });
+// Mocks requireAuth server middleware
+jest.mock('../../authentication/requireAuth');
 
-//   describe('single game modification', () => {
-//     describe('create one', () => {
-//       // * NOTE: Can require multiple checks depending on number of required fields
-//       // it('requires valid data', async (done) => {
+describe('Working wager router', () => {
+  beforeAll(async (done) => {
+    try {
+      connectDB(done);
 
-//       // });
+      const chessGame = await new Chess(chessData).save();
+      chessGameID = chessGame._id;
 
-//       // * NOTE: Can require multiple checks depending on number of non-unique fields
-//       describe('blocks creation of resource with invalid field', () => {
-//         it('blocks chess game creation when player fields', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send({});
+      const wager = await new Wager({
+        ...wagerData,
+        better_id: mockUser._id,
+        game_id: chessGameID,
+      }).save();
+      validID = wager._id;
+    } catch (error) {
+      done(error);
+    }
+  });
 
-//             expect(res.status).toBe(400);
-//             expect(res.body.errors[0].msg).toBe("'player_white' is required with type string");
-//             expect(res.body.errors[1].msg).toBe("'player_black' is required with type string");
+  afterAll(async (done) => {
+    try {
+      dropDB(done);
+    } catch (error) {
+      done(error);
+    }
+  });
 
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
+  describe('single wager modification', () => {
+    describe('create one', () => {
+      it('requires valid permissions', async (done) => {
+        try {
+          const res = await request
+            .post(`/${chessGameID}`)
+            .send(wagerData);
 
-//         it('blocks resource creation when chess state in invalid FEN notation', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send({ ...chessDataA, state: 'badFEN' });
+          expect(res.status).toBe(401);
+          expect(res.body.message).toBe('Error authenticating email and password');
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
-//             expect(res.status).toBe(400);
-//             expect(res.body.errors[0].msg).toBe('FEN string must contain six space-delimited fields.');
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
+      it('blocks wager creation if game is non-existant', async (done) => {
+        try {
+          const res = await request
+            .post('/randomgameid')
+            .set('Authorization', 'Bearer dummy_token')
+            .send(wagerData);
 
-//         it('blocks resource creation with invalid game status', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send({ ...chessDataA, game_status: 'winning' });
+          expect(res.status).toBe(404);
+          expect(res.body.error).toBe(documentNotFoundError);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
-//             expect(res.status).toBe(400);
-//             expect(res.body.errors[0].msg).toBe("Value 'winning' is not a game status");
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
+      describe('blocks creation of wager with invalid field', () => {
+        it('blocks wager creation without requried fields', async (done) => {
+          try {
+            const res = await request
+              .post(`/${chessGameID}`)
+              .set('Authorization', 'Bearer dummy_token')
+              .send({});
 
-//         it('blocks resource creation with invalid times', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send({ ...chessDataA, time_white: -10, time_black: -20 });
+            expect(res.status).toBe(400);
+            expect(res.body.errors[0].msg).toBe("'wdl' is required with type boolean");
+            expect(res.body.errors[1].msg).toBe("'data' is required with type string");
+            expect(res.body.errors[2].msg).toBe("'amount' is required with type number");
+            expect(res.body.errors[3].msg).toBe("'odds' is required with type number");
+            expect(res.body.errors[4].msg).toBe("'move_number' is required with type number");
 
-//             expect(res.status).toBe(400);
-//             expect(res.body.errors[0].msg).toBe("'time_white' must be at least 0");
-//             expect(res.body.errors[1].msg).toBe("'time_black' must be at least 0");
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
-//       });
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
 
-//       describe('successfully creates chess game', () => {
-//         it('succeeds with minimal fields', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send(chessDataA);
+        it('blocks wager creation when fields are invalid', async (done) => {
+          try {
+            const res = await request
+              .post(`/${chessGameID}`)
+              .set('Authorization', 'Bearer dummy_token')
+              .send(badWagerData);
 
-//             expect(res.status).toBe(200);
+            expect(res.status).toBe(400);
+            expect(res.body.errors[0].msg).toBe("'amount' must be at least 0.01");
+            expect(res.body.errors[1].msg).toBe("'odds' must be at least 1");
+            expect(res.body.errors[2].msg).toBe("'move_number' must be at least 0");
+            done();
+          } catch (error) {
+            done(error);
+          }
+        });
+      });
 
-//             // Resource exists with all required fields
-//             validateBody(res.body);
+      it('succeeds', async (done) => {
+        try {
+          const res = await request
+            .post(`/${chessGameID}`)
+            .set('Authorization', 'Bearer dummy_token')
+            .send(wagerData);
 
-//             validID = res.body._id;
+          expect(res.status).toBe(200);
 
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
 
-//         it('succeeds with all fields', async (done) => {
-//           try {
-//             const res = await request.post('/')
-//               .send(chessDataB);
+    describe('fetch one', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
 
-//             expect(res.status).toBe(200);
+      // });
 
-//             // Resource exists with all required fields
-//             validateBody(res.body);
+      it("catches resource doesn't exist", async (done) => {
+        try {
+          const res = await request
+            .get(`/${invalidID}`)
+            .set('Authorization', 'Bearer dummy_token');
 
-//             done();
-//           } catch (error) {
-//             done(error);
-//           }
-//         });
-//       });
-//     });
+          expect(res.status).toBe(404);
+          expect(res.body.error).toBe(documentNotFoundError);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
-//     describe('fetch one', () => {
-//       // * NOTE: Can require multiple checks depending on number of user permission levels
-//       // it('requires valid permissions', async (done) => {
+      it('succeeds', async (done) => {
+        try {
+          const res = await request
+            .get(`/${validID}`)
+            .set('Authorization', 'Bearer dummy_token');
 
-//       // });
+          expect(res.status).toBe(200);
+          validateBody(res.body);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  });
 
-//       it('catches resource doesn\'t exist', async (done) => {
-//         try {
-//           const res = await request.get(`/${invalidID}`);
-//           expect(res.status).toBe(404);
-//           expect(res.body.errors[0]).toBe('Couldn\'t find resource with given id');
-//           done();
-//         } catch (error) {
-//           done(error);
-//         }
-//       });
+  describe('batch event modification', () => {
+    // * NOTE: Currently unimplemented
+    // describe('create multiple', () => {
+    //   // * NOTE: Can require multiple checks depending on number of user permission levels
+    //   // it('requires valid permissions', async (done) => {
 
-//       it('succeeds', async (done) => {
-//         try {
-//           const res = await request.get(`/${validID}`);
-//           expect(res.status).toBe(200);
-//           validateBody(res.body);
-//           done();
-//         } catch (error) {
-//           done(error);
-//         }
-//       });
-//     });
+    //   // });
 
-//     describe('update one', () => {
-//       // * NOTE: Can require multiple checks depending on number of user permission levels
-//       // it('requires valid permissions', async (done) => {
+    //   // * NOTE: Can require multiple checks depending on number of required fields
+    //   // it('requires valid data', async (done) => {
 
-//       // });
+    //   // });
 
-//       // * NOTE: Can require multiple checks depending on number of required fields
-//       // it('requires valid data', async (done) => {
+    //   // * NOTE: Can require multiple checks depending on number of non-unique fields
+    //   // it('blocks creation of resource with non-unique field', async (done) => {
 
-//       // });
+    //   // });
 
-//       // * NOTE: Can require multiple checks depending on number of non-unique fields
-//       // it('blocks creation of resource with non-unique field', async (done) => {
+    //   it('succeeds', async (done) => {
 
-//       // });
+    //   });
+    // });
 
-//       it('catches resource doesn\'t exist', async (done) => {
-//         try {
-//           const res = await request.put(`/${invalidID}`)
-//             .send({ time_black: 40 });
+    describe('fetch multiple', () => {
+      // * NOTE: Can require multiple checks depending on number of user permission levels
+      // it('requires valid permissions', async (done) => {
 
-//           expect(res.status).toBe(404);
-//           expect(res.body.errors[0]).toBe('Couldn\'t find resource with given id');
-//           done();
-//         } catch (error) {
-//           done(error);
-//         }
-//       });
+      // });
 
-//       it('succeeds', async (done) => {
-//         try {
-//           const res = await request.put(`/${validID}`)
-//             .send({ time_black: 40 });
+      // * NOTE: Requires multiple checks
+      // it('valid pagination', async (done) => {
 
-//           expect(res.status).toBe(200);
-//           expect(res.body.time_black).toBe(40);
+      // });
 
-//           validateBody(res.body);
+      // * NOTE: Not needed with only GET ALL functionality
+      // it('catches resource doesn\'t exist', async (done) => {
 
-//           done();
-//         } catch (error) {
-//           done(error);
-//         }
-//       });
-//     });
-//   });
+      // });
 
-//   describe('batch event modification', () => {
-//     // * NOTE: Currently unimplemented
-//     // describe('create multiple', () => {
-//     //   // * NOTE: Can require multiple checks depending on number of user permission levels
-//     //   // it('requires valid permissions', async (done) => {
-
-//     //   // });
-
-//     //   // * NOTE: Can require multiple checks depending on number of required fields
-//     //   // it('requires valid data', async (done) => {
-
-//     //   // });
-
-//     //   // * NOTE: Can require multiple checks depending on number of non-unique fields
-//     //   // it('blocks creation of resource with non-unique field', async (done) => {
-
-//     //   // });
-
-//     //   it('succeeds', async (done) => {
-
-//     //   });
-//     // });
-
-//     describe('fetch multiple', () => {
-//       // * NOTE: Can require multiple checks depending on number of user permission levels
-//       // it('requires valid permissions', async (done) => {
-
-//       // });
-
-//       // * NOTE: Requires multiple checks
-//       // it('valid pagination', async (done) => {
-
-//       // });
-
-//       // * NOTE: Not needed with only GET ALL functionality
-//       // it('catches resource doesn\'t exist', async (done) => {
-
-//       // });
-
-//       it('succeeds', async (done) => {
-//         try {
-//           const res = await request.get('/');
-//           expect(res.status).toBe(200);
-//           expect(res.body.length).toBe(2);
-//           validateBody(res.body[0]);
-//           validateBody(res.body[1]);
-//           done();
-//         } catch (error) {
-//           done(error);
-//         }
-//       });
-//     });
-//   });
-// });
-export {};
+      it('succeeds', async (done) => {
+        try {
+          const res = await request
+            .get('/')
+            .set('Authorization', 'Bearer dummy_token');
+          expect(res.status).toBe(200);
+          expect(res.body.length).toBe(2);
+          validateBody(res.body[0]);
+          validateBody(res.body[1]);
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
+    });
+  });
+});

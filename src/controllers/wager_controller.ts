@@ -4,6 +4,7 @@ import { documentNotFoundError } from 'helpers/constants';
 import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
+import { requestWithValidation } from 'helpers/validation';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -15,14 +16,14 @@ type WagerRequestBody = {
 
 const getWager = (id: string): Promise<WagerDoc | null> => (
   Wager
-    .findById(id)
+    .findById(id, { __v: 0 })
     .then((doc) => doc)
     .catch(() => null)
 );
 
 const getUserWagers = (userID: string): Promise<WagerDoc[] | null> => (
   Wager
-    .find({ better_id: userID })
+    .find({ better_id: userID }, { __v: 0 })
     .then((docs) => docs)
     .catch(() => null)
 );
@@ -41,8 +42,9 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     const game_id = req.params.id;
 
     // check game exists and hasn't ended
-    const game = await Chess.find({ _id: game_id, complete: false });
-    if (!game) return res.status(404).json({ error: 'game not found or has already ended' });
+    const game = await Chess.findById(game_id);
+    if (!game) return res.status(404).send({ error: documentNotFoundError });
+    if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
 
     // check user has enough money to place bet
     if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'insufficient funds' });
@@ -52,10 +54,10 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     await new Promise<void>((resolve, reject) => {
       setTimeout(async () => {
         // TODO: get currentMove from 3rd party API rather than chess model
-        const currentMove = await Chess.findById(game_id).then((doc) => doc?.toJSON().move_hist.length);
-        if (currentMove === null) reject(new Error('error getting live update of the game'));
-
-        if (move_number !== currentMove + 1) {
+        const currentMove = await Chess.findById(game_id).then((doc) => doc?.move_hist.length);
+        if (!currentMove) {
+          reject(new Error('error getting live update of the game'));
+        } else if (move_number !== currentMove + 1) {
           reject(new Error('outdated bet'));
         } else {
           resolve();
@@ -71,14 +73,14 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     return res.status(200).json(doc.toJSON());
   } catch (error) {
     if (error.message === 'outdated bet') return res.status(401).send({ error: error.message });
-    return res.status(500).json({ error });
+    return res.status(500).json({ error: error.message });
   }
 };
 
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   const wager = await getWager(req.params.id);
   if (!wager) { res.status(404).send({ error: documentNotFoundError }); return; }
-  if (wager.better_id !== req.user._id) { res.status(400).send({ error: 'Unauthorized' }); return; }
+  if (!wager.better_id.equals(req.user._id)) { res.status(400).send({ error: 'Unauthorized' }); return; }
   res.status(200).send(wager);
 };
 
@@ -89,7 +91,7 @@ const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) =>
 };
 
 const wagerController = {
-  createWagerRequest,
+  createWagerRequest: requestWithValidation(createWagerRequest),
   getWagerRequest,
   getUserWagersRequest,
 };

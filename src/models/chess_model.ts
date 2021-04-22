@@ -27,6 +27,10 @@ const ChessSchema = new Schema({
   wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
   time_white: { type: Number, min: 0, default: 600 },
   time_black: { type: Number, min: 0, default: 600 },
+}, {
+  toJSON: {
+    transform: (doc, { __v, ...chess }) => chess,
+  },
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

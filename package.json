@@ -15,7 +15,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "lint": "eslint ./src --fix",
+    "lint": "eslint ./src",
     "test": "yarn lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
     "start": "ts-node -r tsconfig-paths/register src/server.ts",

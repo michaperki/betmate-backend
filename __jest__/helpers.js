@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 
 const mockUser = {
+  _id: mongoose.Types.ObjectId(),
   email: 'test@test.com',
   password: 'password',
   first_name: 'Joe',
   last_name: 'Smith',
+  account: 1000,
 };
 
 async function connectDB(done) {
