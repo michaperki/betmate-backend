@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import { Chess, Wager } from 'models';
-import wagerRouter from '../wager_router';
+import { wagerRouter } from 'routers';
 
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 import { documentNotFoundError, GameStatus } from '../../helpers/constants';

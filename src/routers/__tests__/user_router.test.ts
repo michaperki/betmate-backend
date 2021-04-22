@@ -1,5 +1,5 @@
 import supertest from 'supertest';
-import userRouter from '../user_router';
+import { userRouter } from 'routers';
 
 import {
   mockUser, connectDB, dropDB,

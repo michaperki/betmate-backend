@@ -1,5 +1,5 @@
-import { CHESS_START, GameStatus } from '../../helpers/constants';
-import { Chess } from '..';
+import { CHESS_START, GameStatus } from 'helpers/constants';
+import { Chess } from 'models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

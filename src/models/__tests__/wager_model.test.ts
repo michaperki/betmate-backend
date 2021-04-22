@@ -1,7 +1,7 @@
-import { GameStatus } from '../../helpers/constants';
+import { Chess, Users, Wager } from 'models';
+import { GameStatus } from 'helpers/constants';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
-import { Chess, Users, Wager } from '..';
 
 const chessData = {
   player_white: 'playerA',

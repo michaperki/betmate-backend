@@ -1,8 +1,8 @@
 import supertest from 'supertest';
-import chessRouter from '../chess_router';
+import { GameStatus } from 'helpers/constants';
+import { chessRouter } from 'routers';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
-import { GameStatus } from '../../helpers/constants';
 
 const request = supertest(chessRouter);
 
