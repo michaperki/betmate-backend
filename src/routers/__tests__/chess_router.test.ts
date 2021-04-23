@@ -64,13 +64,7 @@ describe('Working chess router', () => {
 
   describe('single game modification', () => {
     describe('create one', () => {
-      // * NOTE: Can require multiple checks depending on number of required fields
-      // it('requires valid data', async (done) => {
-
-      // });
-
-      // * NOTE: Can require multiple checks depending on number of non-unique fields
-      describe('blocks creation of resource with invalid field', () => {
+      describe('blocks creation of chess game with invalid fields', () => {
         it('blocks chess game creation without player fields', async (done) => {
           try {
             const res = await request.post('/')
@@ -117,7 +111,6 @@ describe('Working chess router', () => {
 
             expect(res.status).toBe(200);
 
-            // Resource exists with all required fields
             validateBody(res.body);
 
             validID = res.body._id;
@@ -135,7 +128,6 @@ describe('Working chess router', () => {
 
             expect(res.status).toBe(200);
 
-            // Resource exists with all required fields
             validateBody(res.body);
 
             done();
@@ -147,12 +139,7 @@ describe('Working chess router', () => {
     });
 
     describe('fetch one', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
-
-      // });
-
-      it('catches resource doesn\'t exist', async (done) => {
+      it("catches resource doesn't exist", async (done) => {
         try {
           const res = await request.get(`/${invalidID}`);
           expect(res.status).toBe(404);
@@ -176,11 +163,6 @@ describe('Working chess router', () => {
     });
 
     describe('update one', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
-
-      // });
-
       // * NOTE: Can require multiple checks depending on number of required fields
       // it('requires valid data', async (done) => {
 
@@ -191,7 +173,7 @@ describe('Working chess router', () => {
 
       // });
 
-      it('catches resource doesn\'t exist', async (done) => {
+      it("catches resource doesn't exist", async (done) => {
         try {
           const res = await request.put(`/${invalidID}`)
             .send({ time_black: 40 });
@@ -223,28 +205,6 @@ describe('Working chess router', () => {
   });
 
   describe('batch event modification', () => {
-    // * NOTE: Currently unimplemented
-    // describe('create multiple', () => {
-    //   // * NOTE: Can require multiple checks depending on number of user permission levels
-    //   // it('requires valid permissions', async (done) => {
-
-    //   // });
-
-    //   // * NOTE: Can require multiple checks depending on number of required fields
-    //   // it('requires valid data', async (done) => {
-
-    //   // });
-
-    //   // * NOTE: Can require multiple checks depending on number of non-unique fields
-    //   // it('blocks creation of resource with non-unique field', async (done) => {
-
-    //   // });
-
-    //   it('succeeds', async (done) => {
-
-    //   });
-    // });
-
     describe('fetch multiple', () => {
       it('blocks if query fields are invalid', async (done) => {
         try {

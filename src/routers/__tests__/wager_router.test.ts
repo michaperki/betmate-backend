@@ -172,7 +172,6 @@ describe('Working wager router', () => {
     });
 
     describe('fetch one', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
           const res = await request
@@ -218,30 +217,7 @@ describe('Working wager router', () => {
   });
 
   describe('batch event modification', () => {
-    // * NOTE: Currently unimplemented
-    // describe('create multiple', () => {
-    //   // * NOTE: Can require multiple checks depending on number of user permission levels
-    //   // it('requires valid permissions', async (done) => {
-
-    //   // });
-
-    //   // * NOTE: Can require multiple checks depending on number of required fields
-    //   // it('requires valid data', async (done) => {
-
-    //   // });
-
-    //   // * NOTE: Can require multiple checks depending on number of non-unique fields
-    //   // it('blocks creation of resource with non-unique field', async (done) => {
-
-    //   // });
-
-    //   it('succeeds', async (done) => {
-
-    //   });
-    // });
-
     describe('fetch multiple', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
           const res = await request
