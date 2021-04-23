@@ -26,15 +26,12 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
     .catch(() => null)
 );
 
-const createChessGame = async (fields: CreateQuery<ChessDoc>): Promise<ChessDoc | null> => {
-  const chessGame = new Chess(fields);
-  try {
-    const doc = await chessGame.save();
-    return doc;
-  } catch (e) {
-    return null;
-  }
-};
+const createChessGame = async (fields: CreateQuery<ChessDoc>): Promise<ChessDoc | null> => (
+  new Chess(fields)
+    .save()
+    .then((doc) => doc)
+    .catch(() => null)
+);
 
 const getChessGameRequest: RequestHandler = (req, res) => {
   getChessGame(req.params.id)
