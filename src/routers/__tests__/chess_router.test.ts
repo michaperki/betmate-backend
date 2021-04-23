@@ -1,4 +1,5 @@
 import supertest from 'supertest';
+import { stringify } from 'querystring';
 import { GameStatus } from 'helpers/constants';
 import { chessRouter } from 'routers';
 
@@ -245,20 +246,43 @@ describe('Working chess router', () => {
     // });
 
     describe('fetch multiple', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
-      // it('requires valid permissions', async (done) => {
+      it('blocks if query fields are invalid', async (done) => {
+        try {
+          const query = stringify({
+            game_status: 'started', // not a valid GameStatus
+            complete: 'done', // should be boolean
+            player_white: 'playerA', // not allowed
+            player_black: 'playerB', // not allowed
+            state: 'someFEN', // not allowed
+            move_hist: 2.4, // not allowed
+            wagers: 25, // not allowed
+            time_white: 10, // not allowed
+            time_black: 10, // not allowed
+            _id: 'gameID', // not allowed
+            __v: 0, // not allowed
+          });
 
-      // });
+          const res = await request.get(`?${query}`);
 
-      // * NOTE: Requires multiple checks
-      // it('valid pagination', async (done) => {
+          expect(res.status).toBe(400);
+          expect(res.body.errors.length).toBe(11);
+          expect(res.body.errors[0].msg).toBe("Value 'started' is not a game status");
+          expect(res.body.errors[1].msg).toBe("'complete' must be type boolean");
+          expect(res.body.errors[2].msg).toBe("Cannot search by 'player_white'");
+          expect(res.body.errors[3].msg).toBe("Cannot search by 'player_black'");
+          expect(res.body.errors[4].msg).toBe("Cannot search by 'state'");
+          expect(res.body.errors[5].msg).toBe("Cannot search by 'move_hist'");
+          expect(res.body.errors[6].msg).toBe("Cannot search by 'wagers'");
+          expect(res.body.errors[7].msg).toBe("Cannot search by 'time_white'");
+          expect(res.body.errors[8].msg).toBe("Cannot search by 'time_black'");
+          expect(res.body.errors[9].msg).toBe("Cannot search by '_id'");
+          expect(res.body.errors[10].msg).toBe("Cannot search by '__v'");
 
-      // });
-
-      // * NOTE: Not needed with only GET ALL functionality
-      // it('catches resource doesn\'t exist', async (done) => {
-
-      // });
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
       it('succeeds', async (done) => {
         try {

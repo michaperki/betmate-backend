@@ -1,4 +1,6 @@
 import supertest from 'supertest';
+import { stringify } from 'querystring';
+
 import { Chess, Wager } from 'models';
 import { wagerRouter } from 'routers';
 
@@ -121,6 +123,7 @@ describe('Working wager router', () => {
               .send({});
 
             expect(res.status).toBe(400);
+            expect(res.body.errors.length).toBe(5);
             expect(res.body.errors[0].msg).toBe("'wdl' is required with type boolean");
             expect(res.body.errors[1].msg).toBe("'data' is required with type string");
             expect(res.body.errors[2].msg).toBe("'amount' is required with type number");
@@ -141,6 +144,7 @@ describe('Working wager router', () => {
               .send(badWagerData);
 
             expect(res.status).toBe(400);
+            expect(res.body.errors.length).toBe(3);
             expect(res.body.errors[0].msg).toBe("'amount' must be at least 0.01");
             expect(res.body.errors[1].msg).toBe("'odds' must be at least 1");
             expect(res.body.errors[2].msg).toBe("'move_number' must be at least 0");
@@ -252,21 +256,48 @@ describe('Working wager router', () => {
         }
       });
 
-      // * NOTE: Requires multiple checks
-      // it('valid pagination', async (done) => {
+      it('blocks if query fields are invalid', async (done) => {
+        try {
+          const query = stringify({
+            resolved: 6, // should be boolean
+            wdl: 'draw', // should be boolean
+            game_id: 'randomID', // not valid id
+            _id: 'wagerID', // not allowed
+            better_id: 'userID', // not allowed
+            odds: 2.4, // not allowed
+            amount: 25, // not allowed
+            move_number: 10, // not allowed
+            __v: 0, // not allowed
+          });
 
-      // });
+          const res = await request
+            .get(`?${query}`)
+            .set('Authorization', 'Bearer dummy_token');
 
-      // * NOTE: Not needed with only GET ALL functionality
-      // it('catches resource doesn\'t exist', async (done) => {
+          expect(res.status).toBe(400);
+          expect(res.body.errors.length).toBe(9);
+          expect(res.body.errors[0].msg).toBe("'resolved' must be type boolean");
+          expect(res.body.errors[1].msg).toBe("'wdl' must be type boolean");
+          expect(res.body.errors[2].msg).toBe("'game_id' is not valid");
+          expect(res.body.errors[3].msg).toBe("Cannot search by '_id'");
+          expect(res.body.errors[4].msg).toBe("Cannot search by 'better_id'");
+          expect(res.body.errors[5].msg).toBe("Cannot search by 'odds'");
+          expect(res.body.errors[6].msg).toBe("Cannot search by 'amount'");
+          expect(res.body.errors[7].msg).toBe("Cannot search by 'move_number'");
+          expect(res.body.errors[8].msg).toBe("Cannot search by '__v'");
 
-      // });
+          done();
+        } catch (error) {
+          done(error);
+        }
+      });
 
       it('succeeds', async (done) => {
         try {
           const res = await request
             .get('/')
             .set('Authorization', 'Bearer dummy_token');
+
           expect(res.status).toBe(200);
           expect(res.body.length).toBe(2);
           validateBody(res.body[0]);

@@ -1,3 +1,4 @@
+import { isValidObjectId } from 'mongoose';
 import { createBodyField, createQueryField, queryNotAllowed } from 'helpers/validation';
 
 export const createWagerFieldsValid = [
@@ -20,7 +21,10 @@ export const createWagerFieldsValid = [
 export const wagerFilterParams = [
   createQueryField('resolved', 'boolean', false),
   createQueryField('wdl', 'boolean', false),
-  createQueryField('game_id', 'string', false),
+
+  createQueryField('game_id', 'string', false)
+    .custom((id: string) => isValidObjectId(id))
+    .withMessage("'game_id' is not valid"),
 
   queryNotAllowed('_id'),
   queryNotAllowed('better_id'),
