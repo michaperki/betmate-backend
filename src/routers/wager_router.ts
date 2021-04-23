@@ -3,7 +3,7 @@ import express from 'express';
 
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
-import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation';
+import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation/wagers';
 
 const router = express();
 

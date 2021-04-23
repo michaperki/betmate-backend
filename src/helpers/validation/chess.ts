@@ -1,0 +1,62 @@
+import { Chess } from 'chess.js';
+import { body, query } from 'express-validator';
+import { GameStatus } from 'helpers/constants';
+import { createBodyField, queryNotAllowed } from 'helpers/validation';
+
+export const containsPlayers = [
+  createBodyField('player_white', 'string'),
+  createBodyField('player_black', 'string'),
+];
+
+export const optionalChessFieldsValid = [
+  createBodyField('complete', 'boolean', false),
+  createBodyField('move_hist', 'array', false),
+
+  body('wagers')
+    .not()
+    .exists()
+    .withMessage("'wagers' field not allowed"),
+
+  body('move_hist.*')
+    .if(body('move_hist').isArray().exists())
+    .isString()
+    .withMessage("Elements of 'move_hist' must be strings"),
+
+  createBodyField('time_white', 'number', false)
+    .isFloat({ min: 0 })
+    .withMessage("'time_white' must be at least 0"),
+
+  createBodyField('time_black', 'number', false)
+    .isFloat({ min: 0 })
+    .withMessage("'time_black' must be at least 0"),
+
+  createBodyField('game_status', 'string', false)
+    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
+    .withMessage((value: string) => `Value '${value}' is not a game status`),
+
+  createBodyField('state', 'string', false)
+    .custom((value: string) => Chess().validate_fen(value).valid)
+    .withMessage((value: string) => Chess().validate_fen(value).error),
+];
+
+export const chessFilterParams = [
+  query('game_status')
+    .optional()
+    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
+    .withMessage((value: string) => `Value '${value}' is not a game status`),
+
+  query('complete')
+    .optional()
+    .isBoolean()
+    .withMessage("'complete' must be type boolean"),
+
+  queryNotAllowed('player_white'),
+  queryNotAllowed('player_black'),
+  queryNotAllowed('state'),
+  queryNotAllowed('move_hist'),
+  queryNotAllowed('wagers'),
+  queryNotAllowed('time_white'),
+  queryNotAllowed('time_black'),
+  queryNotAllowed('_id'),
+  queryNotAllowed('__v'),
+];
