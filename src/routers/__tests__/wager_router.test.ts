@@ -4,8 +4,8 @@ import { stringify } from 'querystring';
 import { Chess, Wager } from 'models';
 import { wagerRouter } from 'routers';
 
+import { documentNotFoundError, GameStatus } from 'helpers/constants';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
-import { documentNotFoundError, GameStatus } from '../../helpers/constants';
 
 const request = supertest(wagerRouter);
 
@@ -54,7 +54,7 @@ const validateBody = (body: any) => {
 };
 
 // Mocks requireAuth server middleware
-jest.mock('../../authentication/requireAuth');
+jest.mock('authentication/requireAuth');
 
 describe('Working wager router', () => {
   beforeAll(async (done) => {
@@ -69,6 +69,7 @@ describe('Working wager router', () => {
         better_id: mockUser._id,
         game_id: chessGameID,
       }).save();
+
       validID = wager._id;
     } catch (error) {
       done(error);

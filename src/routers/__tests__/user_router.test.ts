@@ -11,7 +11,7 @@ let validId = '';
 const invalidId = 'invalidId';
 
 // Mocks requireAuth server middleware
-jest.mock('../../authentication/requireAuth');
+jest.mock('authentication/requireAuth');
 
 describe('Working resource router', () => {
   beforeAll(async (done) => {

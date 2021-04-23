@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
-import { GameStatus } from 'helpers/constants';
+import { documentNotFoundError, GameStatus } from 'helpers/constants';
 import { chessRouter } from 'routers';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
@@ -43,7 +43,7 @@ const validateBody = (body: any) => {
 };
 
 // Mocks requireAuth server middleware
-jest.mock('../../authentication/requireAuth');
+jest.mock('authentication/requireAuth');
 
 describe('Working chess router', () => {
   beforeAll(async (done) => {
@@ -67,7 +67,8 @@ describe('Working chess router', () => {
       describe('blocks creation of chess game with invalid fields', () => {
         it('blocks chess game creation without player fields', async (done) => {
           try {
-            const res = await request.post('/')
+            const res = await request
+              .post('/')
               .send({});
 
             expect(res.status).toBe(400);
@@ -82,7 +83,8 @@ describe('Working chess router', () => {
 
         it('blocks resource creation when chess state in invalid fields', async (done) => {
           try {
-            const res = await request.post('/')
+            const res = await request
+              .post('/')
               .send({
                 ...chessDataA,
                 state: 'badFEN',
@@ -106,7 +108,8 @@ describe('Working chess router', () => {
       describe('successfully creates chess game', () => {
         it('succeeds with minimal fields', async (done) => {
           try {
-            const res = await request.post('/')
+            const res = await request
+              .post('/')
               .send(chessDataA);
 
             expect(res.status).toBe(200);
@@ -123,7 +126,8 @@ describe('Working chess router', () => {
 
         it('succeeds with all fields', async (done) => {
           try {
-            const res = await request.post('/')
+            const res = await request
+              .post('/')
               .send(chessDataB);
 
             expect(res.status).toBe(200);
@@ -142,6 +146,7 @@ describe('Working chess router', () => {
       it("catches resource doesn't exist", async (done) => {
         try {
           const res = await request.get(`/${invalidID}`);
+
           expect(res.status).toBe(404);
           expect(res.body.errors[0]).toBe('Couldn\'t find resource with given id');
           done();
@@ -153,6 +158,7 @@ describe('Working chess router', () => {
       it('succeeds', async (done) => {
         try {
           const res = await request.get(`/${validID}`);
+
           expect(res.status).toBe(200);
           validateBody(res.body);
           done();
@@ -175,11 +181,13 @@ describe('Working chess router', () => {
 
       it("catches resource doesn't exist", async (done) => {
         try {
-          const res = await request.put(`/${invalidID}`)
+          const res = await request
+            .put(`/${invalidID}`)
             .send({ time_black: 40 });
 
           expect(res.status).toBe(404);
-          expect(res.body.errors[0]).toBe('Couldn\'t find resource with given id');
+          expect(res.body.errors[0]).toBe(documentNotFoundError);
+
           done();
         } catch (error) {
           done(error);
@@ -188,7 +196,8 @@ describe('Working chess router', () => {
 
       it('succeeds', async (done) => {
         try {
-          const res = await request.put(`/${validID}`)
+          const res = await request
+            .put(`/${validID}`)
             .send({ time_black: 40 });
 
           expect(res.status).toBe(200);
@@ -247,10 +256,12 @@ describe('Working chess router', () => {
       it('succeeds', async (done) => {
         try {
           const res = await request.get('/');
+
           expect(res.status).toBe(200);
           expect(res.body.length).toBe(2);
           validateBody(res.body[0]);
           validateBody(res.body[1]);
+
           done();
         } catch (error) {
           done(error);
