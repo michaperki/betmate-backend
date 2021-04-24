@@ -8,7 +8,7 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
-import { run300Loop } from 'services/game_loop';
+import { run300Loop, run900Loop } from 'services/game_loop';
 import {
   authRouter, userRouter, chessRouter, wagerRouter,
 } from './routers';
@@ -44,6 +44,7 @@ const chessWebsocket = io.of('/chessws');
 chessWebsocket.on('connection', chessWS);
 
 run300Loop(chessWebsocket);
+run900Loop(chessWebsocket);
 
 // setInterval(() => {
 //   console.log('starting new game');

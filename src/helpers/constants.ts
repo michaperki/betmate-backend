@@ -16,4 +16,4 @@ export enum GameStatus {
   IN_PROGRESS = 'in_progress',
 }
 
-export const MICROSERVICE_URL = 'http://localhost:5000';
+export const MICROSERVICE_URL = 'http://34.222.10.87:8000'; // 'http://localhost:5000';
