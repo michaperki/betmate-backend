@@ -4,8 +4,10 @@ import { GameStatus } from 'helpers/constants';
 import { createBodyField, queryNotAllowed } from 'helpers/validation';
 
 export const containsPlayers = [
-  createBodyField('player_white', 'string'),
-  createBodyField('player_black', 'string'),
+  createBodyField('player_white.name', 'string'),
+  createBodyField('player_white.elo', 'number'),
+  createBodyField('player_black.name', 'string'),
+  createBodyField('player_black.elo', 'number'),
 ];
 
 export const optionalChessFieldsValid = [

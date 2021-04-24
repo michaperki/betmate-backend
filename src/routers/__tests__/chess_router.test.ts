@@ -9,8 +9,8 @@ const request = supertest(chessRouter);
 
 // minimal fields
 const chessDataA = {
-  player_white: 'playerA',
-  player_black: 'playerB',
+  player_white: { name: 'playerA', elo: 200 },
+  player_black: { name: 'playerB', elo: 400 },
 };
 
 // all fields
@@ -18,8 +18,8 @@ const chessDataB = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   complete: false,
   game_status: GameStatus.IN_PROGRESS,
-  player_white: 'playerC',
-  player_black: 'playerD',
+  player_white: { name: 'playerC', elo: 1200 },
+  player_black: { name: 'playerD', elo: 1400 },
   move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
   time_white: 293,
   time_black: 291,
@@ -72,8 +72,10 @@ describe('Working chess router', () => {
               .send({});
 
             expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe("'player_white' is required with type string");
-            expect(res.body.errors[1].msg).toBe("'player_black' is required with type string");
+            expect(res.body.errors[0].msg).toBe("'player_white.name' is required with type string");
+            expect(res.body.errors[1].msg).toBe("'player_white.elo' is required with type number");
+            expect(res.body.errors[2].msg).toBe("'player_black.name' is required with type string");
+            expect(res.body.errors[3].msg).toBe("'player_black.elo' is required with type number");
 
             done();
           } catch (error) {
