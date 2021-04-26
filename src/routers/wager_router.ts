@@ -1,8 +1,9 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { requireAuth } from '../authentication';
-import { wagerController } from '../controllers';
+import { requireAuth } from 'authentication';
+import { wagerController } from 'controllers';
+import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation/wagers';
 
 const router = express();
 
@@ -15,8 +16,13 @@ if (process.env.NODE_ENV === 'test') {
 
 router.use(requireAuth);
 
-// creates a wager for a user
+// get all wagers
+router.route('/')
+  .get(...wagerFilterParams, wagerController.getUserWagersRequest);
+
+// create or get a wager for a user
 router.route('/:id')
-  .post(wagerController.createWager);
+  .get(wagerController.getWagerRequest)
+  .post(...createWagerFieldsValid, wagerController.createWagerRequest);
 
 export default router;

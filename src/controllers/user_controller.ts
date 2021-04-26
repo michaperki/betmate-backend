@@ -1,11 +1,11 @@
 import jwt from 'jwt-simple';
 import env from 'env-var';
 import { RequestHandler } from 'express';
-import { UserDoc } from '../types/models';
-import { Users } from '../models';
+import { UserDoc } from 'types/models';
+import { Users } from 'models';
 import {
   documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
-} from '../helpers/constants';
+} from 'helpers/constants';
 
 const tokenForUser = (user: UserDoc): string => {
   const timestamp = new Date().getTime();

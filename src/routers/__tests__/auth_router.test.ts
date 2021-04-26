@@ -1,6 +1,6 @@
 import supertest from 'supertest';
 
-import authRouter from '../auth_router';
+import { authRouter } from 'routers';
 import { mockUser, connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);

@@ -15,10 +15,10 @@
   ],
   "license": "MIT",
   "scripts": {
-    "lint": "eslint ./src --fix",
+    "lint": "eslint ./src",
     "test": "yarn lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
-    "dev": "nodemon src/server.ts --exec ts-node",
-    "start": "ts-node src/server.ts",
+    "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
+    "start": "ts-node -r tsconfig-paths/register src/server.ts",
     "build": "tsc",
     "prod": "yarn build; node dist/server.js"
   },
@@ -58,6 +58,7 @@
     "passport-local": "^1.0.0",
     "socket.io": "^4.0.1",
     "ts-node": "^9.1.1",
+    "tsconfig-paths": "^3.9.0",
     "typescript": "^4.2.3"
   },
   "devDependencies": {

@@ -1,9 +1,9 @@
 import { RequestHandler } from 'express';
 import validator from 'email-validator';
-import { getFieldNotFoundError } from '../helpers/constants';
-import { Users } from '../models';
-import userController from './user_controller';
-import { RequestWithJWT } from '../types/requests';
+import { getFieldNotFoundError } from 'helpers/constants';
+import { Users } from 'models';
+import userController from 'controllers/user_controller';
+import { RequestWithJWT } from 'types/requests';
 
 const signUpUser: RequestHandler = async (req, res) => {
   try {

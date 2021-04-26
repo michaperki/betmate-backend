@@ -26,9 +26,13 @@
     <script>
       // FOR TESTING
         var socket = io("http://localhost:9090/chessws");
-        var gameId = '60724c895bb628623b20b637'
+        var gameId = 'asdf'
 
         socket.emit('join_game', gameId)
+
+        socket.on('new_game', function(msg) {
+          console.log(msg);
+        })
 
         // socket.on('welcome', (msg) => console.log(msg));
         // socket.on('success', (msg) => console.log(msg))

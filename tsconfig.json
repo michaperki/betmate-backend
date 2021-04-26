@@ -6,7 +6,7 @@
       "node_modules/@types",
       "src/types/modules",
     ],
-    "baseUrl": "src",
+    "baseUrl": "./src/",
     "allowJs": true,
     "skipLibCheck": true,
     "strict": false,
@@ -23,7 +23,5 @@
     "outDir": "dist",
     "sourceMap": true,
   },
-  "include": [
-    "src/**/*"
-  ],
+  "exclude": ["node_modules", "**/node_modules/*"]
 }
