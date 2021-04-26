@@ -21,7 +21,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
       move_number,
     } : WagerRequestBody = req.body;
 
-    const bettor_id = req.user._id;
+    const better_id = req.user._id;
     const game_id = req.params.id;
 
     // check game exists and hasn't ended
@@ -47,7 +47,7 @@ const createWager: RequestHandler = async (req: RequestWithJWT, res) => {
       }, 3000); // timeout accounts for any lag in the API used to get live game updates
     });
     const wager = new Wager({
-      game_id, bettor_id, wdl, amount, data, odds, move_number,
+      game_id, better_id, wdl, amount, data, odds, move_number,
     });
 
     await Users.findByIdAndUpdate(req.user._id, { $inc: { account: -amount } });

@@ -1,18 +1,18 @@
 import { Users, Wager } from '../models';
 import { WagerDoc } from '../types/models';
 
-const getWagersByUserId = (wagers) => wagers.reduce((wagersById, currWager) => {
-  const userId = currWager.better_id;
+export const getWagersByUserId = (wagers: WagerDoc[]): Record<string, string[]> => wagers.reduce((wagersById, currWager) => {
+  const userId = String(currWager.better_id);
   const wagerId = currWager.id;
   let wagerIds = [wagerId];
-  if (userId in wagersById) wagerIds = [...wagerIds, ...wagersById[userId]];
+  if (userId in wagersById) wagerIds = [...wagersById[userId], ...wagerIds];
   return {
     ...wagersById,
     [userId]: wagerIds,
   };
 }, {});
 
-const getCriticalMoveWinningsByUserId = (wagers, correctMove) => {
+export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove: string): Record<string, number> => {
   let totalPool = 0;
   let winningPool = 0;
   wagers.forEach((wager) => {
@@ -23,7 +23,7 @@ const getCriticalMoveWinningsByUserId = (wagers, correctMove) => {
 
   return wagers.reduce((winningsById, currWager) => {
     let winnings = 0;
-    const userId = currWager.better_id;
+    const userId = String(currWager.better_id);
     if (currWager.data === correctMove) winnings = (currWager.amount / winningPool) * totalPool;
     if (userId in winningsById) winnings += winningsById[userId];
     return {
@@ -33,9 +33,9 @@ const getCriticalMoveWinningsByUserId = (wagers, correctMove) => {
   }, {});
 };
 
-const getWDLWinningsByUserId = (wagers, correctOutcome) => wagers.reduce((winningsById, currWager) => {
+export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: string): Record<string, number> => wagers.reduce((winningsById, currWager) => {
   const { odds } = currWager;
-  const userId = currWager.better_id;
+  const userId = String(currWager.better_id);
   const wonBet = currWager.data === correctOutcome;
   let winnings = 0;
   // using decimal notation for odds
@@ -47,7 +47,7 @@ const getWDLWinningsByUserId = (wagers, correctOutcome) => wagers.reduce((winnin
   };
 }, {});
 
-const resolveBets = (winningsById, wagersById) => {
+export const resolveBets = (winningsById: Record<string, number>, wagersById: Record<string, string[]>): Promise<(WagerDoc|null)[]> => {
   const wagerUpdates = (
     Object.keys(winningsById)
       .map((better_id) => {
