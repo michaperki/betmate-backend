@@ -3,12 +3,9 @@ import { WagerDoc } from '../types/models';
 
 export const getWagersByUserId = (wagers: WagerDoc[]): Record<string, string[]> => wagers.reduce((wagersById, currWager) => {
   const userId = String(currWager.better_id);
-  const wagerId = currWager.id;
-  let wagerIds = [wagerId];
-  if (userId in wagersById) wagerIds = [...wagersById[userId], ...wagerIds];
   return {
     ...wagersById,
-    [userId]: wagerIds,
+    [userId]: [...(wagersById[userId] || []), currWager.id],
   };
 }, {});
 
@@ -22,28 +19,27 @@ export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove:
   });
 
   return wagers.reduce((winningsById, currWager) => {
-    let winnings = 0;
     const userId = String(currWager.better_id);
-    if (currWager.data === correctMove) winnings = (currWager.amount / winningPool) * totalPool;
-    if (userId in winningsById) winnings += winningsById[userId];
+    const winnings = currWager.data === correctMove
+      ? (currWager.amount / winningPool) * totalPool
+      : 0;
+
     return {
       ...winningsById,
-      [userId]: winnings,
+      [userId]: (winningsById[userId] || 0) + winnings,
     };
   }, {});
 };
 
 export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: string): Record<string, number> => wagers.reduce((winningsById, currWager) => {
-  const { odds } = currWager;
   const userId = String(currWager.better_id);
-  const wonBet = currWager.data === correctOutcome;
-  let winnings = 0;
-  // using decimal notation for odds
-  if (wonBet) winnings = odds * currWager.amount;
-  if (userId in winningsById) winnings += winningsById[userId];
+  const winnings = currWager.data === correctOutcome
+    ? currWager.odds * currWager.amount
+    : 0;
+
   return {
     ...winningsById,
-    [userId]: winnings,
+    [userId]: (winningsById[userId] || 0) + winnings,
   };
 }, {});
 
