@@ -210,7 +210,7 @@ describe('Bet resolution logic', () => {
     const winningsByUserId = getCriticalMoveWinningsByUserId([moveWager0], 'd4');
     // $50 in pool, $0/$50 placed on the correct move
     expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 0, // player 1 loses all their money
+      [String(player1Id)]: 50, // player 1 gets refund
     });
   });
 
@@ -221,11 +221,12 @@ describe('Bet resolution logic', () => {
 
   it('getCriticalMoveWinningsByUserId method behaves correctly when no one wins', () => {
     const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'h4');
+    // everyone gets refund
     expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 0,
-      [String(player2Id)]: 0,
-      [String(player3Id)]: 0,
-      [String(player4Id)]: 0,
+      [String(player1Id)]: 125,
+      [String(player2Id)]: 25,
+      [String(player3Id)]: 75,
+      [String(player4Id)]: 200,
     });
   });
 });

@@ -18,6 +18,16 @@ export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove:
     totalPool += wager.amount;
   });
 
+  if (winningPool === 0) {
+    return wagers.reduce((refundsById, currWager) => {
+      const userId = String(currWager.better_id);
+      return {
+        ...refundsById,
+        [userId]: (refundsById[userId] || 0) + currWager.amount,
+      };
+    }, {});
+  }
+
   return wagers.reduce((winningsById, currWager) => {
     const userId = String(currWager.better_id);
     const winnings = currWager.data === correctMove
