@@ -1,6 +1,6 @@
 import * as bcrypt from 'bcrypt';
 import { Types } from 'mongoose';
-import UserModel from '../user_model';
+import { Users as UserModel } from 'models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

@@ -17,6 +17,7 @@ const UserSchema = new Schema({
   },
   toJSON: {
     virtuals: true,
+    transform: (doc, { password, __v, ...user }) => user,
   },
 });
 

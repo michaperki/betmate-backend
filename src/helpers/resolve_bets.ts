@@ -1,5 +1,5 @@
-import { Users, Wager } from '../models';
-import { WagerDoc } from '../types/models';
+import { Users, Wager } from 'models';
+import { WagerDoc } from 'types/models';
 
 export const getWagersByUserId = (wagers: WagerDoc[]): Record<string, string[]> => wagers.reduce((wagersById, currWager) => {
   const userId = String(currWager.better_id);

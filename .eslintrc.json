@@ -40,6 +40,10 @@
   "settings": {
     "import/resolver": {
       "node": {
+        "moduleDirectory": [
+          "node_modules",
+          "src/"
+        ],
         "extensions": [".js", ".ts"]
       } // this loads <rootdir>/tsconfig.json to eslint
     }

@@ -5,7 +5,7 @@ import dotenv from 'dotenv';
 
 import { RequestHandler } from 'express';
 import { UserDoc } from 'types/models';
-import User from '../models/user_model';
+import User from 'models/user_model';
 
 dotenv.config();
 
@@ -36,7 +36,6 @@ const requireAuth: RequestHandler = (req, res, next) => {
   passport.authenticate('jwt', { session: false }, (err, user: UserDoc, info) => {
   // Return any existing errors
     if (err) { return next(err); }
-
     // If no user found, return appropriate error message
     if (!user) { return res.status(401).json({ message: info.message || 'Error authenticating email and password' }); }
 

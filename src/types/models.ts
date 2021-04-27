@@ -1,5 +1,5 @@
 import { Document, Types } from 'mongoose';
-import { GameStatus } from '../helpers/constants';
+import { GameStatus } from 'helpers/constants';
 
 export interface User {
   email: string,

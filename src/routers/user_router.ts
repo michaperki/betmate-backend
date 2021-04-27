@@ -1,8 +1,8 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { requireAuth } from '../authentication';
-import { userController } from '../controllers';
+import { requireAuth } from 'authentication';
+import { userController } from 'controllers';
 
 const router = express();
 
