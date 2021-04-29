@@ -76,8 +76,8 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
 
-      socket.to(gameId).emit('new_move', chessGame.ascii());
-      // socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
+      // socket.to(gameId).emit('new_move', chessGame.ascii());
+      socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
 
       microservice
         .getWDL(chessGame.fen(), Math.floor((moveWhiteTime / gameTime) * 180), Math.floor((moveBlackTime / gameTime) * 180))
@@ -96,8 +96,8 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
 
       // resolve wagers on the move just played, if any
       resolveCriticalMoveBets(gameId, chessGame).then((wagerResults) => {
-        if (wagerResults) socket.to(gameId).emit('wager_result', wagerResults.map((w) => w.toJSON()));
-        else socket.to(gameId).emit('error', 'There was an error updating critical move wagers');
+        if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
+        else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
       });
     });
   } catch (error) {
@@ -115,8 +115,8 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   await chessController.updateChessGame(gameDoc._id, completeFields);
 
   resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
-    if (wagerResults) socket.to(gameId).emit('wager_result', wagerResults.map((w) => w.toJSON()));
-    else socket.to(gameId).emit('error', 'There was an error updating critical move wagers');
+    if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
+    else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
   });
 
   return true;
