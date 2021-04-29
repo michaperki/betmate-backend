@@ -5,15 +5,14 @@ import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { GameStatus } from 'helpers/constants';
 import { Chess } from 'chess.js';
-import WagerModel from 'models/wager_model';
-import { resolveWdlBets } from 'helpers/resolve_bets';
+import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
 import { microservice } from 'services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 
-const PREGAME_TIME = 90;
+const PREGAME_TIME = 9;
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -45,6 +44,7 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
   if (!gameDoc) return socket.emit('error', 'There was an issue creating a new game');
   const gameId = String(gameDoc._id);
+  console.log(gameId)
   socket.emit('new_game', gameDoc.toJSON());
 
   // Pregame phase
@@ -62,16 +62,13 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   try {
     game.moves.forEach(async (move, i) => {
       // calculate delay required to broadcast move
-      if (move.is_white) {
-        whiteTime = move.time;
-      } else {
-        blackTime = move.time;
-      }
+      if (move.is_white) whiteTime = move.time;
+      else blackTime = move.time;
+
       const waitTime = 2 * gameTime - blackTime - whiteTime + (i * interval);
 
       // save player times in context of loop iteration
       const [moveWhiteTime, moveBlackTime] = [whiteTime, blackTime];
-
       // add i * 5 to hedge against instant moves
       await delay(waitTime * 1000 + i * 5);
 
@@ -79,10 +76,9 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
 
-      // socket.to(gameId).emit('new_move', chessGame.ascii());
-      socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
+      socket.to(gameId).emit('new_move', chessGame.ascii());
+      // socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
 
-      // get wager probabilities
       microservice
         .getWDL(chessGame.fen(), Math.floor((moveWhiteTime / gameTime) * 180), Math.floor((moveBlackTime / gameTime) * 180))
         .then((res) => socket.to(gameId).emit('wagers', res ?? {}));
@@ -97,6 +93,12 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
 
       // don't check if update successful
       chessController.updateChessGame(gameDoc._id, gameUpdate);
+
+      // resolve wagers on the move just played, if any
+      resolveCriticalMoveBets(gameId, chessGame).then((wagerResults) => {
+        if (wagerResults) socket.to(gameId).emit('wager_result', wagerResults.map((w) => w.toJSON()));
+        else socket.to(gameId).emit('error', 'There was an error updating critical move wagers');
+      });
     });
   } catch (error) {
     socket.emit('error', { gameId, message: error.message });
@@ -110,19 +112,12 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
     game_status: game.outcome,
     complete: true,
   };
-
   await chessController.updateChessGame(gameDoc._id, completeFields);
 
-  const wagers = await WagerModel.find({ game_id: gameDoc._id, wdl: true, resolved: false });
-  if (!wagers) socket.to(gameDoc._id).emit('error', 'There was an error updating the win/draw/loss wagers');
-
-  resolveWdlBets(wagers, game.outcome)
-    .then(() => {
-      // console.log('all wdl bets have been resolved');
-    })
-    .catch(() => {
-      socket.to(gameDoc._id).emit('error', 'There was an error updating the win/draw/loss wagers');
-    });
+  resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
+    if (wagerResults) socket.to(gameId).emit('wager_result', wagerResults.map((w) => w.toJSON()));
+    else socket.to(gameId).emit('error', 'There was an error updating critical move wagers');
+  });
 
   return true;
 };
