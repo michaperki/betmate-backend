@@ -12,7 +12,7 @@ import { microservice } from 'services';
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 
-const PREGAME_TIME = 9;
+const PREGAME_TIME = 90;
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -44,7 +44,7 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
   if (!gameDoc) return socket.emit('error', 'There was an issue creating a new game');
   const gameId = String(gameDoc._id);
-  console.log(gameId)
+  console.log(gameId);
   socket.emit('new_game', gameDoc.toJSON());
 
   // Pregame phase
