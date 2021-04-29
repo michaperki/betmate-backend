@@ -68,7 +68,7 @@ export const resolveBets = async (winningsById: Record<string, number>, wagersBy
         })
     );
     const resolvedWagersById = await Promise.all(wagerUpdates);
-    return resolvedWagersById.flat(1);
+    return resolvedWagersById.flat();
   } catch (error) {
     return null;
   }
