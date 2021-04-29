@@ -46,17 +46,6 @@ chessWebsocket.on('connection', chessWS);
 run300Loop(chessWebsocket);
 run900Loop(chessWebsocket);
 
-// setInterval(() => {
-//   console.log('starting new game');
-//   chessWebsocket.to('asdf').emit('new_game', 'starting game');
-
-//   // Get random game from chess archive
-//   // Add new game to chess DB
-//   // while game is not done
-//   // . wait x seconds
-//   // . do all new_move logic
-// }, 3000);
-
 // default index route
 app.get('/', (req, res) => {
   // For testing
