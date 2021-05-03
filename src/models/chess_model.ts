@@ -37,6 +37,7 @@ const ChessSchema = new Schema({
   toJSON: {
     transform: (doc, { __v, ...chess }) => chess,
   },
+  timestamps: true,
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

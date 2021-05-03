@@ -28,6 +28,8 @@ export interface Wager {
   data: string,
   move_number: number,
   resolved: boolean,
+  createdAt: Date,
+  updatedAt: Date,
 }
 
 export interface WagerDoc extends Wager, Document {}
@@ -47,6 +49,8 @@ export interface Chess {
   wagers: Types.ObjectId[],
   time_white: number,
   time_black: number
+  createdAt: Date,
+  updatedAt: Date,
 }
 
 export interface ChessDoc extends Chess, Document {

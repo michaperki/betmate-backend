@@ -14,6 +14,7 @@ const WagerSchema = new Schema({
   toJSON: {
     transform: (doc, { __v, ...wager }) => wager,
   },
+  timestamps: true,
 });
 
 const WagerModel = mongoose.model<WagerDoc>('Wager', WagerSchema);
