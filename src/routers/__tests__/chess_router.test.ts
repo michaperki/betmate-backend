@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
-import { documentNotFoundError, GameStatus } from 'helpers/constants';
+import { documentNotFoundError } from 'helpers/constants';
+import { GameStatus } from 'types/models';
 import { chessRouter } from 'routers';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';

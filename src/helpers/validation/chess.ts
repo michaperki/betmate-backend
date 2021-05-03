@@ -1,7 +1,7 @@
 import { Chess } from 'chess.js';
 import { body, query } from 'express-validator';
-import { GameStatus } from 'helpers/constants';
 import { createBodyField, queryNotAllowed } from 'helpers/validation';
+import { GameStatus } from 'types/models';
 
 export const containsPlayers = [
   createBodyField('player_white.name', 'string'),

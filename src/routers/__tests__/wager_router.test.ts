@@ -4,7 +4,8 @@ import { stringify } from 'querystring';
 import { Chess, Wager } from 'models';
 import { wagerRouter } from 'routers';
 
-import { documentNotFoundError, GameStatus } from 'helpers/constants';
+import { documentNotFoundError } from 'helpers/constants';
+import { GameStatus } from 'types/models';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);

@@ -1,5 +1,4 @@
 import { Document, Types } from 'mongoose';
-import { GameStatus } from 'helpers/constants';
 
 export interface User {
   email: string,
@@ -15,6 +14,14 @@ export type CompareCallback = (err: Error, isMatch?: boolean) => void;
 export interface UserDoc extends User, Document {
   wager_hist: Types.Array<string>,
   comparePassword: (password: string, callback: CompareCallback) => void
+}
+
+export enum GameStatus {
+  NOT_STARTED = 'not_started',
+  DRAW = 'draw',
+  BLACK_WIN = 'black_win',
+  WHITE_WIN = 'white_win',
+  IN_PROGRESS = 'in_progress',
 }
 
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;

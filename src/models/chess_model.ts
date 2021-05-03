@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { Chess } from 'chess.js';
-import { ChessDoc } from 'types/models';
-import { CHESS_START, GameStatus } from 'helpers/constants';
+import { ChessDoc, GameStatus } from 'types/models';
+import { CHESS_START } from 'helpers/constants';
 
 const PlayerSchema = new Schema({
   name: { type: String, required: true },

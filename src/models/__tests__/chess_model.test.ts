@@ -1,7 +1,7 @@
-import { CHESS_START, GameStatus } from 'helpers/constants';
+import { CHESS_START } from 'helpers/constants';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
-import { ChessDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

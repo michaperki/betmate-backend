@@ -1,10 +1,9 @@
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { ChessDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
-import { GameStatus } from 'helpers/constants';
 import { Chess } from 'chess.js';
 import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
