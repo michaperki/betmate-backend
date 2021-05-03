@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { ChessDoc } from 'types/models';
@@ -28,13 +29,13 @@ const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: num
   return { game, gameTimeLength };
 };
 
-const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => async (socket: Namespace<DefaultEventsMap>): Promise<boolean> => {
+const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => async (socket: Namespace<DefaultEventsMap>): Promise<boolean> => {
   // get game data
-  const { game, gameTimeLength } = getRandomGameData(data, gameTime, interval);
+  const { game, gameTimeLength } = getRandomGameData(data, gameTime, increment);
 
   // start new game two minutes before this one finishes
   // This may seem that it causes recursion, but it does not https://stackoverflow.com/questions/13506852/infinite-timer-loop-with-javascript-no-setinterval/13506904#13506904
-  setTimeout(() => runLoop(gameTime, interval, data)(socket), (gameTimeLength - (PREGAME_TIME / 2)) * 1000);
+  setTimeout(() => runLoop(gameTime, increment, data)(socket), (gameTimeLength - (PREGAME_TIME / 2)) * 1000);
 
   const gameFields = {
     player_white: game.white,
@@ -44,7 +45,6 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
   if (!gameDoc) return socket.emit('error', 'There was an issue creating a new game');
   const gameId = String(gameDoc._id);
-  console.log(gameId);
   socket.emit('new_game', gameDoc.toJSON());
 
   // Pregame phase
@@ -57,30 +57,28 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
   // Play game
   let [whiteTime, blackTime] = [gameTime, gameTime];
   const chessGame = new Chess();
-  // console.log(chessGame.ascii());
 
   try {
-    game.moves.forEach(async (move, i) => {
+    for (const move of game.moves) {
       // calculate delay required to broadcast move
+      const prevTimer = move.is_white ? whiteTime : blackTime;
+      const waitTime = prevTimer - move.time + increment;
+
+      // save player's clock
       if (move.is_white) whiteTime = move.time;
       else blackTime = move.time;
 
-      const waitTime = 2 * gameTime - blackTime - whiteTime + (i * interval);
-
-      // save player times in context of loop iteration
-      const [moveWhiteTime, moveBlackTime] = [whiteTime, blackTime];
-      // add i * 5 to hedge against instant moves
-      await delay(waitTime * 1000 + i * 5);
+      // eslint-disable-next-line no-await-in-loop
+      await delay(waitTime * 1000);
 
       // check if impossible move was made, likely caused by bad delay timing
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
 
-      // socket.to(gameId).emit('new_move', chessGame.ascii());
       socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
 
       microservice
-        .getWDL(chessGame.fen(), Math.floor((moveWhiteTime / gameTime) * 180), Math.floor((moveBlackTime / gameTime) * 180))
+        .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => socket.to(gameId).emit('wagers', res ?? {}));
 
       // update gameDoc
@@ -99,25 +97,22 @@ const runLoop = (gameTime: number, interval: number, data: ReplaySchema[]) => as
         if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
         else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
       });
+    }
+
+    const completeFields: UpdateQuery<ChessDoc> = {
+      game_status: game.outcome,
+      complete: true,
+    };
+    await chessController.updateChessGame(gameDoc._id, completeFields);
+
+    resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
+      if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
+      else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
     });
   } catch (error) {
+    console.log('Error:', error.message);
     socket.emit('error', { gameId, message: error.message });
   }
-
-  // still need to wait for game to finish as forloop runs synchronously
-  // add +3 to be safe
-  await delay((gameTimeLength + 3) * 1000);
-
-  const completeFields: UpdateQuery<ChessDoc> = {
-    game_status: game.outcome,
-    complete: true,
-  };
-  await chessController.updateChessGame(gameDoc._id, completeFields);
-
-  resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
-    if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
-    else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
-  });
 
   return true;
 };
