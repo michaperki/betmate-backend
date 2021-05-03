@@ -18,6 +18,12 @@ export interface UserDoc extends User, Document {
 }
 
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
+export enum WagerStatus {
+  PENDING = 'pending',
+  WON = 'won',
+  LOST = 'lost',
+  CANCELLED = 'cancelled',
+}
 
 export interface Wager {
   game_id: Types.ObjectId,
@@ -28,8 +34,9 @@ export interface Wager {
   data: string,
   move_number: number,
   resolved: boolean,
-  createdAt: Date,
-  updatedAt: Date,
+  status: WagerStatus,
+  created_at: Date,
+  updated_at: Date,
 }
 
 export interface WagerDoc extends Wager, Document {}
@@ -42,15 +49,15 @@ export interface Player {
 export interface Chess {
   state: string,
   complete: boolean,
-  game_status: string,
+  game_status: GameStatus,
   player_white: Player,
   player_black: Player,
   move_hist: string[],
   wagers: Types.ObjectId[],
   time_white: number,
   time_black: number
-  createdAt: Date,
-  updatedAt: Date,
+  created_at: Date,
+  updated_at: Date,
 }
 
 export interface ChessDoc extends Chess, Document {

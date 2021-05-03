@@ -1,6 +1,7 @@
 import { Chess, Users, Wager } from 'models';
 import { GameStatus } from 'helpers/constants';
 
+import { WagerStatus } from 'types/models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const chessData = {
@@ -30,6 +31,7 @@ const badWagerDataWDL = {
   odds: 0.5, // should be greater than 1
   data: GameStatus.WHITE_WIN, // takes any data type
   move: -10, // should be positive number
+  status: 'waiting', // not of type WagerStatus
 };
 
 describe('Wager model validation', () => {
@@ -72,6 +74,9 @@ describe('Wager model validation', () => {
       expect(savedWager.odds).toBe(wagerDataWDL.odds);
       expect(savedWager.data).toBe(wagerDataWDL.data);
       expect(savedWager.resolved).toBe(false);
+      expect(savedWager.status).toBe(WagerStatus.PENDING);
+      expect(savedWager.created_at).toBeInstanceOf(Date);
+      expect(savedWager.updated_at).toBeInstanceOf(Date);
 
       done();
     } catch (error) {
@@ -121,7 +126,7 @@ describe('Wager model validation', () => {
       });
 
       // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0.01)., odds: Path `odds` (0.5) is less than minimum allowed value (1).');
+      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0.01)., odds: Path `odds` (0.5) is less than minimum allowed value (1)., status: Value "waiting" not in enum "WagerStatus"');
       done();
     } catch (error) {
       done(error);

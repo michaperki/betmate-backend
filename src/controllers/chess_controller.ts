@@ -21,7 +21,7 @@ const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[] | 
 
 const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc | null> => (
   Chess
-    .findByIdAndUpdate(gameId, fields, { new: true })
+    .findByIdAndUpdate(gameId, fields, { new: true, runValidators: true })
     .then((doc) => doc)
     .catch(() => null)
 );

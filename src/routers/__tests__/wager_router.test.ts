@@ -49,6 +49,8 @@ const validateBody = (body: any) => {
   expect(body.data).toBeDefined();
   expect(body.move_number).toBeDefined();
   expect(body.resolved).toBeDefined();
+  expect(body.created_at).toBeDefined();
+  expect(body.updated_at).toBeDefined();
   expect(body._id).toBeDefined();
   expect(body.__v).toBeUndefined();
 };
@@ -244,6 +246,9 @@ describe('Working wager router', () => {
             odds: 2.4, // not allowed
             amount: 25, // not allowed
             move_number: 10, // not allowed
+            status: 'waiting', // not of type enum
+            created_at: Date.now(), // not allowed
+            updated_at: Date.now(), // not allowed
             __v: 0, // not allowed
           });
 
@@ -252,16 +257,19 @@ describe('Working wager router', () => {
             .set('Authorization', 'Bearer dummy_token');
 
           expect(res.status).toBe(400);
-          expect(res.body.errors.length).toBe(9);
+          expect(res.body.errors.length).toBe(12);
           expect(res.body.errors[0].msg).toBe("'resolved' must be type boolean");
           expect(res.body.errors[1].msg).toBe("'wdl' must be type boolean");
           expect(res.body.errors[2].msg).toBe("'game_id' is not valid");
-          expect(res.body.errors[3].msg).toBe("Cannot search by '_id'");
-          expect(res.body.errors[4].msg).toBe("Cannot search by 'better_id'");
-          expect(res.body.errors[5].msg).toBe("Cannot search by 'odds'");
-          expect(res.body.errors[6].msg).toBe("Cannot search by 'amount'");
-          expect(res.body.errors[7].msg).toBe("Cannot search by 'move_number'");
-          expect(res.body.errors[8].msg).toBe("Cannot search by '__v'");
+          expect(res.body.errors[3].msg).toBe("Value 'waiting' is not a wager status");
+          expect(res.body.errors[4].msg).toBe("Cannot search by '_id'");
+          expect(res.body.errors[5].msg).toBe("Cannot search by 'better_id'");
+          expect(res.body.errors[6].msg).toBe("Cannot search by 'odds'");
+          expect(res.body.errors[7].msg).toBe("Cannot search by 'amount'");
+          expect(res.body.errors[8].msg).toBe("Cannot search by 'move_number'");
+          expect(res.body.errors[9].msg).toBe("Cannot search by '__v'");
+          expect(res.body.errors[10].msg).toBe("Cannot search by 'created_at'");
+          expect(res.body.errors[11].msg).toBe("Cannot search by 'updated_at'");
 
           done();
         } catch (error) {

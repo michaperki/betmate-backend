@@ -4,6 +4,7 @@ import express from 'express';
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
 import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation/wagers';
+import { cannotQueryTimestamps } from 'helpers/validation';
 
 const router = express();
 
@@ -18,7 +19,11 @@ router.use(requireAuth);
 
 // get all wagers
 router.route('/')
-  .get(...wagerFilterParams, wagerController.getUserWagersRequest);
+  .get(
+    ...wagerFilterParams,
+    ...cannotQueryTimestamps,
+    wagerController.getUserWagersRequest,
+  );
 
 // create or get a wager for a user
 router.route('/:id')

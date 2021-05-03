@@ -3,6 +3,11 @@ import { Chess } from 'chess.js';
 import { ChessDoc } from 'types/models';
 import { CHESS_START, GameStatus } from 'helpers/constants';
 
+const PlayerSchema = new Schema({
+  name: { type: String, required: true },
+  elo: { type: Number, required: true },
+}, { _id: false });
+
 const ChessSchema = new Schema({
   state: {
     type: String,
@@ -22,12 +27,14 @@ const ChessSchema = new Schema({
     },
   },
   player_white: {
-    name: { type: String, required: true },
-    elo: { type: Number, required: true },
+    type: PlayerSchema,
+    required: true,
+    immutable: true,
   },
   player_black: {
-    name: { type: String, required: true },
-    elo: { type: Number, required: true },
+    type: PlayerSchema,
+    required: true,
+    immutable: true,
   },
   move_hist: { type: [String], default: [] },
   wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
@@ -37,7 +44,7 @@ const ChessSchema = new Schema({
   toJSON: {
     transform: (doc, { __v, ...chess }) => chess,
   },
-  timestamps: true,
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

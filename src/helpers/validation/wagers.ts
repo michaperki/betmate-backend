@@ -1,5 +1,7 @@
 import { isValidObjectId } from 'mongoose';
 import { createBodyField, createQueryField, queryNotAllowed } from 'helpers/validation';
+import { WagerStatus } from 'types/models';
+import { query } from 'express-validator';
 
 export const createWagerFieldsValid = [
   createBodyField('wdl', 'boolean'),
@@ -25,6 +27,11 @@ export const wagerFilterParams = [
   createQueryField('game_id', 'string', false)
     .custom((id: string) => isValidObjectId(id))
     .withMessage("'game_id' is not valid"),
+
+  query('status')
+    .optional()
+    .custom((value: string) => Object.values(WagerStatus).includes(value as WagerStatus))
+    .withMessage((value: string) => `Value '${value}' is not a wager status`),
 
   queryNotAllowed('_id'),
   queryNotAllowed('better_id'),
