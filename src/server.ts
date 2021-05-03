@@ -8,6 +8,7 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
+import { run300Loop, run900Loop } from 'services/game_loop';
 import {
   authRouter, userRouter, chessRouter, wagerRouter,
 } from './routers';
@@ -42,16 +43,8 @@ app.use('/wager', wagerRouter);
 const chessWebsocket = io.of('/chessws');
 chessWebsocket.on('connection', chessWS);
 
-// setInterval(() => {
-//   console.log('starting new game');
-//   chessWebsocket.to('asdf').emit('new_game', 'starting game');
-
-//   // Get random game from chess archive
-//   // Add new game to chess DB
-//   // while game is not done
-//   // . wait x seconds
-//   // . do all new_move logic
-// }, 3000);
+run300Loop(chessWebsocket);
+run900Loop(chessWebsocket);
 
 // default index route
 app.get('/', (req, res) => {

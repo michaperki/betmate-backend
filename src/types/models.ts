@@ -32,12 +32,17 @@ export interface Wager {
 
 export interface WagerDoc extends Wager, Document {}
 
+export interface Player {
+  name: string,
+  elo: number
+}
+
 export interface Chess {
   state: string,
   complete: boolean,
   game_status: string,
-  player_white: string,
-  player_black: string,
+  player_white: Player,
+  player_black: Player,
   move_hist: string[],
   wagers: Types.ObjectId[],
   time_white: number,
@@ -46,5 +51,5 @@ export interface Chess {
 
 export interface ChessDoc extends Chess, Document {
   move_hist: Types.Array<string>,
-  wagers: Types.Array<Types.ObjectId>,
+  wagers: Types.Array<Types.ObjectId>
 }

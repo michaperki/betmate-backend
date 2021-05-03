@@ -5,8 +5,8 @@ import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 // minimal fields
 const chessDataA = {
-  player_white: 'playerA',
-  player_black: 'playerB',
+  player_white: { name: 'playerA', elo: 200 },
+  player_black: { name: 'playerB', elo: 400 },
 };
 
 // all fields
@@ -14,8 +14,8 @@ const chessDataB = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   complete: false,
   game_status: GameStatus.IN_PROGRESS,
-  player_white: 'playerC',
-  player_black: 'playerD',
+  player_white: { name: 'playerA', elo: 200 },
+  player_black: { name: 'playerB', elo: 400 },
   move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
   wagers: [],
   time_white: 293,
@@ -29,8 +29,8 @@ const badChessData = {
   wagers: ['fakeWagerID'], // Not a real id for wager
   time_white: -10, // Should be positive
   time_black: -10, // Should be positive
-  player_white: 'playerA',
-  player_black: 'playerB',
+  player_white: { name: 'playerA', elo: 200 },
+  player_black: { name: 'playerB', elo: 400 },
 };
 
 describe('Chess model validation', () => {
@@ -61,8 +61,8 @@ describe('Chess model validation', () => {
       expect(savedGame.state).toBe(CHESS_START);
       expect(savedGame.complete).toBe(false);
       expect(savedGame.game_status).toBe(GameStatus.NOT_STARTED);
-      expect(savedGame.player_white).toBe(chessDataA.player_white);
-      expect(savedGame.player_black).toBe(chessDataA.player_black);
+      expect({ ...savedGame.player_white }).toStrictEqual(chessDataA.player_white);
+      expect({ ...savedGame.player_black }).toStrictEqual(chessDataA.player_black);
       expect([...savedGame.move_hist]).toStrictEqual([]);
       expect([...savedGame.wagers]).toStrictEqual([]);
       expect(savedGame.time_white).toBe(600);
@@ -85,8 +85,8 @@ describe('Chess model validation', () => {
       expect(savedGame.state).toBe(chessDataB.state);
       expect(savedGame.complete).toBe(chessDataB.complete);
       expect(savedGame.game_status).toBe(chessDataB.game_status);
-      expect(savedGame.player_white).toBe(chessDataB.player_white);
-      expect(savedGame.player_black).toBe(chessDataB.player_black);
+      expect({ ...savedGame.player_white }).toStrictEqual(chessDataB.player_white);
+      expect({ ...savedGame.player_black }).toStrictEqual(chessDataB.player_black);
       expect([...savedGame.move_hist]).toStrictEqual(chessDataB.move_hist);
       expect([...savedGame.wagers]).toStrictEqual(chessDataB.wagers);
       expect(savedGame.time_white).toBe(chessDataB.time_white);
@@ -111,7 +111,8 @@ describe('Chess model validation', () => {
         });
       });
 
-      expect(saveError.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
+      // eslint-disable-next-line max-len
+      expect(saveError.message).toBe('Chess validation failed: player_black.elo: Path `player_black.elo` is required., player_black.name: Path `player_black.name` is required., player_white.elo: Path `player_white.elo` is required., player_white.name: Path `player_white.name` is required.');
       done();
     } catch (error) {
       done(error);

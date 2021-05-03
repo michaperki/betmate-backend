@@ -21,8 +21,14 @@ const ChessSchema = new Schema({
       message: (props) => `Value "${props.value}" not in enum "GameStatus"`,
     },
   },
-  player_white: { type: String, required: true }, // Should reference to id of player in future
-  player_black: { type: String, required: true }, // Should reference to id of player in future
+  player_white: {
+    name: { type: String, required: true },
+    elo: { type: Number, required: true },
+  },
+  player_black: {
+    name: { type: String, required: true },
+    elo: { type: Number, required: true },
+  },
   move_hist: { type: [String], default: [] },
   wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
   time_white: { type: Number, min: 0, default: 600 },

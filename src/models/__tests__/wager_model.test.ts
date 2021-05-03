@@ -4,8 +4,8 @@ import { GameStatus } from 'helpers/constants';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const chessData = {
-  player_white: 'playerA',
-  player_black: 'playerB',
+  player_white: { name: 'playerA', elo: 200 },
+  player_black: { name: 'playerB', elo: 400 },
 };
 
 const userData = {
