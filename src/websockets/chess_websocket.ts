@@ -2,11 +2,10 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
 import { chessController } from 'controllers';
 import { microservice } from 'services';
-import { GameStatus } from 'helpers/constants';
 import { getChessStatus } from 'helpers/chess_logic';
 import { MoveData } from 'types/game_loop';
 

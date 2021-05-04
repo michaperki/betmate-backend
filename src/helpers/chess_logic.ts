@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ChessInstance } from 'chess.js';
-import { GameStatus } from './constants';
+import { GameStatus } from 'types/models';
 
 export const getChessStatus = (chessGame: ChessInstance): GameStatus => (
   !chessGame.game_over() ? GameStatus.IN_PROGRESS

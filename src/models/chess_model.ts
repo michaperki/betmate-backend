@@ -1,12 +1,11 @@
-import mongoose, { Schema } from 'mongoose';
-import { Chess } from 'chess.js';
-import { ChessDoc, GameStatus } from 'types/models';
+/* eslint-disable func-names */
+import mongoose, { Document, Schema } from 'mongoose';
+import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
 import { CHESS_START } from 'helpers/constants';
-
-const PlayerSchema = new Schema({
-  name: { type: String, required: true },
-  elo: { type: Number, required: true },
-}, { _id: false });
+import { microservice } from 'services';
+import { WDLData } from 'types/microservice';
+import { Chess } from 'chess.js';
+import { OddsSchema, PlayerSchema } from './helper_schemas';
 
 const ChessSchema = new Schema({
   state: {
@@ -40,11 +39,30 @@ const ChessSchema = new Schema({
   wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
   time_white: { type: Number, min: 0, default: 600 },
   time_black: { type: Number, min: 0, default: 600 },
+  odds: {
+    type: OddsSchema,
+    default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
+  },
 }, {
   toJSON: {
     transform: (doc, { __v, ...chess }) => chess,
   },
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+});
+
+ChessSchema.pre('save', async function (next) {
+  try {
+    if (this.isNew) {
+      // eslint-disable-next-line @typescript-eslint/no-this-alias
+      const doc: Partial<ChessType> & Document = this;
+      const data = await microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+
+      doc.odds = data ?? doc.odds;
+    }
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

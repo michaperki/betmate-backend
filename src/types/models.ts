@@ -1,4 +1,5 @@
 import { Document, Types } from 'mongoose';
+import { WDLData } from './microservice';
 
 export interface User {
   email: string,
@@ -62,7 +63,8 @@ export interface Chess {
   move_hist: string[],
   wagers: Types.ObjectId[],
   time_white: number,
-  time_black: number
+  time_black: number,
+  odds: WDLData,
   created_at: Date,
   updated_at: Date,
 }
