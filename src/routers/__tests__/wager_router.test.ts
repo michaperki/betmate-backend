@@ -62,8 +62,14 @@ jest.mock('authentication/requireAuth');
 describe('Working wager router', () => {
   beforeAll(async (done) => {
     try {
-      connectDB(done);
+      await connectDB(done);
+    } catch (error) {
+      done(error);
+    }
+  });
 
+  beforeAll(async (done) => {
+    try {
       const chessGame = await new Chess(chessData).save();
       chessGameID = chessGame._id;
 
@@ -74,6 +80,7 @@ describe('Working wager router', () => {
       }).save();
 
       validID = wager._id;
+      done();
     } catch (error) {
       done(error);
     }

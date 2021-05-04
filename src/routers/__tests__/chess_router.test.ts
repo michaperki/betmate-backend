@@ -41,6 +41,9 @@ const validateBody = (body: any) => {
   expect(body.player_black).toBeDefined();
   expect(body.created_at).toBeDefined();
   expect(body.updated_at).toBeDefined();
+  expect(body.odds.white_win).toBeDefined();
+  expect(body.odds.draw).toBeDefined();
+  expect(body.odds.black_win).toBeDefined();
   expect(body._id).toBeDefined();
   expect(body.__v).toBeUndefined();
 };

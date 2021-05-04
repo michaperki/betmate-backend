@@ -12,8 +12,10 @@ const mockUser = {
 async function connectDB(done) {
   const mongooseOpts = {
     useNewUrlParser: true,
-    useCreateIndex: true,
     useUnifiedTopology: true,
+    useCreateIndex: true,
+    useFindAndModify: false,
+    loggerLevel: 'error',
   };
 
   mongoose.connect(process.env.MONGO_URL, mongooseOpts);

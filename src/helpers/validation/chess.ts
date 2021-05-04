@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import { body, query } from 'express-validator';
-import { createBodyField, queryNotAllowed } from 'helpers/validation';
+import { bodyNotAllowed, createBodyField, queryNotAllowed } from 'helpers/validation';
 import { GameStatus } from 'types/models';
 
 export const containsPlayers = [
@@ -14,10 +14,8 @@ export const optionalChessFieldsValid = [
   createBodyField('complete', 'boolean', false),
   createBodyField('move_hist', 'array', false),
 
-  body('wagers')
-    .not()
-    .exists()
-    .withMessage("'wagers' field not allowed"),
+  bodyNotAllowed('wagers'),
+  bodyNotAllowed('odds'),
 
   body('move_hist.*')
     .if(body('move_hist').isArray().exists())
@@ -59,6 +57,7 @@ export const chessFilterParams = [
   queryNotAllowed('wagers'),
   queryNotAllowed('time_white'),
   queryNotAllowed('time_black'),
+  queryNotAllowed('odds'),
   queryNotAllowed('_id'),
   queryNotAllowed('__v'),
 ];

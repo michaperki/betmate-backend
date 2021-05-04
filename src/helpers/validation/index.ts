@@ -44,6 +44,10 @@ export const queryNotAllowed = (field: string): ValidationChain => (
   query(field).not().exists().withMessage(`Cannot search by '${field}'`)
 );
 
+export const bodyNotAllowed = (field: string): ValidationChain => (
+  body(field).not().exists().withMessage(`Cannot include field '${field}'`)
+);
+
 export const cannotQueryTimestamps = [
   queryNotAllowed('created_at'),
   queryNotAllowed('updated_at'),

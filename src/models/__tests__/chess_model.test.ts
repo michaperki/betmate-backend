@@ -50,6 +50,9 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect([...game.wagers]).toStrictEqual([]);
   expect(game.time_white).toBe(data.time_white ?? 600);
   expect(game.time_black).toBe(data.time_black ?? 600);
+  expect(game.odds.white_win).toBeDefined();
+  expect(game.odds.draw).toBeDefined();
+  expect(game.odds.black_win).toBeDefined();
   expect(game.created_at).toBeInstanceOf(Date);
   expect(game.updated_at).toBeInstanceOf(Date);
 };

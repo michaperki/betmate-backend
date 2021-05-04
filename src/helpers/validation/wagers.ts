@@ -1,5 +1,10 @@
 import { isValidObjectId } from 'mongoose';
-import { createBodyField, createQueryField, queryNotAllowed } from 'helpers/validation';
+import {
+  createBodyField,
+  createQueryField,
+  queryNotAllowed,
+  bodyNotAllowed,
+} from 'helpers/validation';
 import { WagerStatus } from 'types/models';
 import { query } from 'express-validator';
 
@@ -18,6 +23,9 @@ export const createWagerFieldsValid = [
   createBodyField('move_number', 'number')
     .isFloat({ min: 0 })
     .withMessage("'move_number' must be at least 0"),
+
+  bodyNotAllowed('resolved'),
+  bodyNotAllowed('status'),
 ];
 
 export const wagerFilterParams = [
