@@ -55,7 +55,7 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     await new Promise<void>((resolve, reject) => {
       setTimeout(async () => {
         // TODO: get currentMove from 3rd party API rather than chess model
-        const currentMove = game.move_hist.length;
+        const currentMove = await Chess.findById(game_id).then((doc) => doc?.move_hist.length);
         if (!currentMove) {
           reject(new Error('error getting live update of the game'));
         } else if (move_number !== currentMove + 1) {
