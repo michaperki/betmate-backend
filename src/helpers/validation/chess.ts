@@ -1,6 +1,8 @@
 import { Chess } from 'chess.js';
 import { body, query } from 'express-validator';
-import { bodyNotAllowed, createBodyField, queryNotAllowed } from 'helpers/validation';
+import {
+  bodyNotAllowed, createBodyField, createQueryField, queryNotAllowed,
+} from 'helpers/validation';
 import { GameStatus } from 'types/models';
 
 export const containsPlayers = [
@@ -45,10 +47,7 @@ export const chessFilterParams = [
     .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
     .withMessage((value: string) => `Value '${value}' is not a game status`),
 
-  query('complete')
-    .optional()
-    .isBoolean()
-    .withMessage("'complete' must be type boolean"),
+  createQueryField('complete', 'boolean', false),
 
   queryNotAllowed('player_white'),
   queryNotAllowed('player_black'),

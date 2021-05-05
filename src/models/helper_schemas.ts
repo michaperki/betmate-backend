@@ -1,11 +1,13 @@
 import { Schema } from 'mongoose';
+import { WDLData } from 'types/microservice';
+import { Player } from 'types/models';
 
-export const PlayerSchema = new Schema({
+export const PlayerSchema = new Schema<Player>({
   name: { type: String, required: true },
   elo: { type: Number, required: true },
 }, { _id: false });
 
-export const OddsSchema = new Schema({
+export const OddsSchema = new Schema<WDLData>({
   white_win: {
     type: Number,
     required: true,
