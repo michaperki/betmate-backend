@@ -1,6 +1,7 @@
 import { Chess, Users, Wager } from 'models';
+import { Types, UpdateQuery } from 'mongoose';
 
-import { GameStatus, WagerStatus } from 'types/models';
+import { GameStatus, WagerDoc, WagerStatus } from 'types/models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const chessData = {
@@ -33,10 +34,40 @@ const badWagerDataWDL = {
   status: 'waiting', // not of type WagerStatus
 };
 
+let userID = '';
+let gameID = '';
+let wagerID = '';
+
+const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
+  expect(wager._id).toBeDefined();
+  expect(wager.game_id).toStrictEqual(data.game_id);
+  expect(wager.better_id).toStrictEqual(data.better_id);
+  expect(wager.wdl).toBe(data.wdl);
+  expect(wager.amount).toBe(data.amount);
+  expect(wager.odds).toBe(data.odds);
+  expect(wager.data).toBe(data.data);
+  expect(wager.resolved).toBe(data.resolved ?? false);
+  expect(wager.status).toBe(data.status ?? WagerStatus.PENDING);
+  expect(wager.created_at).toBeInstanceOf(Date);
+  expect(wager.updated_at).toBeInstanceOf(Date);
+};
+
 describe('Wager model validation', () => {
   beforeAll(async (done) => {
     try {
       connectDB(done);
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  beforeAll(async (done) => {
+    try {
+      const user = await new Users(userData).save();
+      userID = user._id;
+      const game = await new Chess(chessData).save();
+      gameID = game._id;
+      done();
     } catch (error) {
       done(error);
     }
@@ -50,109 +81,189 @@ describe('Wager model validation', () => {
     }
   });
 
-  it('creates and saves a WDL wager successfully', async (done) => {
-    try {
-      // Set up environment
-      const user = await new Users(userData).save();
-      const game = await new Chess(chessData).save();
+  describe('create one', () => {
+    it('creates and saves a WDL wager successfully', async (done) => {
+      try {
+        const wagerData: Partial<WagerDoc> = {
+          ...wagerDataWDL,
+          game_id: Types.ObjectId(gameID),
+          better_id: Types.ObjectId(userID),
+        };
+        // Create a new wager model
+        const validWager = new Wager(wagerData);
+        const savedWager = await validWager.save();
 
-      // Create a new wager model
-      const validWager = new Wager({
-        ...wagerDataWDL,
-        game_id: game._id,
-        better_id: user._id,
-      });
-      const savedWager = await validWager.save();
+        // Checks chess has been saved to testing DB
+        // expect(savedWager._id).toBeDefined();
+        // expect(savedWager.game_id).toBe(game._id);
+        // expect(savedWager.better_id).toBe(user._id);
+        // expect(savedWager.wdl).toBe(wagerDataWDL.wdl);
+        // expect(savedWager.amount).toBe(wagerDataWDL.amount);
+        // expect(savedWager.odds).toBe(wagerDataWDL.odds);
+        // expect(savedWager.data).toBe(wagerDataWDL.data);
+        // expect(savedWager.resolved).toBe(false);
+        // expect(savedWager.status).toBe(WagerStatus.PENDING);
+        // expect(savedWager.created_at).toBeInstanceOf(Date);
+        // expect(savedWager.updated_at).toBeInstanceOf(Date);
+        validateWager(savedWager, wagerData);
 
-      // Checks chess has been saved to testing DB
-      expect(savedWager._id).toBeDefined();
-      expect(savedWager.game_id).toBe(game._id);
-      expect(savedWager.better_id).toBe(user._id);
-      expect(savedWager.wdl).toBe(wagerDataWDL.wdl);
-      expect(savedWager.amount).toBe(wagerDataWDL.amount);
-      expect(savedWager.odds).toBe(wagerDataWDL.odds);
-      expect(savedWager.data).toBe(wagerDataWDL.data);
-      expect(savedWager.resolved).toBe(false);
-      expect(savedWager.status).toBe(WagerStatus.PENDING);
-      expect(savedWager.created_at).toBeInstanceOf(Date);
-      expect(savedWager.updated_at).toBeInstanceOf(Date);
+        wagerID = savedWager._id;
 
-      done();
-    } catch (error) {
-      done(error);
-    }
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('blocks wager without required fields', async (done) => {
+      try {
+        // Creates a new wager object
+        const invalidWager = new Wager({}); // Needs game_id, better_id, wdl, amount, odds, data
+
+        const savedWager = await new Promise<Error>((resolve, reject) => {
+          invalidWager.save().then((wager) => {
+            reject(wager);
+          }).catch((err: Error) => {
+            resolve(err);
+          });
+        });
+
+        // eslint-disable-next-line max-len
+        expect(savedWager.message).toBe('Wager validation failed: move_number: Path `move_number` is required., data: Path `data` is required., odds: Path `odds` is required., amount: Path `amount` is required., wdl: Path `wdl` is required., better_id: Path `better_id` is required., game_id: Path `game_id` is required.');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('blocks WDL wager with invalid domain values', async (done) => {
+      try {
+        // Set up environment
+        const user = await new Users({ ...userData, email: 'test2@test.com' }).save();
+        const game = await new Chess(chessData).save();
+
+        // Create a new wager model
+        const invalidWager = new Wager({
+          ...badWagerDataWDL,
+          game_id: game._id,
+          better_id: user._id,
+        });
+        const saveError = await new Promise<Error>((resolve, reject) => {
+          invalidWager.save().then(() => {
+            reject(Error('Invalid wager was successfully saved'));
+          }).catch((err: Error) => {
+            resolve(err);
+          });
+        });
+
+        // eslint-disable-next-line max-len
+        expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0.01)., odds: Path `odds` (0.5) is less than minimum allowed value (1)., status: Value "waiting" not in enum "WagerStatus"');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('blocks chess game with nonexistant game_id or better_id', async (done) => {
+      try {
+        // Creates a new wager object
+        const invalidWager = new Wager({
+          ...wagerDataWDL,
+          game_id: 'fakeGameID', // does not exist in db
+          better_id: 'fakeUserID', // does not exist in db
+        });
+        const saveError = await new Promise<Error>((resolve, reject) => {
+          invalidWager.save().then(() => {
+            reject(Error('Invalid wager was successfully saved'));
+          }).catch((err: Error) => {
+            resolve(err);
+          });
+        });
+
+        // eslint-disable-next-line max-len
+        expect(saveError.message).toBe('Wager validation failed: game_id: Cast to ObjectId failed for value "fakeGameID" at path "game_id", better_id: Cast to ObjectId failed for value "fakeUserID" at path "better_id"');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
   });
 
-  it('blocks wager without required fields', async (done) => {
-    try {
-      // Creates a new wager object
-      const invalidWager = new Wager({}); // Needs game_id, better_id, wdl, amount, odds, data
+  describe('update one', () => {
+    it('prevents update of immutable fields', async (done) => {
+      try {
+        // all fields are immutable
+        const badNewWagerFields = {
+          game_id: Types.ObjectId(),
+          better_id: Types.ObjectId(),
+          wdl: false,
+          amount: 5.5,
+          odds: 2.3,
+          data: 'Nxf3',
+          move_number: 11,
+        };
 
-      const savedWager = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then((wager) => {
-          reject(wager);
-        }).catch((err: Error) => {
-          resolve(err);
+        const updatedWager = await Wager.findByIdAndUpdate(wagerID, badNewWagerFields, { new: true, runValidators: true });
+
+        const wagerData: Partial<WagerDoc> = {
+          ...wagerDataWDL,
+          game_id: Types.ObjectId(gameID),
+          better_id: Types.ObjectId(userID),
+        };
+        if (updatedWager) {
+          validateWager(updatedWager, wagerData);
+        } else {
+          done('Error updating wager');
+        }
+
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('prevents update of fields with invalid values', async (done) => {
+      try {
+        const badFields = {
+          status: 'done', // not a valid WagerStatus
+        };
+        const updateError = await new Promise<Error>((res, rej) => {
+          Wager.findByIdAndUpdate(wagerID, badFields as UpdateQuery<WagerDoc>, { runValidators: true })
+            .then(() => rej(Error('Update succeeded')))
+            .catch((err: Error) => res(err));
         });
-      });
 
-      // eslint-disable-next-line max-len
-      expect(savedWager.message).toBe('Wager validation failed: move_number: Path `move_number` is required., data: Path `data` is required., odds: Path `odds` is required., amount: Path `amount` is required., wdl: Path `wdl` is required., better_id: Path `better_id` is required., game_id: Path `game_id` is required.');
-      done();
-    } catch (error) {
-      done(error);
-    }
-  });
+        expect(updateError.message).toBe('Validation failed: status: Value "done" not in enum "WagerStatus"');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
 
-  it('blocks WDL wager with invalid domain values', async (done) => {
-    try {
-      // Set up environment
-      const user = await new Users({ ...userData, email: 'test2@test.com' }).save();
-      const game = await new Chess(chessData).save();
+    it('succeeds', async (done) => {
+      try {
+        const newFields = {
+          resolved: true,
+          status: WagerStatus.WON,
+        };
 
-      // Create a new wager model
-      const invalidWager = new Wager({
-        ...badWagerDataWDL,
-        game_id: game._id,
-        better_id: user._id,
-      });
-      const saveError = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then(() => {
-          reject(Error('Invalid wager was successfully saved'));
-        }).catch((err: Error) => {
-          resolve(err);
-        });
-      });
+        const updatedFields = {
+          ...wagerDataWDL,
+          ...newFields,
+          game_id: Types.ObjectId(gameID),
+          better_id: Types.ObjectId(userID),
+        };
 
-      // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Wager validation failed: wdl: Cast to Boolean failed for value "wdl" at path "wdl", move_number: Path `move_number` is required., amount: Path `amount` (-10) is less than minimum allowed value (0.01)., odds: Path `odds` (0.5) is less than minimum allowed value (1)., status: Value "waiting" not in enum "WagerStatus"');
-      done();
-    } catch (error) {
-      done(error);
-    }
-  });
-
-  it('blocks chess game with nonexistant game_id or better_id', async (done) => {
-    try {
-      // Creates a new wager object
-      const invalidWager = new Wager({
-        ...wagerDataWDL,
-        game_id: 'fakeGameID', // does not exist in db
-        better_id: 'fakeUserID', // does not exist in db
-      });
-      const saveError = await new Promise<Error>((resolve, reject) => {
-        invalidWager.save().then(() => {
-          reject(Error('Invalid wager was successfully saved'));
-        }).catch((err: Error) => {
-          resolve(err);
-        });
-      });
-
-      // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Wager validation failed: game_id: Cast to ObjectId failed for value "fakeGameID" at path "game_id", better_id: Cast to ObjectId failed for value "fakeUserID" at path "better_id"');
-      done();
-    } catch (error) {
-      done(error);
-    }
+        const updatedWager = await Wager.findByIdAndUpdate(wagerID, newFields, { new: true, runValidators: true });
+        if (updatedWager) {
+          validateWager(updatedWager, updatedFields);
+          done();
+        } else {
+          done('Update unsucessful');
+        }
+      } catch (error) {
+        done(error);
+      }
+    });
   });
 });
