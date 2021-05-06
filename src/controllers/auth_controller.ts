@@ -47,9 +47,16 @@ const signInUser: RequestHandler = (req: RequestWithJWT, res) => {
   return res.json({ token: userController.tokenForUser(json), user: json });
 };
 
+const jwtSignIn: RequestHandler = (req: RequestWithJWT, res) => {
+  const json = req.user.toJSON();
+  delete json.password;
+  return res.json({ user: json });
+};
+
 const authController = {
   signUpUser,
   signInUser,
+  jwtSignIn,
 };
 
 export default authController;

@@ -37,7 +37,7 @@ const requireAuth: RequestHandler = (req, res, next) => {
   // Return any existing errors
     if (err) { return next(err); }
     // If no user found, return appropriate error message
-    if (!user) { return res.status(401).json({ message: info.message || 'Error authenticating email and password' }); }
+    if (!user) { return res.status(401).json({ message: 'Error authenticating email and password' }); }
 
     req.user = user;
 
