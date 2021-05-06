@@ -46,10 +46,8 @@ const ChessSchema = new Schema({
   },
 }, {
   toJSON: {
-    virtuals: true,
     transform: (doc, { __v, ...chess }) => chess,
   },
-  toObject: { virtuals: false },
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
