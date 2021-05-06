@@ -1,3 +1,4 @@
+import { isWagerResolved } from 'helpers/validation/wagers';
 import { Chess, Users, Wager } from 'models';
 import { Types, UpdateQuery } from 'mongoose';
 
@@ -46,7 +47,7 @@ const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager.amount).toBe(data.amount);
   expect(wager.odds).toBe(data.odds);
   expect(wager.data).toBe(data.data);
-  expect(wager.resolved).toBe(data.resolved ?? false);
+  expect(wager.resolved).toBe(isWagerResolved(data.status ?? WagerStatus.PENDING));
   expect(wager.status).toBe(data.status ?? WagerStatus.PENDING);
   expect(wager.created_at).toBeInstanceOf(Date);
   expect(wager.updated_at).toBeInstanceOf(Date);

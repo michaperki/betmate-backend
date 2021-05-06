@@ -1,4 +1,4 @@
-import { isWagerStatus } from 'helpers/validation/wagers';
+import { isWagerResolved, isWagerStatus } from 'helpers/validation/wagers';
 import mongoose, { Schema } from 'mongoose';
 import { WagerDoc, WagerStatus } from 'types/models';
 
@@ -35,7 +35,7 @@ const WagerSchema = new Schema({
     required: true,
     immutable: true,
   },
-  resolved: { type: Boolean, default: false },
+  // resolved: { type: Boolean, default: false },
   status: {
     type: String,
     default: WagerStatus.PENDING,
@@ -46,9 +46,16 @@ const WagerSchema = new Schema({
   },
 }, {
   toJSON: {
+    virtuals: true,
     transform: (doc, { __v, ...wager }) => wager,
   },
+  toObject: { virtuals: true },
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+});
+
+// eslint-disable-next-line func-names
+WagerSchema.virtual('resolved').get(function () {
+  return isWagerResolved(this.status);
 });
 
 const WagerModel = mongoose.model<WagerDoc>('Wager', WagerSchema);

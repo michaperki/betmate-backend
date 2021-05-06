@@ -2,7 +2,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
 import { CHESS_START } from 'helpers/constants';
-import { isGameStatus } from 'helpers/validation/chess';
+import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
 import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
@@ -17,7 +17,7 @@ const ChessSchema = new Schema({
       message: (props) => Chess().validate_fen(props.value).error,
     },
   },
-  complete: { type: Boolean, default: false },
+  // complete: { type: Boolean, default: false },
   game_status: {
     type: String,
     default: GameStatus.NOT_STARTED,
@@ -46,8 +46,10 @@ const ChessSchema = new Schema({
   },
 }, {
   toJSON: {
+    virtuals: true,
     transform: (doc, { __v, ...chess }) => chess,
   },
+  toObject: { virtuals: false },
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
@@ -64,6 +66,10 @@ ChessSchema.pre('save', async function (next) {
   } catch (error) {
     next(error);
   }
+});
+
+ChessSchema.virtual('complete').get(function () {
+  return isGameComplete(this.game_status);
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

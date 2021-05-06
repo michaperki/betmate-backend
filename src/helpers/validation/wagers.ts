@@ -8,7 +8,8 @@ import {
 import { WagerStatus } from 'types/models';
 import { query } from 'express-validator';
 
-export const isWagerStatus = (value: string): boolean => Object.values(WagerStatus).includes(value as WagerStatus);
+export const isWagerStatus = (v: string): boolean => Object.values(WagerStatus).includes(v as WagerStatus);
+export const isWagerResolved = (v: string): boolean => [WagerStatus.WON, WagerStatus.LOST].includes(v as WagerStatus);
 
 export const createWagerFieldsValid = [
   createBodyField('wdl', 'boolean'),

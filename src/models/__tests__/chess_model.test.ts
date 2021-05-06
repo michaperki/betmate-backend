@@ -1,4 +1,5 @@
 import { CHESS_START } from 'helpers/constants';
+import { isGameComplete } from 'helpers/validation/chess';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
 import { ChessDoc, GameStatus } from 'types/models';
@@ -14,7 +15,6 @@ const chessDataA: Partial<ChessDoc> = {
 // all fields
 const chessDataB: Partial<ChessDoc> = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
-  complete: false,
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
@@ -40,7 +40,7 @@ let gameIdB = '';
 const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game._id).toBeDefined();
   expect(game.state).toBe(data.state ?? CHESS_START);
-  expect(game.complete).toBe(data.complete ?? false);
+  expect(game.complete).toBe(isGameComplete(data.game_status ?? GameStatus.NOT_STARTED));
   expect(game.game_status).toBe(data.game_status ?? GameStatus.NOT_STARTED);
   expect(game.player_white.name).toBe(data.player_white?.name);
   expect(game.player_white.elo).toBe(data.player_white?.elo);

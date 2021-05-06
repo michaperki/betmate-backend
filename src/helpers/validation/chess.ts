@@ -6,6 +6,7 @@ import {
 import { GameStatus } from 'types/models';
 
 export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
+export const isGameComplete = (v: string): boolean => [GameStatus.WHITE_WIN, GameStatus.BLACK_WIN, GameStatus.DRAW].includes(v as GameStatus);
 
 export const containsPlayers = [
   createBodyField('player_white.name', 'string'),
