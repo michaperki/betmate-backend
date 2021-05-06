@@ -1,3 +1,4 @@
+import { isWagerStatus } from 'helpers/validation/wagers';
 import mongoose, { Schema } from 'mongoose';
 import { WagerDoc, WagerStatus } from 'types/models';
 
@@ -39,7 +40,7 @@ const WagerSchema = new Schema({
     type: String,
     default: WagerStatus.PENDING,
     validate: {
-      validator: (status: string) => Object.values(WagerStatus).includes(status as WagerStatus),
+      validator: isWagerStatus,
       message: (props) => `Value "${props.value}" not in enum "WagerStatus"`,
     },
   },

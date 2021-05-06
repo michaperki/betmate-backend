@@ -5,6 +5,8 @@ import {
 } from 'helpers/validation';
 import { GameStatus } from 'types/models';
 
+export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
+
 export const containsPlayers = [
   createBodyField('player_white.name', 'string'),
   createBodyField('player_white.elo', 'number'),
@@ -33,7 +35,7 @@ export const optionalChessFieldsValid = [
     .withMessage("'time_black' must be at least 0"),
 
   createBodyField('game_status', 'string', false)
-    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
+    .custom(isGameStatus)
     .withMessage((value: string) => `Value '${value}' is not a game status`),
 
   createBodyField('state', 'string', false)
@@ -44,8 +46,8 @@ export const optionalChessFieldsValid = [
 export const chessFilterParams = [
   query('game_status')
     .optional()
-    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
-    .withMessage((value: string) => `Value '${value}' is not a game status`),
+    .custom((value: string) => value.split(',').every(isGameStatus))
+    .withMessage((value: string) => `The values '${value.split(',').filter((v) => !isGameStatus(v))}' are not game statuses`),
 
   createQueryField('complete', 'boolean', false),
 

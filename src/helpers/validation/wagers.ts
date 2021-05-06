@@ -8,6 +8,8 @@ import {
 import { WagerStatus } from 'types/models';
 import { query } from 'express-validator';
 
+export const isWagerStatus = (value: string): boolean => Object.values(WagerStatus).includes(value as WagerStatus);
+
 export const createWagerFieldsValid = [
   createBodyField('wdl', 'boolean'),
   createBodyField('data', 'string'),
@@ -38,8 +40,8 @@ export const wagerFilterParams = [
 
   query('status')
     .optional()
-    .custom((value: string) => Object.values(WagerStatus).includes(value as WagerStatus))
-    .withMessage((value: string) => `Value '${value}' is not a wager status`),
+    .custom((value: string) => value.split(',').every(isWagerStatus))
+    .withMessage((value: string) => `Value '${value.split(',').filter((v) => !isWagerStatus(v))}' is not a wager status`),
 
   queryNotAllowed('_id'),
   queryNotAllowed('better_id'),

@@ -2,6 +2,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
 import { CHESS_START } from 'helpers/constants';
+import { isGameStatus } from 'helpers/validation/chess';
 import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
@@ -21,7 +22,7 @@ const ChessSchema = new Schema({
     type: String,
     default: GameStatus.NOT_STARTED,
     validate: {
-      validator: (status: string) => Object.values(GameStatus).includes(status as GameStatus),
+      validator: isGameStatus,
       message: (props) => `Value "${props.value}" not in enum "GameStatus"`,
     },
   },
