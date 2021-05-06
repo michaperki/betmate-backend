@@ -1,23 +1,24 @@
-import { CHESS_START, GameStatus } from 'helpers/constants';
+import { CHESS_START } from 'helpers/constants';
+import { isGameComplete } from 'helpers/validation/chess';
 import { Chess } from 'models';
+import { Types } from 'mongoose';
+import { ChessDoc, GameStatus } from 'types/models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 // minimal fields
-const chessDataA = {
+const chessDataA: Partial<ChessDoc> = {
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
 };
 
 // all fields
-const chessDataB = {
+const chessDataB: Partial<ChessDoc> = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
-  complete: false,
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
-  move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
-  wagers: [],
+  move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'] as Types.Array<string>,
   time_white: 293,
   time_black: 291,
 };
@@ -31,6 +32,29 @@ const badChessData = {
   time_black: -10, // Should be positive
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
+};
+
+let gameIdA = '';
+let gameIdB = '';
+
+const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
+  expect(game._id).toBeDefined();
+  expect(game.state).toBe(data.state ?? CHESS_START);
+  expect(game.complete).toBe(isGameComplete(data.game_status ?? GameStatus.NOT_STARTED));
+  expect(game.game_status).toBe(data.game_status ?? GameStatus.NOT_STARTED);
+  expect(game.player_white.name).toBe(data.player_white?.name);
+  expect(game.player_white.elo).toBe(data.player_white?.elo);
+  expect(game.player_black.name).toBe(data.player_black?.name);
+  expect(game.player_black.elo).toBe(data.player_black?.elo);
+  expect([...game.move_hist]).toStrictEqual(data.move_hist ?? []);
+  expect([...game.wagers]).toStrictEqual([]);
+  expect(game.time_white).toBe(data.time_white ?? 600);
+  expect(game.time_black).toBe(data.time_black ?? 600);
+  expect(game.odds.white_win).toBeDefined();
+  expect(game.odds.draw).toBeDefined();
+  expect(game.odds.black_win).toBeDefined();
+  expect(game.created_at).toBeInstanceOf(Date);
+  expect(game.updated_at).toBeInstanceOf(Date);
 };
 
 describe('Chess model validation', () => {
@@ -50,93 +74,158 @@ describe('Chess model validation', () => {
     }
   });
 
-  it('creates and saves a chess game successfully with minimal requirements', async (done) => {
-    try {
-      // Creates a new chess object
-      const validGame = new Chess(chessDataA);
-      const savedGame = await validGame.save();
+  describe('create one', () => {
+    it('creates and saves a chess game successfully with minimal requirements', async (done) => {
+      try {
+        // Creates a new chess object
+        const validGame = new Chess(chessDataA);
+        const savedGame = await validGame.save();
 
-      // Checks chess has been saved to testing DB
-      expect(savedGame._id).toBeDefined();
-      expect(savedGame.state).toBe(CHESS_START);
-      expect(savedGame.complete).toBe(false);
-      expect(savedGame.game_status).toBe(GameStatus.NOT_STARTED);
-      expect({ ...savedGame.player_white }).toStrictEqual(chessDataA.player_white);
-      expect({ ...savedGame.player_black }).toStrictEqual(chessDataA.player_black);
-      expect([...savedGame.move_hist]).toStrictEqual([]);
-      expect([...savedGame.wagers]).toStrictEqual([]);
-      expect(savedGame.time_white).toBe(600);
-      expect(savedGame.time_black).toBe(600);
+        // Checks chess has been saved to testing DB
+        validateGame(savedGame, chessDataA);
 
-      done();
-    } catch (error) {
-      done(error);
-    }
-  });
+        gameIdA = savedGame._id;
 
-  it('creates and saves a chess game successfully with all fields', async (done) => {
-    try {
-      // Creates a new chess object
-      const validGame = new Chess(chessDataB);
-      const savedGame = await validGame.save();
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
 
-      // Checks chess has been saved to testing DB
-      expect(savedGame._id).toBeDefined();
-      expect(savedGame.state).toBe(chessDataB.state);
-      expect(savedGame.complete).toBe(chessDataB.complete);
-      expect(savedGame.game_status).toBe(chessDataB.game_status);
-      expect({ ...savedGame.player_white }).toStrictEqual(chessDataB.player_white);
-      expect({ ...savedGame.player_black }).toStrictEqual(chessDataB.player_black);
-      expect([...savedGame.move_hist]).toStrictEqual(chessDataB.move_hist);
-      expect([...savedGame.wagers]).toStrictEqual(chessDataB.wagers);
-      expect(savedGame.time_white).toBe(chessDataB.time_white);
-      expect(savedGame.time_black).toBe(chessDataB.time_black);
+    it('creates and saves a chess game successfully with all fields', async (done) => {
+      try {
+        // Creates a new chess object
+        const validGame = new Chess(chessDataB);
+        const savedGame = await validGame.save();
 
-      done();
-    } catch (error) {
-      done(error);
-    }
-  });
+        // Checks chess has been saved to testing DB
+        validateGame(savedGame, chessDataB);
 
-  it('blocks chess game without required fields', async (done) => {
-    try {
-      // Creates a new chess game object
-      const invalidGame = new Chess({}); // Needs player_white, player_black
+        gameIdB = savedGame._id;
 
-      const saveError = await new Promise<Error>((resolve, reject) => {
-        invalidGame.save().then(() => {
-          reject(Error('Invalid chess game was successfully saved'));
-        }).catch((err: Error) => {
-          resolve(err);
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('blocks chess game without required fields', async (done) => {
+      try {
+        // Creates a new chess game object
+        const invalidGame = new Chess({}); // Needs player_white, player_black
+
+        const saveError = await new Promise<Error>((resolve, reject) => {
+          invalidGame.save().then(() => {
+            reject(Error('Invalid chess game was successfully saved'));
+          }).catch((err: Error) => {
+            resolve(err);
+          });
         });
-      });
 
-      // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Chess validation failed: player_black.elo: Path `player_black.elo` is required., player_black.name: Path `player_black.name` is required., player_white.elo: Path `player_white.elo` is required., player_white.name: Path `player_white.name` is required.');
-      done();
-    } catch (error) {
-      done(error);
-    }
+        expect(saveError.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('blocks chess game with invalid domain values', async (done) => {
+      try {
+        // Creates a new chess game object
+        const invalidGame = new Chess(badChessData);
+
+        const saveError = await new Promise<Error>((resolve, reject) => {
+          invalidGame.save().then(() => {
+            reject(Error('Invalid chess game was successfully saved'));
+          }).catch((err: Error) => {
+            resolve(err);
+          });
+        });
+
+        // eslint-disable-next-line max-len
+        expect(saveError.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
   });
 
-  it('blocks chess game with invalid domain values', async (done) => {
-    try {
-      // Creates a new chess game object
-      const invalidGame = new Chess(badChessData);
+  describe('update one', () => {
+    it('does not allow update of timestamps', async (done) => {
+      try {
+        const createdAt = new Date('2019-03-02');
+        const updatedAt = new Date('2019-04-22');
+        const updatedGameA = await Chess.findByIdAndUpdate(gameIdA, { created_at: createdAt, updated_at: updatedAt }, { new: true, runValidators: true });
 
-      const saveError = await new Promise<Error>((resolve, reject) => {
-        invalidGame.save().then(() => {
-          reject(Error('Invalid chess game was successfully saved'));
-        }).catch((err: Error) => {
-          resolve(err);
+        if (updatedGameA) {
+          validateGame(updatedGameA, chessDataA);
+          expect(updatedGameA.created_at).not.toBe(createdAt);
+          expect(updatedGameA.updated_at).not.toBe(updatedAt);
+
+          done();
+        } else {
+          done('error updating game');
+        }
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('does not allow update of player fields', async (done) => {
+      try {
+        const newWhitePlayer = { name: 'playerX', elo: 3000 };
+        const newBlackPlayer = { name: 'playerY', elo: 2500 };
+        const updatedGameB = await Chess.findByIdAndUpdate(gameIdB, { player_white: newWhitePlayer, player_black: newBlackPlayer }, { new: true, runValidators: true });
+
+        if (updatedGameB) {
+          validateGame(updatedGameB, chessDataB);
+        }
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
+
+    it('does not allow update with invalid field types', async (done) => {
+      try {
+        const {
+          // eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
+          player_black, player_white, wagers, ...badDataFields
+        } = badChessData;
+
+        const updateError = await new Promise<Error>((res, rej) => {
+          Chess
+            .findByIdAndUpdate(gameIdA, badDataFields as Partial<ChessDoc>, { new: true, runValidators: true })
+            .then(() => rej(Error('Update succeeded')))
+            .catch((err: Error) => res(err));
         });
-      });
+        // eslint-disable-next-line max-len
+        expect(updateError.message).toBe('Validation failed: time_black: Path `time_black` (-10) is less than minimum allowed value (0)., time_white: Path `time_white` (-10) is less than minimum allowed value (0)., game_status: Value "begun" not in enum "GameStatus", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows.');
+        done();
+      } catch (error) {
+        done(error);
+      }
+    });
 
-      // eslint-disable-next-line max-len
-      expect(saveError.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
-      done();
-    } catch (error) {
-      done(error);
-    }
+    it('succeeds', async (done) => {
+      try {
+        const {
+          // eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
+          player_black, player_white, wagers, ...updateFields
+        } = chessDataB;
+
+        const updatedGame = await Chess.findByIdAndUpdate(gameIdA, updateFields, { new: true, runValidators: true });
+
+        if (updatedGame) {
+          validateGame(updatedGame, { ...chessDataA, ...updateFields });
+          done();
+        } else {
+          done('there was an issue updating the game');
+        }
+      } catch (error) {
+        done(error);
+      }
+    });
   });
 });

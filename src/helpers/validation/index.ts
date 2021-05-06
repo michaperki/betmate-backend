@@ -1,13 +1,12 @@
+import { RequestHandler } from 'express';
 import {
   body, query, ValidationChain, validationResult,
 } from 'express-validator';
 
-import { ValidationWrapper } from 'types/express';
-
-export const requestWithValidation: ValidationWrapper = (requestHandler) => (req, res, next) => {
+export const validateRequest: RequestHandler = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) res.status(400).json({ errors: errors.array() });
-  else requestHandler(req, res, next);
+  else next();
 };
 
 type Field = 'string' | 'boolean' | 'number' | 'array';
@@ -43,3 +42,12 @@ export const createQueryField = (field: string, type: Field, isRequired = true):
 export const queryNotAllowed = (field: string): ValidationChain => (
   query(field).not().exists().withMessage(`Cannot search by '${field}'`)
 );
+
+export const bodyNotAllowed = (field: string): ValidationChain => (
+  body(field).not().exists().withMessage(`Cannot include field '${field}'`)
+);
+
+export const cannotQueryTimestamps = [
+  queryNotAllowed('created_at'),
+  queryNotAllowed('updated_at'),
+];

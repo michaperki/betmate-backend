@@ -1,5 +1,5 @@
 import { Document, Types } from 'mongoose';
-import { GameStatus } from 'helpers/constants';
+import { WDLData } from './microservice';
 
 export interface User {
   email: string,
@@ -17,7 +17,21 @@ export interface UserDoc extends User, Document {
   comparePassword: (password: string, callback: CompareCallback) => void
 }
 
+export enum GameStatus {
+  NOT_STARTED = 'not_started',
+  DRAW = 'draw',
+  BLACK_WIN = 'black_win',
+  WHITE_WIN = 'white_win',
+  IN_PROGRESS = 'in_progress',
+}
+
 export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
+export enum WagerStatus {
+  PENDING = 'pending',
+  WON = 'won',
+  LOST = 'lost',
+  CANCELLED = 'cancelled',
+}
 
 export interface Wager {
   game_id: Types.ObjectId,
@@ -28,6 +42,9 @@ export interface Wager {
   data: string,
   move_number: number,
   resolved: boolean,
+  status: WagerStatus,
+  created_at: Date,
+  updated_at: Date,
 }
 
 export interface WagerDoc extends Wager, Document {}
@@ -40,13 +57,16 @@ export interface Player {
 export interface Chess {
   state: string,
   complete: boolean,
-  game_status: string,
+  game_status: GameStatus,
   player_white: Player,
   player_black: Player,
   move_hist: string[],
   wagers: Types.ObjectId[],
   time_white: number,
-  time_black: number
+  time_black: number,
+  odds: WDLData,
+  created_at: Date,
+  updated_at: Date,
 }
 
 export interface ChessDoc extends Chess, Document {

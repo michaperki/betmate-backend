@@ -2,11 +2,10 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
 import { chessController } from 'controllers';
 import { microservice } from 'services';
-import { GameStatus } from 'helpers/constants';
 import { getChessStatus } from 'helpers/chess_logic';
 import { MoveData } from 'types/game_loop';
 
@@ -39,9 +38,11 @@ const websocket = (socket: Socket): void => {
     const timeWhite = move.data.is_white ? move.data.time : chessDoc.time_white;
     const timeBlack = !move.data.is_white ? move.data.time : chessDoc.time_black;
 
-    microservice
+    const wdlOdds = await microservice
       .getWDL(chessGame.fen(), timeWhite, timeBlack)
-      .then((res) => socket.to(move.gameId).emit('wagers', { gameId: move.gameId, data: res ?? {} }));
+      .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+
+    socket.to(move.gameId).emit('wagers', { gameId: move.gameId, data: wdlOdds });
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveBets(move.gameId, chessGame).then((wagerResults) => {
@@ -60,6 +61,7 @@ const websocket = (socket: Socket): void => {
       complete,
       time_white: timeWhite,
       time_black: timeBlack,
+      odds: wdlOdds,
     };
 
     const result = await chessController.updateChessGame(move.gameId, fields);

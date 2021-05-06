@@ -1,10 +1,10 @@
+/* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { ChessDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
-import { GameStatus } from 'helpers/constants';
 import { Chess } from 'chess.js';
 import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
@@ -68,7 +68,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       if (move.is_white) whiteTime = move.time;
       else blackTime = move.time;
 
-      // eslint-disable-next-line no-await-in-loop
       await delay(waitTime * 1000);
 
       // check if impossible move was made, likely caused by bad delay timing
@@ -77,9 +76,11 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
 
-      microservice
+      const wdlOdds = await microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
-        .then((res) => socket.to(gameId).emit('wagers', res ?? {}));
+        .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+
+      socket.to(gameId).emit('wagers', wdlOdds);
 
       // update gameDoc
       const gameUpdate: UpdateQuery<ChessDoc> = {
@@ -87,6 +88,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         move_hist: chessGame.history() as Types.Array<string>,
         time_white: whiteTime,
         time_black: blackTime,
+        odds: wdlOdds,
       };
 
       // don't check if update successful

@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
-import { documentNotFoundError, GameStatus } from 'helpers/constants';
+import { documentNotFoundError } from 'helpers/constants';
+import { GameStatus } from 'types/models';
 import { chessRouter } from 'routers';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
@@ -38,6 +39,11 @@ const validateBody = (body: any) => {
   expect(body.time_black).toBeDefined();
   expect(body.player_white).toBeDefined();
   expect(body.player_black).toBeDefined();
+  expect(body.created_at).toBeDefined();
+  expect(body.updated_at).toBeDefined();
+  expect(body.odds.white_win).toBeDefined();
+  expect(body.odds.draw).toBeDefined();
+  expect(body.odds.black_win).toBeDefined();
   expect(body._id).toBeDefined();
   expect(body.__v).toBeUndefined();
 };
@@ -93,6 +99,7 @@ describe('Working chess router', () => {
                 game_status: 'winning',
                 time_white: -10,
                 time_black: -20,
+                __v: 1, // not allowed
               });
 
             expect(res.status).toBe(400);
@@ -230,14 +237,16 @@ describe('Working chess router', () => {
             time_white: 10, // not allowed
             time_black: 10, // not allowed
             _id: 'gameID', // not allowed
+            created_at: Date.now(), // not allowed
+            updated_at: Date.now(), // not allowed
             __v: 0, // not allowed
           });
 
           const res = await request.get(`?${query}`);
 
           expect(res.status).toBe(400);
-          expect(res.body.errors.length).toBe(11);
-          expect(res.body.errors[0].msg).toBe("Value 'started' is not a game status");
+          expect(res.body.errors.length).toBe(13);
+          expect(res.body.errors[0].msg).toBe("The values 'started' are not game statuses");
           expect(res.body.errors[1].msg).toBe("'complete' must be type boolean");
           expect(res.body.errors[2].msg).toBe("Cannot search by 'player_white'");
           expect(res.body.errors[3].msg).toBe("Cannot search by 'player_black'");
@@ -248,6 +257,8 @@ describe('Working chess router', () => {
           expect(res.body.errors[8].msg).toBe("Cannot search by 'time_black'");
           expect(res.body.errors[9].msg).toBe("Cannot search by '_id'");
           expect(res.body.errors[10].msg).toBe("Cannot search by '__v'");
+          expect(res.body.errors[11].msg).toBe("Cannot search by 'created_at'");
+          expect(res.body.errors[12].msg).toBe("Cannot search by 'updated_at'");
 
           done();
         } catch (error) {

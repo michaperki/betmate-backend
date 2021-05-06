@@ -3,7 +3,6 @@ import { RequestHandler } from 'express';
 import { documentNotFoundError } from 'helpers/constants';
 import { Chess } from 'models';
 import { ChessDoc } from 'types/models';
-import { requestWithValidation } from 'helpers/validation';
 
 const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
   Chess
@@ -21,7 +20,7 @@ const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[] | 
 
 const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc | null> => (
   Chess
-    .findByIdAndUpdate(gameId, fields, { new: true })
+    .findByIdAndUpdate(gameId, fields, { new: true, runValidators: true })
     .then((doc) => doc)
     .catch(() => null)
 );
@@ -61,10 +60,10 @@ const chessController = {
   createChessGame,
   getChessGame,
   updateChessGame,
-  createChessGameRequest: requestWithValidation(createChessGameRequest),
-  getChessGameRequest: requestWithValidation(getChessGameRequest),
-  getManyChessGamesRequest: requestWithValidation(getManyChessGamesRequest),
-  updateChessGameRequest: requestWithValidation(updateChessGameRequest),
+  createChessGameRequest,
+  getChessGameRequest,
+  getManyChessGamesRequest,
+  updateChessGameRequest,
 };
 
 export default chessController;

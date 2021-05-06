@@ -3,6 +3,7 @@ import express from 'express';
 
 import { chessFilterParams, containsPlayers, optionalChessFieldsValid } from 'helpers/validation/chess';
 import { chessController } from 'controllers';
+import { cannotQueryTimestamps, validateRequest } from 'helpers/validation';
 
 const router = express();
 
@@ -15,17 +16,23 @@ if (process.env.NODE_ENV === 'test') {
 
 router
   .route('/')
-  .get(...chessFilterParams, chessController.getManyChessGamesRequest)
+  .get(
+    ...chessFilterParams,
+    ...cannotQueryTimestamps,
+    validateRequest,
+    chessController.getManyChessGamesRequest,
+  )
   .post(
     // requireAuth,
     ...containsPlayers,
     ...optionalChessFieldsValid,
+    validateRequest,
     chessController.createChessGameRequest,
   );
 
 // FOR TESTING ONLY
 router.route('/:id')
   .get(chessController.getChessGameRequest)
-  .put(...optionalChessFieldsValid, chessController.updateChessGameRequest);
+  .put(...optionalChessFieldsValid, validateRequest, chessController.updateChessGameRequest);
 
 export default router;

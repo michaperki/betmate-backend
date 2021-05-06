@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
-import { GameStatus } from '../constants';
+import { Wager } from 'models';
+import { GameStatus } from 'types/models';
 import { getCriticalMoveWinningsByUserId, getWagersByUserId, getWDLWinningsByUserId } from '../resolve_bets';
-import { Wager } from '../../models';
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();

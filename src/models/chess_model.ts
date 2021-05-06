@@ -1,7 +1,12 @@
-import mongoose, { Schema } from 'mongoose';
+/* eslint-disable func-names */
+import mongoose, { Document, Schema } from 'mongoose';
+import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
+import { CHESS_START } from 'helpers/constants';
+import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
+import { microservice } from 'services';
+import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
-import { ChessDoc } from 'types/models';
-import { CHESS_START, GameStatus } from 'helpers/constants';
+import { OddsSchema, PlayerSchema } from './helper_schemas';
 
 const ChessSchema = new Schema({
   state: {
@@ -17,26 +22,49 @@ const ChessSchema = new Schema({
     type: String,
     default: GameStatus.NOT_STARTED,
     validate: {
-      validator: (status: string) => Object.values(GameStatus).includes(status as GameStatus),
+      validator: isGameStatus,
       message: (props) => `Value "${props.value}" not in enum "GameStatus"`,
     },
   },
   player_white: {
-    name: { type: String, required: true },
-    elo: { type: Number, required: true },
+    type: PlayerSchema,
+    required: true,
+    immutable: true,
   },
   player_black: {
-    name: { type: String, required: true },
-    elo: { type: Number, required: true },
+    type: PlayerSchema,
+    required: true,
+    immutable: true,
   },
   move_hist: { type: [String], default: [] },
   wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
   time_white: { type: Number, min: 0, default: 600 },
   time_black: { type: Number, min: 0, default: 600 },
+  odds: {
+    type: OddsSchema,
+    default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
+  },
 }, {
   toJSON: {
     transform: (doc, { __v, ...chess }) => chess,
   },
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
+});
+
+ChessSchema.pre('save', async function (next) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const doc: Partial<ChessType> & Document = this;
+    if (this.isNew) {
+      const data = await microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+      doc.odds = data ?? doc.odds;
+    }
+    doc.complete = isGameComplete(doc.game_status ?? GameStatus.NOT_STARTED);
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

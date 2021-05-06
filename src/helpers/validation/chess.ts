@@ -1,7 +1,12 @@
 import { Chess } from 'chess.js';
 import { body, query } from 'express-validator';
-import { GameStatus } from 'helpers/constants';
-import { createBodyField, queryNotAllowed } from 'helpers/validation';
+import {
+  bodyNotAllowed, createBodyField, createQueryField, queryNotAllowed,
+} from 'helpers/validation';
+import { GameStatus } from 'types/models';
+
+export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
+export const isGameComplete = (v: string): boolean => [GameStatus.WHITE_WIN, GameStatus.BLACK_WIN, GameStatus.DRAW].includes(v as GameStatus);
 
 export const containsPlayers = [
   createBodyField('player_white.name', 'string'),
@@ -14,10 +19,8 @@ export const optionalChessFieldsValid = [
   createBodyField('complete', 'boolean', false),
   createBodyField('move_hist', 'array', false),
 
-  body('wagers')
-    .not()
-    .exists()
-    .withMessage("'wagers' field not allowed"),
+  bodyNotAllowed('wagers'),
+  bodyNotAllowed('odds'),
 
   body('move_hist.*')
     .if(body('move_hist').isArray().exists())
@@ -33,7 +36,7 @@ export const optionalChessFieldsValid = [
     .withMessage("'time_black' must be at least 0"),
 
   createBodyField('game_status', 'string', false)
-    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
+    .custom(isGameStatus)
     .withMessage((value: string) => `Value '${value}' is not a game status`),
 
   createBodyField('state', 'string', false)
@@ -42,15 +45,14 @@ export const optionalChessFieldsValid = [
 ];
 
 export const chessFilterParams = [
+
   query('game_status')
     .optional()
-    .custom((value: string) => Object.values(GameStatus).includes(value as GameStatus))
-    .withMessage((value: string) => `Value '${value}' is not a game status`),
+    .customSanitizer((v) => (Array.isArray(v) ? v : Array(v)).map(String))
+    .custom((v: string[]) => v.every(isGameStatus))
+    .withMessage((v: string[]) => `The values '${v.filter((w) => !isGameStatus(w))}' are not game statuses`),
 
-  query('complete')
-    .optional()
-    .isBoolean()
-    .withMessage("'complete' must be type boolean"),
+  createQueryField('complete', 'boolean', false),
 
   queryNotAllowed('player_white'),
   queryNotAllowed('player_black'),
@@ -59,6 +61,7 @@ export const chessFilterParams = [
   queryNotAllowed('wagers'),
   queryNotAllowed('time_white'),
   queryNotAllowed('time_black'),
+  queryNotAllowed('odds'),
   queryNotAllowed('_id'),
   queryNotAllowed('__v'),
 ];
