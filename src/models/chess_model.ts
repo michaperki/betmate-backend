@@ -55,13 +55,14 @@ const ChessSchema = new Schema({
 
 ChessSchema.pre('save', async function (next) {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const doc: Partial<ChessType> & Document = this;
     if (this.isNew) {
-      // eslint-disable-next-line @typescript-eslint/no-this-alias
-      const doc: Partial<ChessType> & Document = this;
       const data = await microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
-
       doc.odds = data ?? doc.odds;
     }
+    doc.complete = isGameComplete(doc.game_status ?? GameStatus.NOT_STARTED);
+
     next();
   } catch (error) {
     next(error);

@@ -1,6 +1,6 @@
 import { isWagerResolved, isWagerStatus } from 'helpers/validation/wagers';
-import mongoose, { Schema } from 'mongoose';
-import { WagerDoc, WagerStatus } from 'types/models';
+import mongoose, { Document, Schema } from 'mongoose';
+import { WagerDoc, WagerStatus, Wager as WagerType } from 'types/models';
 
 const WagerSchema = new Schema({
   game_id: {
@@ -35,7 +35,7 @@ const WagerSchema = new Schema({
     required: true,
     immutable: true,
   },
-  // resolved: { type: Boolean, default: false },
+  resolved: { type: Boolean, default: false },
   status: {
     type: String,
     default: WagerStatus.PENDING,
@@ -54,8 +54,15 @@ const WagerSchema = new Schema({
 });
 
 // eslint-disable-next-line func-names
-WagerSchema.virtual('resolved').get(function () {
-  return isWagerResolved(this.status);
+WagerSchema.pre('save', function (next) {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    const doc: Partial<WagerType> & Document = this;
+    doc.resolved = isWagerResolved(doc.status ?? WagerStatus.PENDING);
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 const WagerModel = mongoose.model<WagerDoc>('Wager', WagerSchema);
