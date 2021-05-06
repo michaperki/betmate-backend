@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
 import { documentNotFoundError } from 'helpers/constants';
-import { WagerDoc, WagerStatus } from 'types/models';
+import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
 import { requestWithValidation } from 'helpers/validation';
@@ -86,11 +86,7 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
 };
 
 const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const fields = {
-    ...req.query,
-    ...(req.query.status && { status: { $in: String(req.query.status).split(',') as Array<WagerStatus> } }),
-  };
-  const wagers = await getUserWagers(req.user._id, fields);
+  const wagers = await getUserWagers(req.user._id, req.query);
   if (!wagers) res.status(500).send({ error: 'An issue occured' });
   else res.status(200).send(wagers);
 };

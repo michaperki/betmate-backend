@@ -46,10 +46,8 @@ const ChessSchema = new Schema({
   },
 }, {
   toJSON: {
-    virtuals: true,
     transform: (doc, { __v, ...chess }) => chess,
   },
-  toObject: { virtuals: false },
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
@@ -67,10 +65,6 @@ ChessSchema.pre('save', async function (next) {
   } catch (error) {
     next(error);
   }
-});
-
-ChessSchema.virtual('complete').get(function () {
-  return isGameComplete(this.game_status);
 });
 
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);

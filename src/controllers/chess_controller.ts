@@ -2,7 +2,7 @@ import { CreateQuery, FilterQuery, UpdateQuery } from 'mongoose';
 import { RequestHandler } from 'express';
 import { documentNotFoundError } from 'helpers/constants';
 import { Chess } from 'models';
-import { ChessDoc, GameStatus } from 'types/models';
+import { ChessDoc } from 'types/models';
 import { requestWithValidation } from 'helpers/validation';
 
 const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
@@ -40,11 +40,7 @@ const getChessGameRequest: RequestHandler = (req, res) => {
 };
 
 const getManyChessGamesRequest: RequestHandler = (req, res) => {
-  const fields = {
-    ...req.query,
-    ...(req.query.game_status && { game_status: { $in: String(req.query.game_status).split(',') as Array<GameStatus> } }),
-  };
-  getManyChessGames(fields)
+  getManyChessGames(req.query)
     .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
     .catch((error) => res.status(500).json({ errors: [error] }));
 };

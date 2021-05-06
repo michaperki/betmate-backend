@@ -45,10 +45,12 @@ export const optionalChessFieldsValid = [
 ];
 
 export const chessFilterParams = [
+
   query('game_status')
     .optional()
-    .custom((value: string) => value.split(',').every(isGameStatus))
-    .withMessage((value: string) => `The values '${value.split(',').filter((v) => !isGameStatus(v))}' are not game statuses`),
+    .customSanitizer((v) => (Array.isArray(v) ? v : Array(v)).map(String))
+    .custom((v: string[]) => v.every(isGameStatus))
+    .withMessage((v: string[]) => `The values '${v.filter((w) => !isGameStatus(w))}' are not game statuses`),
 
   createQueryField('complete', 'boolean', false),
 
