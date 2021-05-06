@@ -42,7 +42,7 @@ const getChessGameRequest: RequestHandler = (req, res) => {
 const getManyChessGamesRequest: RequestHandler = (req, res) => {
   const fields = {
     ...req.query,
-    game_status: { $in: String(req.query.game_status).split(',') as Array<GameStatus> },
+    ...(req.query.game_status && { game_status: { $in: String(req.query.game_status).split(',') as Array<GameStatus> } }),
   };
   getManyChessGames(fields)
     .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))

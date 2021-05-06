@@ -246,7 +246,7 @@ describe('Working chess router', () => {
 
           expect(res.status).toBe(400);
           expect(res.body.errors.length).toBe(13);
-          expect(res.body.errors[0].msg).toBe("The value 'started' are not a game statuses");
+          expect(res.body.errors[0].msg).toBe("The values 'started' are not game statuses");
           expect(res.body.errors[1].msg).toBe("'complete' must be type boolean");
           expect(res.body.errors[2].msg).toBe("Cannot search by 'player_white'");
           expect(res.body.errors[3].msg).toBe("Cannot search by 'player_black'");
