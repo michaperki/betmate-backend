@@ -1,4 +1,6 @@
+import { ChessInstance } from 'chess.js';
 import { Users, Wager } from 'models';
+import WagerModel from 'models/wager_model';
 import { WagerDoc } from 'types/models';
 
 export const getWagersByUserId = (wagers: WagerDoc[]): Record<string, string[]> => wagers.reduce((wagersById, currWager) => {
@@ -53,30 +55,59 @@ export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: strin
   };
 }, {});
 
-export const resolveBets = (winningsById: Record<string, number>, wagersById: Record<string, string[]>): Promise<(WagerDoc|null)[]> => {
-  const wagerUpdates = (
-    Object.keys(winningsById)
-      .map((better_id) => {
-        const winnings = winningsById[better_id];
-        const wagerIds = wagersById[better_id];
-        return Users
-          .findByIdAndUpdate(better_id, { $inc: { account: winnings } })
-          .then(() => Wager.updateMany({ _id: { $in: wagerIds } }, { resolved: true }));
-      })
-  );
-  return Promise.all(wagerUpdates);
+export const resolveBets = async (winningsById: Record<string, number>, wagersById: Record<string, string[]>): Promise<WagerDoc[] | null> => {
+  try {
+    const wagerUpdates = (
+      Object.keys(winningsById)
+        .map(async (better_id) => {
+          const winnings = winningsById[better_id];
+          const wagerIds = wagersById[better_id];
+          await Users.findByIdAndUpdate(better_id, { $inc: { account: winnings } });
+          await Wager.updateMany({ _id: { $in: wagerIds } }, { resolved: true });
+          return Wager.find(wagerIds);
+        })
+    );
+    const resolvedWagersById = await Promise.all(wagerUpdates);
+    return resolvedWagersById.flat();
+  } catch (error) {
+    return null;
+  }
 };
 
-export const resolveCriticalMoveBets = async (wagers: WagerDoc[], lastMove: string): Promise<(WagerDoc|null)[]> => {
-  const winningsById = getCriticalMoveWinningsByUserId(wagers, lastMove);
-  const wagersById = getWagersByUserId(wagers);
+export const resolveCriticalMoveBets = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
+  try {
+    const moveNum = chessGame.history().length;
+    const [lastMove] = chessGame.history().slice(-1);
 
-  return resolveBets(winningsById, wagersById);
+    const wagers = await WagerModel.find({
+      game_id: gameId,
+      wdl: false,
+      move_number: moveNum,
+      resolved: false,
+    });
+
+    const winningsById = getCriticalMoveWinningsByUserId(wagers, lastMove);
+    const wagersById = getWagersByUserId(wagers);
+
+    return await resolveBets(winningsById, wagersById);
+  } catch (error) {
+    return null;
+  }
 };
 
-export const resolveWdlBets = async (wagers: WagerDoc[], gameStatus: string): Promise<(WagerDoc|null)[]> => {
-  const winningsById = getWDLWinningsByUserId(wagers, gameStatus);
-  const wagersById = getWagersByUserId(wagers);
+export const resolveWdlBets = async (gameId: string, gameStatus: string): Promise<WagerDoc[] | null> => {
+  try {
+    const wagers = await WagerModel.find({
+      game_id: gameId,
+      wdl: true,
+      resolved: false,
+    });
 
-  return resolveBets(winningsById, wagersById);
+    const winningsById = getWDLWinningsByUserId(wagers, gameStatus);
+    const wagersById = getWagersByUserId(wagers);
+
+    return await resolveBets(winningsById, wagersById);
+  } catch (error) {
+    return null;
+  }
 };

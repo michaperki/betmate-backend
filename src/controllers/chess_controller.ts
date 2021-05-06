@@ -58,6 +58,7 @@ const createChessGameRequest: RequestHandler = async (req, res) => {
 };
 
 const chessController = {
+  createChessGame,
   getChessGame,
   updateChessGame,
   createChessGameRequest: requestWithValidation(createChessGameRequest),
