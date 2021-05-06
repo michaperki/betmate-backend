@@ -40,6 +40,7 @@ export const wagerFilterParams = [
     .withMessage("'game_id' is not valid"),
 
   query('status')
+    .optional()
     .customSanitizer((v) => (Array.isArray(v) ? v : Array(v)).map(String))
     .custom((v: string[]) => v.every(isWagerStatus))
     .withMessage((v: string[]) => `The values '${v.filter((w) => !isWagerStatus(w))}' are not wager statuses`),

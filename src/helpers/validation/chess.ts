@@ -47,6 +47,7 @@ export const optionalChessFieldsValid = [
 export const chessFilterParams = [
 
   query('game_status')
+    .optional()
     .customSanitizer((v) => (Array.isArray(v) ? v : Array(v)).map(String))
     .custom((v: string[]) => v.every(isGameStatus))
     .withMessage((v: string[]) => `The values '${v.filter((w) => !isGameStatus(w))}' are not game statuses`),
