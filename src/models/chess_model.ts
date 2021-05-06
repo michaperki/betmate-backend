@@ -69,10 +69,6 @@ ChessSchema.pre('save', async function (next) {
   }
 });
 
-ChessSchema.virtual('complete').get(function () {
-  return isGameComplete(this.game_status);
-});
-
 const ChessModel = mongoose.model<ChessDoc>('Chess', ChessSchema);
 
 export default ChessModel;

@@ -1,5 +1,4 @@
-import { GameStatus } from 'helpers/constants';
-import { Player } from './models';
+import { GameStatus, Player } from './models';
 
 export interface MoveData {
   san: string,
