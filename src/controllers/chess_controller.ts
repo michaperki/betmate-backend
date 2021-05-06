@@ -3,7 +3,6 @@ import { RequestHandler } from 'express';
 import { documentNotFoundError } from 'helpers/constants';
 import { Chess } from 'models';
 import { ChessDoc } from 'types/models';
-import { requestWithValidation } from 'helpers/validation';
 
 const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
   Chess
@@ -61,10 +60,10 @@ const chessController = {
   createChessGame,
   getChessGame,
   updateChessGame,
-  createChessGameRequest: requestWithValidation(createChessGameRequest),
-  getChessGameRequest: requestWithValidation(getChessGameRequest),
-  getManyChessGamesRequest: requestWithValidation(getManyChessGamesRequest),
-  updateChessGameRequest: requestWithValidation(updateChessGameRequest),
+  createChessGameRequest,
+  getChessGameRequest,
+  getManyChessGamesRequest,
+  updateChessGameRequest,
 };
 
 export default chessController;

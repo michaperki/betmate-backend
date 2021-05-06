@@ -17,7 +17,7 @@ const ChessSchema = new Schema({
       message: (props) => Chess().validate_fen(props.value).error,
     },
   },
-  // complete: { type: Boolean, default: false },
+  complete: { type: Boolean, default: false },
   game_status: {
     type: String,
     default: GameStatus.NOT_STARTED,

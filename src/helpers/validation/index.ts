@@ -1,13 +1,12 @@
+import { RequestHandler } from 'express';
 import {
   body, query, ValidationChain, validationResult,
 } from 'express-validator';
 
-import { ValidationWrapper } from 'types/express';
-
-export const requestWithValidation: ValidationWrapper = (requestHandler) => (req, res, next) => {
+export const validateRequest: RequestHandler = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) res.status(400).json({ errors: errors.array() });
-  else requestHandler(req, res, next);
+  else next();
 };
 
 type Field = 'string' | 'boolean' | 'number' | 'array';
