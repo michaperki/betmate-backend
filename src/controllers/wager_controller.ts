@@ -4,7 +4,7 @@ import { documentNotFoundError } from 'helpers/constants';
 import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
-import { requestWithValidation } from 'helpers/validation';
+// import { requestWithValidation } from 'helpers/validation';
 import { FilterQuery } from 'mongoose';
 
 type WagerRequestBody = {
@@ -92,9 +92,9 @@ const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) =>
 };
 
 const wagerController = {
-  createWagerRequest: requestWithValidation(createWagerRequest),
+  createWagerRequest,
   getWagerRequest,
-  getUserWagersRequest: requestWithValidation(getUserWagersRequest),
+  getUserWagersRequest,
 };
 
 export default wagerController;

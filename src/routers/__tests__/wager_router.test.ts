@@ -269,7 +269,7 @@ describe('Working wager router', () => {
           expect(res.body.errors[0].msg).toBe("'resolved' must be type boolean");
           expect(res.body.errors[1].msg).toBe("'wdl' must be type boolean");
           expect(res.body.errors[2].msg).toBe("'game_id' is not valid");
-          expect(res.body.errors[3].msg).toBe("Value 'waiting' is not a wager status");
+          expect(res.body.errors[3].msg).toBe("The values 'waiting' are not wager statuses");
           expect(res.body.errors[4].msg).toBe("Cannot search by '_id'");
           expect(res.body.errors[5].msg).toBe("Cannot search by 'better_id'");
           expect(res.body.errors[6].msg).toBe("Cannot search by 'odds'");
