@@ -33,7 +33,7 @@ passport.use(jwtLogin);
 // Create function to transmit result of authenticate() call to user or next middleware
 const requireAuth: RequestHandler = (req, res, next) => {
   // eslint-disable-next-line prefer-arrow-callback
-  passport.authenticate('jwt', { session: false }, (err, user: UserDoc, info) => {
+  passport.authenticate('jwt', { session: false }, (err, user: UserDoc) => {
   // Return any existing errors
     if (err) { return next(err); }
     // If no user found, return appropriate error message
