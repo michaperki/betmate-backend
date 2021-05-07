@@ -87,7 +87,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-      socket.to(gameId).emit('wagers', { gameId, data: wdlOdds });
+      socket.to(gameId).emit('new_odds', { gameId, data: wdlOdds });
 
       // update gameDoc
       const gameUpdate: UpdateQuery<ChessDoc> = {

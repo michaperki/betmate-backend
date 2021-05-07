@@ -55,7 +55,7 @@ const websocket = (socket: Socket): void => {
       .getWDL(chessGame.fen(), timeWhite, timeBlack)
       .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-    socket.to(move.gameId).emit('wagers', { gameId: move.gameId, data: wdlOdds });
+    socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, data: wdlOdds });
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveBets(move.gameId, chessGame).then((wagerResults) => {
