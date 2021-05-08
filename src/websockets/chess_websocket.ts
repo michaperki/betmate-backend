@@ -48,11 +48,11 @@ const websocket = (socket: Socket): void => {
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
 
-    const wdlOdds = await microservice
+    const odds = await microservice
       .getWDL(chessGame.fen(), timeWhite, timeBlack)
       .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-    socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, data: wdlOdds });
+    socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, odds });
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveBets(move.gameId, chessGame).then((wagerResults) => {
@@ -71,7 +71,7 @@ const websocket = (socket: Socket): void => {
       complete,
       time_white: timeWhite,
       time_black: timeBlack,
-      odds: wdlOdds,
+      odds,
     };
 
     const result = await chessController.updateChessGame(move.gameId, fields);

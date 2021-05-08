@@ -2,7 +2,7 @@
 import bodyParser from 'body-parser';
 import express from 'express';
 
-import { requireSignin } from 'authentication';
+import { requireSignin, requireAuth } from 'authentication';
 
 import { authController } from 'controllers';
 
@@ -21,5 +21,8 @@ router.route('/signup')
 // Send user object and server will send back authToken and user object
 router.route('/signin')
   .post(requireSignin, authController.signInUser);
+
+router.route('/jwt-signin')
+  .get(requireAuth, authController.jwtSignIn);
 
 export default router;

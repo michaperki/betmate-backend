@@ -83,17 +83,17 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
 
-      const wdlOdds = await microservice
+      const odds = await microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-      socket.to(gameId).emit('new_odds', { gameId, data: wdlOdds });
+      socket.to(gameId).emit('new_odds', { gameId, odds });
 
       // update gameDoc
       const gameUpdate: UpdateQuery<ChessDoc> = {
         ...updateMessage,
         move_hist: chessGame.history() as Types.Array<string>,
-        odds: wdlOdds,
+        odds,
       };
 
       // don't check if update successful

@@ -63,7 +63,7 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
       setTimeout(async () => {
         // TODO: get currentMove from 3rd party API rather than chess model
         const currentMove = await Chess.findById(game_id).then((doc) => doc?.move_hist.length);
-        if (!currentMove) {
+        if (currentMove === undefined) {
           reject(new Error('error getting live update of the game'));
         } else if (move_number !== currentMove + 1) {
           reject(new Error('outdated bet'));
