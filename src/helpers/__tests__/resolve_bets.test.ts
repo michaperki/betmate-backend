@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Wager } from 'models';
-import { GameStatus } from 'types/models';
-import { getCriticalMoveWinningsByUserId, getWagersByUserId, getWDLWinningsByUserId } from '../resolve_bets';
+import { GameStatus, WagerStatus } from 'types/models';
+import { getCriticalMoveWinningsByUserId, getWagerOutcomes, getWDLWinningsByUserId } from '../resolve_bets';
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();
@@ -147,86 +147,183 @@ const moveWager6 = new Wager({
 const moveWagers = [moveWager0, moveWager1, moveWager2, moveWager3, moveWager4, moveWager5, moveWager6];
 
 describe('Bet resolution logic', () => {
-  it('getWagersByUserId method behaves as expected with dummy data', () => {
-    const wagersByUserId = getWagersByUserId(wdlWagers);
-    expect(wagersByUserId).toEqual({
-      [String(player1Id)]: [wdlWager0.id, wdlWager1.id, wdlWager2.id],
-      [String(player2Id)]: [wdlWager3.id],
-      [String(player3Id)]: [wdlWager4.id],
-      [String(player4Id)]: [wdlWager5.id, wdlWager6.id],
+  describe('Working getWagerOutcomes', () => {
+    describe('For WDL bets', () => {
+      it('Handles white win', () => {
+        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.WHITE_WIN);
+        expect(outcomes).toEqual({
+          [WagerStatus.WON]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id)],
+          [WagerStatus.LOST]: [String(wdlWager2._id), String(wdlWager4._id), String(wdlWager5._id), String(wdlWager6._id)],
+        });
+      });
+
+      it('Handles black win', () => {
+        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.BLACK_WIN);
+        expect(outcomes).toEqual({
+          [WagerStatus.WON]: [String(wdlWager2._id), String(wdlWager5._id)],
+          [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id), String(wdlWager4._id), String(wdlWager6._id)],
+        });
+      });
+
+      it('Handles draw', () => {
+        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.DRAW);
+        expect(outcomes).toEqual({
+          [WagerStatus.WON]: [String(wdlWager4._id), String(wdlWager6._id)],
+          [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager2._id), String(wdlWager3._id), String(wdlWager5._id)],
+        });
+      });
+
+      it('Handles no bets', () => {
+        const outcomes = getWagerOutcomes([], GameStatus.WHITE_WIN);
+        expect(outcomes).toEqual({
+          [WagerStatus.WON]: [],
+          [WagerStatus.LOST]: [],
+        });
+      });
+    });
+
+    describe('For move bets', () => {
+      describe('Multiperson pool', () => {
+        it('With winners 1', () => {
+          const outcomes = getWagerOutcomes(moveWagers, 'e4');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id)],
+            [WagerStatus.LOST]: [String(moveWager1._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
+          });
+        });
+
+        it('With winners 2', () => {
+          const outcomes = getWagerOutcomes(moveWagers, 'd4');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [String(moveWager1._id)],
+            [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
+          });
+        });
+
+        it('With winners 3', () => {
+          const outcomes = getWagerOutcomes(moveWagers, 'Nc3');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [String(moveWager4._id), String(moveWager5._id)],
+            [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager6._id)],
+          });
+        });
+
+        it('With winners 4', () => {
+          const outcomes = getWagerOutcomes(moveWagers, 'Nf3');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [String(moveWager6._id)],
+            [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id)],
+          });
+        });
+
+        it('No winners', () => {
+          const outcomes = getWagerOutcomes(moveWagers, 'Bf3');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: moveWagers.map((w) => String(w._id)),
+          });
+        });
+      });
+
+      describe('One person pool', () => {
+        it('Person wins', () => {
+          const outcomes = getWagerOutcomes([moveWager0], 'e4');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [String(moveWager0._id)],
+            [WagerStatus.LOST]: [],
+          });
+        });
+
+        it('Person lost', () => {
+          const outcomes = getWagerOutcomes([moveWager0], 'd4');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: [String(moveWager0._id)],
+          });
+        });
+      });
+
+      describe('No one in pool', () => {
+        it('Any move', () => {
+          const outcomes = getWagerOutcomes([], 'd4');
+          expect(outcomes).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: [],
+          });
+        });
+      });
     });
   });
 
-  it('getWagersByUserId method behaves as expected with empty list', () => {
-    const wagersByUserId = getWagersByUserId([]);
-    expect(wagersByUserId).toEqual({});
-  });
+  describe('Working getWDLWinningsByUserId', () => {
+    it('Behaves correctly with dummy data', () => {
+      const winningsByUserId = getWDLWinningsByUserId(wdlWagers, GameStatus.WHITE_WIN);
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 225, // 2/3 bets placed by user 1 were successful (150 + 75)
+        [String(player2Id)]: 300, // 1/1 bets won (200 * 1.5)
+        [String(player3Id)]: 0, // 0/1 bets won (guessed black_win)
+        [String(player4Id)]: 0, // 0/2 bets won (guessed draw + black_win)
+      });
+    });
 
-  it('getWDLWinningsByUserId method behaves correctly with dummy data', () => {
-    const winningsByUserId = getWDLWinningsByUserId(wdlWagers, GameStatus.WHITE_WIN);
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 225, // 2/3 bets placed by user 1 were successful (150 + 75)
-      [String(player2Id)]: 300, // 1/1 bets won (200 * 1.5)
-      [String(player3Id)]: 0, // 0/1 bets won (guessed black_win)
-      [String(player4Id)]: 0, // 0/2 bets won (guessed draw + black_win)
+    it('Behaves correctly with no wager data', () => {
+      const winningsByUserId = getWDLWinningsByUserId([], GameStatus.WHITE_WIN);
+      expect(winningsByUserId).toEqual({});
+    });
+
+    it('Behaves correctly when no one wins', () => {
+      const winningsByUserId = getWDLWinningsByUserId(wdlWagers, 'UNEXPECTED_OUTCOME');
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 0,
+        [String(player2Id)]: 0,
+        [String(player3Id)]: 0,
+        [String(player4Id)]: 0,
+      });
     });
   });
 
-  it('getWDLWinningsByUserId method behaves correctly with no wager data', () => {
-    const winningsByUserId = getWDLWinningsByUserId([], GameStatus.WHITE_WIN);
-    expect(winningsByUserId).toEqual({});
-  });
-
-  it('getWDLWinningsByUserId method behaves correctly when no one wins', () => {
-    const winningsByUserId = getWDLWinningsByUserId(wdlWagers, 'UNEXPECTED_OUTCOME');
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 0,
-      [String(player2Id)]: 0,
-      [String(player3Id)]: 0,
-      [String(player4Id)]: 0,
+  describe('Working getCriticalMoveWinningsByUserId', () => {
+    it('Behaves correctly with dummy data', () => {
+      const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'e4');
+      // $425 in pool, $100/$425 placed on the correct move
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 318.75, // 75% of winning pool, 2/3 bets were correct
+        [String(player2Id)]: 106.25, // 25% of winning pool
+        [String(player3Id)]: 0, // one wrong bet
+        [String(player4Id)]: 0, // two wrong bets
+      });
     });
-  });
 
-  it('getCriticalMoveWinningsByUserId behaves correctly with dummy data', () => {
-    const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'e4');
-    // $425 in pool, $100/$425 placed on the correct move
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 318.75, // 75% of winning pool, 2/3 bets were correct
-      [String(player2Id)]: 106.25, // 25% of winning pool
-      [String(player3Id)]: 0, // one wrong bet
-      [String(player4Id)]: 0, // two wrong bets
+    it('With one person pool (pool is won)', () => {
+      const winningsByUserId = getCriticalMoveWinningsByUserId([moveWager0], 'e4');
+      // $50 in pool, $50/$50 placed on the correct move
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 50, // player 1 wins back their $50
+      });
     });
-  });
 
-  it('getCriticalMoveWinningsByUserId method with one person pool (pool is won)', () => {
-    const winningsByUserId = getCriticalMoveWinningsByUserId([moveWager0], 'e4');
-    // $50 in pool, $50/$50 placed on the correct move
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 50, // player 1 wins back their $50
+    it('With one person pool (pool is lost)', () => {
+      const winningsByUserId = getCriticalMoveWinningsByUserId([moveWager0], 'd4');
+      // $50 in pool, $0/$50 placed on the correct move
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 50, // player 1 gets refund
+      });
     });
-  });
 
-  it('getCriticalMoveWinningsByUserId method with one person pool (pool is lost)', () => {
-    const winningsByUserId = getCriticalMoveWinningsByUserId([moveWager0], 'd4');
-    // $50 in pool, $0/$50 placed on the correct move
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 50, // player 1 gets refund
+    it('Behaves correctly with no wager data', () => {
+      const winningsByUserId = getCriticalMoveWinningsByUserId([], 'e4');
+      expect(winningsByUserId).toEqual({});
     });
-  });
 
-  it('getCriticalMoveWinningsByUserId method behaves correctly with no wager data', () => {
-    const winningsByUserId = getCriticalMoveWinningsByUserId([], 'e4');
-    expect(winningsByUserId).toEqual({});
-  });
-
-  it('getCriticalMoveWinningsByUserId method behaves correctly when no one wins', () => {
-    const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'h4');
-    // everyone gets refund
-    expect(winningsByUserId).toEqual({
-      [String(player1Id)]: 125,
-      [String(player2Id)]: 25,
-      [String(player3Id)]: 75,
-      [String(player4Id)]: 200,
+    it('Behaves correctly when no one wins', () => {
+      const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'h4');
+      // everyone gets refund
+      expect(winningsByUserId).toEqual({
+        [String(player1Id)]: 125,
+        [String(player2Id)]: 25,
+        [String(player3Id)]: 75,
+        [String(player4Id)]: 200,
+      });
     });
   });
 });
