@@ -67,7 +67,7 @@ export const resolveBets = async (wagerOutcomes: Record<WagerOutcomes, string[]>
     );
 
     const resolvedWagers = await Promise.all(wagersToResolve);
-    return resolvedWagers.flat().filter((w): w is WagerDoc => w !== null);
+    return resolvedWagers.filter((ws): ws is WagerDoc[] => ws !== null).flat();
   } catch (error) {
     return null;
   }
