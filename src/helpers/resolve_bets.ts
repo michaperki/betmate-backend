@@ -11,38 +11,37 @@ export const getWagerOutcomes = (wagers: WagerDoc[], correctOutcome: string): Re
   [WagerStatus.LOST]: wagers.filter((w) => w.data !== correctOutcome).map((w) => String(w._id)),
 });
 
-export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove: string): Record<string, number> => {
+const reduceWagersToWinnings = (correctWager: string, poolShare = 1, returnWagers = false) => (
+  (winningsByUser: Record<string, number>, currWager: WagerDoc): Record<string, number> => {
+    const userId = String(currWager.better_id);
+    const odds = currWager.wdl ? currWager.odds : 1;
+    const winnings = returnWagers ? currWager.amount
+      : currWager.data === correctWager ? currWager.amount * odds * poolShare
+        : 0;
+
+    return {
+      ...winningsByUser,
+      [userId]: (winningsByUser[userId] || 0) + winnings,
+    };
+  }
+);
+
+export const getCriticalMoveWinningsByUser = (wagers: WagerDoc[], correctMove: string): Record<string, number> => {
   const totalPool = wagers
     .reduce((sum, w) => sum + w.amount, 0);
   const winningPool = wagers
     .filter((w) => w.data === correctMove)
     .reduce((sum, w) => sum + w.amount, 0);
 
-  return wagers.reduce((winningsById, currWager) => {
-    const userId = String(currWager.better_id);
-    const winnings = winningPool === 0 ? currWager.amount
-      : currWager.data === correctMove ? (currWager.amount / winningPool) * totalPool
-        : 0;
+  const winningPoolShare = totalPool / winningPool;
+  const returnWagers = winningPool === 0;
 
-    return {
-      ...winningsById,
-      [userId]: (winningsById[userId] || 0) + winnings,
-    };
-  }, {});
+  return wagers.reduce(reduceWagersToWinnings(correctMove, winningPoolShare, returnWagers), {});
 };
 
-export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: string): Record<string, number> => (
-  wagers.reduce((winningsById, currWager) => {
-    const userId = String(currWager.better_id);
-    const winnings = currWager.data === correctOutcome
-      ? currWager.odds * currWager.amount
-      : 0;
-
-    return {
-      ...winningsById,
-      [userId]: (winningsById[userId] || 0) + winnings,
-    };
-  }, {}));
+export const getWDLWinningsByUser = (wagers: WagerDoc[], correctOutcome: string): Record<string, number> => (
+  wagers.reduce(reduceWagersToWinnings(correctOutcome), {})
+);
 
 export const updateResolvedWagers = async (wagerOutcomes: Record<WagerOutcomes, string[]>): Promise<WagerDoc[] | null> => {
   try {
@@ -104,7 +103,7 @@ export const resolveCriticalMoveBets = async (gameId: string, chessGame: ChessIn
       resolved: false,
     });
 
-    return wagers && await resolveWagers(wagers, lastMove, getCriticalMoveWinningsByUserId);
+    return wagers && await resolveWagers(wagers, lastMove, getCriticalMoveWinningsByUser);
   } catch (error) {
     return null;
   }
@@ -118,7 +117,7 @@ export const resolveWdlBets = async (gameId: string, gameStatus: string): Promis
       resolved: false,
     });
 
-    return wagers && await resolveWagers(wagers, gameStatus, getWDLWinningsByUserId);
+    return wagers && await resolveWagers(wagers, gameStatus, getWDLWinningsByUser);
   } catch (error) {
     return null;
   }
