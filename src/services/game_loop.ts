@@ -13,7 +13,7 @@ import { microservice } from 'services';
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 
-const PREGAME_TIME = 90;
+const PREGAME_TIME = 9;
 
 const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -43,7 +43,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   };
   // create game and put into pregame
   const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
-  if (!gameDoc) return socket.emit('error', 'There was an issue creating a new game');
+  if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
 
@@ -52,7 +52,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
   // Start game
   const updatedGame = await chessController.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
-  if (!updatedGame) return socket.emit('error', { gameId, message: 'There was an issue starting the game' });
+  if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
 
   // Play game
   let [whiteTime, blackTime] = [gameTime, gameTime];
@@ -74,21 +74,26 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
 
-      socket.to(gameId).emit('new_move', { gameId, ...move, board: chessGame.fen() });
+      const updateMessage = {
+        state: chessGame.fen(),
+        move_hist: chessGame.history(),
+        time_white: whiteTime,
+        time_black: blackTime,
+      };
 
-      const wdlOdds = await microservice
+      socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
+
+      const odds = await microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-      socket.to(gameId).emit('wagers', wdlOdds);
+      socket.to(gameId).emit('new_odds', { gameId, odds });
 
       // update gameDoc
       const gameUpdate: UpdateQuery<ChessDoc> = {
-        state: chessGame.fen(),
+        ...updateMessage,
         move_hist: chessGame.history() as Types.Array<string>,
-        time_white: whiteTime,
-        time_black: blackTime,
-        odds: wdlOdds,
+        odds,
       };
 
       // don't check if update successful
@@ -97,7 +102,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // resolve wagers on the move just played, if any
       resolveCriticalMoveBets(gameId, chessGame).then((wagerResults) => {
         if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
-        else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
+        else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
       });
     }
 
@@ -105,15 +110,16 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       game_status: game.outcome,
       complete: true,
     };
+    socket.to(gameId).emit('game_over', { gameId, ...completeFields });
     await chessController.updateChessGame(gameDoc._id, completeFields);
 
     resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
       if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
-      else socket.to(gameId).emit('error', { gameId, message: 'There was an error updating critical move wagers' });
+      else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
     });
   } catch (error) {
     console.log('Error:', error.message);
-    socket.emit('error', { gameId, message: error.message });
+    socket.emit('game_error', { gameId, message: error.message });
   }
 
   return true;
