@@ -1,38 +1,28 @@
+/* eslint-disable no-nested-ternary */
 import { ChessInstance } from 'chess.js';
 import { userController, wagerController } from 'controllers';
 import {
   UserDoc, WagerDoc, WagerOutcomes, WagerStatus,
 } from 'types/models';
+import { WinningsFn } from 'types/wagers';
 
-export const getWagerOutcomes = (wagers: WagerDoc[], correctMove: string): Record<WagerOutcomes, string[]> => ({
-  [WagerStatus.WON]: wagers.filter((w) => w.data === correctMove).map((w) => String(w._id)),
-  [WagerStatus.LOST]: wagers.filter((w) => w.data !== correctMove).map((w) => String(w._id)),
+export const getWagerOutcomes = (wagers: WagerDoc[], correctOutcome: string): Record<WagerOutcomes, string[]> => ({
+  [WagerStatus.WON]: wagers.filter((w) => w.data === correctOutcome).map((w) => String(w._id)),
+  [WagerStatus.LOST]: wagers.filter((w) => w.data !== correctOutcome).map((w) => String(w._id)),
 });
 
 export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove: string): Record<string, number> => {
-  let totalPool = 0;
-  let winningPool = 0;
-  wagers.forEach((wager) => {
-    // wager.data is assumed to always be in SAN notation
-    if (wager.data === correctMove) winningPool += wager.amount;
-    totalPool += wager.amount;
-  });
-
-  if (winningPool === 0) {
-    return wagers.reduce((refundsById, currWager) => {
-      const userId = String(currWager.better_id);
-      return {
-        ...refundsById,
-        [userId]: (refundsById[userId] || 0) + currWager.amount,
-      };
-    }, {});
-  }
+  const totalPool = wagers
+    .reduce((sum, w) => sum + w.amount, 0);
+  const winningPool = wagers
+    .filter((w) => w.data === correctMove)
+    .reduce((sum, w) => sum + w.amount, 0);
 
   return wagers.reduce((winningsById, currWager) => {
     const userId = String(currWager.better_id);
-    const winnings = currWager.data === correctMove
-      ? (currWager.amount / winningPool) * totalPool
-      : 0;
+    const winnings = winningPool === 0 ? currWager.amount
+      : currWager.data === correctMove ? (currWager.amount / winningPool) * totalPool
+        : 0;
 
     return {
       ...winningsById,
@@ -54,7 +44,7 @@ export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: strin
     };
   }, {}));
 
-export const resolveBets = async (wagerOutcomes: Record<WagerOutcomes, string[]>): Promise<WagerDoc[] | null> => {
+export const updateResolvedWagers = async (wagerOutcomes: Record<WagerOutcomes, string[]>): Promise<WagerDoc[] | null> => {
   try {
     const wagersToResolve = (
       Object
@@ -62,7 +52,7 @@ export const resolveBets = async (wagerOutcomes: Record<WagerOutcomes, string[]>
         .map(([outcome, ids]) => (
           wagerController
             .updateManyWagers({ _id: { $in: ids } }, { resolved: true, status: outcome as WagerStatus })
-            .then(() => wagerController.getWagers({ _id: { $in: ids } }))
+            .then((res) => res && wagerController.getWagers({ _id: { $in: ids } }))
         ))
     );
 
@@ -90,6 +80,18 @@ export const updateUserAccounts = async (userWinnings: Record<string, number>): 
   }
 };
 
+export const resolveWagers = async (wagers: WagerDoc[], correctMove: string, getWinnings: WinningsFn): Promise<WagerDoc[] | null> => {
+  try {
+    const userWinnings = getWinnings(wagers, correctMove);
+    const wagerOutcomes = getWagerOutcomes(wagers, correctMove);
+
+    updateUserAccounts(userWinnings);
+    return await updateResolvedWagers(wagerOutcomes);
+  } catch (error) {
+    return null;
+  }
+};
+
 export const resolveCriticalMoveBets = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
   try {
     const moveNum = chessGame.history().length;
@@ -102,13 +104,7 @@ export const resolveCriticalMoveBets = async (gameId: string, chessGame: ChessIn
       resolved: false,
     });
 
-    if (!wagers) throw Error('Get wagers failed');
-
-    const userWinnings = getCriticalMoveWinningsByUserId(wagers, lastMove);
-    const wagerOutcomes = getWagerOutcomes(wagers, lastMove);
-
-    updateUserAccounts(userWinnings);
-    return await resolveBets(wagerOutcomes);
+    return wagers && await resolveWagers(wagers, lastMove, getCriticalMoveWinningsByUserId);
   } catch (error) {
     return null;
   }
@@ -122,13 +118,7 @@ export const resolveWdlBets = async (gameId: string, gameStatus: string): Promis
       resolved: false,
     });
 
-    if (!wagers) throw Error('Get wagers failed');
-
-    const userWinnings = getWDLWinningsByUserId(wagers, gameStatus);
-    const wagerOutcomes = getWagerOutcomes(wagers, gameStatus);
-
-    updateUserAccounts(userWinnings);
-    return await resolveBets(wagerOutcomes);
+    return wagers && await resolveWagers(wagers, gameStatus, getWDLWinningsByUserId);
   } catch (error) {
     return null;
   }

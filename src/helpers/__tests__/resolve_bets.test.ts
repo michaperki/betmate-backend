@@ -224,11 +224,13 @@ describe('Bet resolution logic', () => {
       });
     });
 
-    it('No one in pool', () => {
-      const outcomes = getWagerOutcomes([], 'd4');
-      expect(outcomes).toEqual({
-        [WagerStatus.WON]: [],
-        [WagerStatus.LOST]: [],
+    describe('Empty pool', () => {
+      it('Any move', () => {
+        const outcomes = getWagerOutcomes([], 'd4');
+        expect(outcomes).toEqual({
+          [WagerStatus.WON]: [],
+          [WagerStatus.LOST]: [],
+        });
       });
     });
   });
@@ -311,7 +313,7 @@ describe('Bet resolution logic', () => {
         expect(winningsByUserId[String(player4Id)]).toBeCloseTo(242.857); // 57.14% of winning pool, 1/2 bets were correct
       });
 
-      it('With winners 2', () => {
+      it('With winners 4', () => {
         const winningsByUserId = getCriticalMoveWinningsByUserId(moveWagers, 'Nf3');
         expect(winningsByUserId).toEqual({
           [String(player1Id)]: 0, // three wrong bets
