@@ -8,9 +8,9 @@ import {
   ProcessedWager, WagerProcesser as WagerProcessor,
 } from 'types/wagers';
 
-export const processWager = (correctMove: string, wps = 1, returnWagers = false) => (
+export const processWager = (correctMove: string, winningPoolShare = 1, returnWagers = false) => (
   (w: WagerDoc): ProcessedWager => {
-    const odds = w.wdl ? w.odds : wps;
+    const odds = w.wdl ? w.odds : winningPoolShare;
     const baseWager = { _id: w._id, better_id: w.better_id };
     switch (true) {
       case returnWagers:
@@ -46,9 +46,10 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
     .filter((w) => w.data === correctMove)
     .reduce((sum, w) => sum + w.amount, 0);
 
+  const returnBets = winningPool === 0;
   const winningPoolShare = totalPool / winningPool;
 
-  return wagers.map(processWager(correctMove, winningPoolShare, winningPool === 0));
+  return wagers.map(processWager(correctMove, winningPoolShare, returnBets));
 };
 
 const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<WagerDoc[]> => {
