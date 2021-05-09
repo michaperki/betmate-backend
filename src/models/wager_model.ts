@@ -44,6 +44,7 @@ const WagerSchema = new Schema({
       message: (props) => `Value "${props.value}" not in enum "WagerStatus"`,
     },
   },
+  winnings: { type: Number, min: 0, default: 0 },
 }, {
   toJSON: {
     transform: (doc, { __v, ...wager }) => wager,

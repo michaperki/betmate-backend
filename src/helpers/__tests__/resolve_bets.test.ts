@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Wager } from 'models';
 import { GameStatus, WagerStatus } from 'types/models';
-import { getCriticalMoveWinningsByUser, getWagerResults, getWDLWinningsByUser } from '../resolve_bets';
+import { processWager, processCriticalMoveWagers, processWDLWagers } from '../resolve_bets';
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();
@@ -147,7 +147,7 @@ const moveWager6 = new Wager({
 const moveWagers = [moveWager0, moveWager1, moveWager2, moveWager3, moveWager4, moveWager5, moveWager6];
 
 describe('Bet resolution logic', () => {
-  describe('Working getWagerOutcomes', () => {
+  describe('Working processWager', () => {
     describe('For WDL bets', () => {
       it('Handles white win', () => {
         const outcomes = getWagerResults(wdlWagers, GameStatus.WHITE_WIN);
@@ -245,7 +245,7 @@ describe('Bet resolution logic', () => {
     });
   });
 
-  describe('Working getWDLWinningsByUser', () => {
+  describe('Working processWDLWagers', () => {
     it('Handles white win', () => {
       const winningsByUserId = getWDLWinningsByUser(wdlWagers, GameStatus.WHITE_WIN);
       expect(winningsByUserId).toEqual({
@@ -292,7 +292,7 @@ describe('Bet resolution logic', () => {
     });
   });
 
-  describe('Working getCriticalMoveWinningsByUser', () => {
+  describe('Working processCriticalMoveWagers', () => {
     describe('Multiperson pool', () => {
       it('With winners 1', () => {
         const winningsByUserId = getCriticalMoveWinningsByUser(moveWagers, 'e4');

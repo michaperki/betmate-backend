@@ -45,6 +45,7 @@ export interface Wager {
   move_number: number,
   resolved: boolean,
   status: WagerStatus,
+  winnings: number,
   created_at: Date,
   updated_at: Date,
 }

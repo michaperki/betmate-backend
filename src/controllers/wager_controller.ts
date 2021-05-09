@@ -1,6 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import { FilterQuery, UpdateQuery, Query } from 'mongoose';
+import {
+  FilterQuery, UpdateQuery, Query, Types,
+} from 'mongoose';
 import { documentNotFoundError } from 'helpers/constants';
 import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
@@ -26,6 +28,13 @@ const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> =>
   Wager
     .find(fields)
     .then((docs) => docs)
+    .catch(() => null)
+);
+
+const updateWager = async (id: Types.ObjectId | string, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc | null> => (
+  Wager
+    .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
+    .then((doc) => doc)
     .catch(() => null)
 );
 
@@ -101,6 +110,7 @@ const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) =>
 
 const wagerController = {
   getWagers,
+  updateWager,
   updateManyWagers,
   createWagerRequest,
   getWagerRequest,

@@ -6,14 +6,14 @@ import { Users } from 'models';
 import {
   documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
 } from 'helpers/constants';
-import { UpdateQuery } from 'mongoose';
+import { Types, UpdateQuery } from 'mongoose';
 
 const tokenForUser = (user: UserDoc): string => {
   const timestamp = new Date().getTime();
   return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
 };
 
-const updateUserData = (id: string, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
+const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
   Users
     .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
     .then((doc) => doc)

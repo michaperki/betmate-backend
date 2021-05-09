@@ -6,7 +6,7 @@ import { ChessDoc, GameStatus } from 'types/models';
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { resolveCriticalMoveBets, resolveWdlBets } from 'helpers/resolve_bets';
+import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
 import { microservice } from 'services';
 
@@ -100,7 +100,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       chessController.updateChessGame(gameDoc._id, gameUpdate);
 
       // resolve wagers on the move just played, if any
-      resolveCriticalMoveBets(gameId, chessGame).then((wagerResults) => {
+      resolveCriticalMoveWagers(gameId, chessGame).then((wagerResults) => {
         if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
         else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
       });
@@ -113,7 +113,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
     await chessController.updateChessGame(gameDoc._id, completeFields);
 
-    resolveWdlBets(gameId, game.outcome).then((wagerResults) => {
+    resolveWdlWagers(gameId, game.outcome).then((wagerResults) => {
       if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
       else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
     });
