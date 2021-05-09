@@ -50,6 +50,7 @@ const validateBody = (body: any) => {
   expect(body.data).toBeDefined();
   expect(body.move_number).toBeDefined();
   expect(body.resolved).toBeDefined();
+  expect(body.winnings).toBeDefined();
   expect(body.created_at).toBeDefined();
   expect(body.updated_at).toBeDefined();
   expect(body._id).toBeDefined();

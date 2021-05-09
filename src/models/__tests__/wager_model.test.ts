@@ -49,6 +49,7 @@ const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager.data).toBe(data.data);
   expect(wager.resolved).toBe(isWagerResolved(data.status ?? WagerStatus.PENDING));
   expect(wager.status).toBe(data.status ?? WagerStatus.PENDING);
+  expect(wager.winnings).toBe(data.winnings ?? 0);
   expect(wager.created_at).toBeInstanceOf(Date);
   expect(wager.updated_at).toBeInstanceOf(Date);
 };
