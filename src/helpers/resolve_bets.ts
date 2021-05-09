@@ -14,9 +14,9 @@ export const getWagerOutcomes = (wagers: WagerDoc[], correctOutcome: string): Re
 const reduceWagersToWinnings = (correctWager: string, poolShare = 1, returnWagers = false) => (
   (winningsByUser: Record<string, number>, currWager: WagerDoc): Record<string, number> => {
     const userId = String(currWager.better_id);
-    const odds = currWager.wdl ? currWager.odds : 1;
+    const odds = currWager.wdl ? currWager.odds : poolShare;
     const winnings = returnWagers ? currWager.amount
-      : currWager.data === correctWager ? currWager.amount * odds * poolShare
+      : currWager.data === correctWager ? currWager.amount * odds
         : 0;
 
     return {
@@ -79,10 +79,10 @@ export const updateUserAccounts = async (userWinnings: Record<string, number>): 
   }
 };
 
-export const resolveWagers = async (wagers: WagerDoc[], correctMove: string, getWinnings: WinningsFn): Promise<WagerDoc[] | null> => {
+export const resolveWagers = async (wagers: WagerDoc[], correctWager: string, getWinnings: WinningsFn): Promise<WagerDoc[] | null> => {
   try {
-    const userWinnings = getWinnings(wagers, correctMove);
-    const wagerOutcomes = getWagerOutcomes(wagers, correctMove);
+    const userWinnings = getWinnings(wagers, correctWager);
+    const wagerOutcomes = getWagerOutcomes(wagers, correctWager);
 
     updateUserAccounts(userWinnings);
     return await updateResolvedWagers(wagerOutcomes);
