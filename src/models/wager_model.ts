@@ -1,3 +1,5 @@
+/* eslint-disable func-names */
+/* eslint-disable @typescript-eslint/no-this-alias */
 import { isWagerResolved, isWagerStatus } from 'helpers/validation/wagers';
 import mongoose, { Document, Schema } from 'mongoose';
 import { WagerDoc, WagerStatus, Wager as WagerType } from 'types/models';
@@ -44,7 +46,7 @@ const WagerSchema = new Schema({
       message: (props) => `Value "${props.value}" not in enum "WagerStatus"`,
     },
   },
-  winnings: { type: Number, min: 0, default: 0 },
+  winning_pool_share: { type: Number, min: 1, default: 1 },
 }, {
   toJSON: {
     transform: (doc, { __v, ...wager }) => wager,
@@ -52,15 +54,29 @@ const WagerSchema = new Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
-// eslint-disable-next-line func-names
 WagerSchema.pre('save', function (next) {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-this-alias
     const doc: Partial<WagerType> & Document = this;
     doc.resolved = isWagerResolved(doc.status ?? WagerStatus.PENDING);
     next();
   } catch (error) {
     next(error);
+  }
+});
+
+WagerSchema.virtual('winnings').get(function () {
+  const doc: WagerType & Document = this;
+  switch (doc.status) {
+    case WagerStatus.WON:
+      return doc.wdl
+        ? doc.amount * doc.odds
+        : doc.amount * doc.winning_pool_share;
+    case WagerStatus.CANCELLED:
+      return doc.amount;
+    case WagerStatus.LOST:
+    case WagerStatus.PENDING:
+    default:
+      return 0;
   }
 });
 

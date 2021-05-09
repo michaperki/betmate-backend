@@ -49,7 +49,8 @@ const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager.data).toBe(data.data);
   expect(wager.resolved).toBe(isWagerResolved(data.status ?? WagerStatus.PENDING));
   expect(wager.status).toBe(data.status ?? WagerStatus.PENDING);
-  expect(wager.winnings).toBe(data.winnings ?? 0);
+  expect(wager.winning_pool_share).toBe(data.winning_pool_share ?? 1);
+  expect(wager.winnings).toBeDefined();
   expect(wager.created_at).toBeInstanceOf(Date);
   expect(wager.updated_at).toBeInstanceOf(Date);
 };
@@ -247,6 +248,7 @@ describe('Wager model validation', () => {
         const newFields = {
           resolved: true,
           status: WagerStatus.WON,
+          winning_pool_share: Number('Infinity'),
         };
 
         const updatedFields = {
