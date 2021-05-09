@@ -33,7 +33,7 @@ export enum WagerStatus {
   CANCELLED = 'cancelled',
 }
 
-export type WagerOutcomes = Exclude<WagerStatus, WagerStatus.CANCELLED | WagerStatus.PENDING>;
+export type WagerOutcomes = Exclude<WagerStatus, WagerStatus.PENDING>;
 
 export interface Wager {
   game_id: Types.ObjectId,

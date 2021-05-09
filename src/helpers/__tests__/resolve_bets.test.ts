@@ -154,6 +154,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id)],
           [WagerStatus.LOST]: [String(wdlWager2._id), String(wdlWager4._id), String(wdlWager5._id), String(wdlWager6._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -162,6 +163,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager2._id), String(wdlWager5._id)],
           [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id), String(wdlWager4._id), String(wdlWager6._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -170,6 +172,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager4._id), String(wdlWager6._id)],
           [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager2._id), String(wdlWager3._id), String(wdlWager5._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -178,6 +181,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
           [WagerStatus.LOST]: [],
+          [WagerStatus.CANCELLED]: [],
         });
       });
     });
@@ -188,6 +192,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id)],
           [WagerStatus.LOST]: [String(moveWager1._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -196,6 +201,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager1._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -204,6 +210,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager4._id), String(moveWager5._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager6._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -212,6 +219,7 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager6._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id)],
+          [WagerStatus.CANCELLED]: [],
         });
       });
 
@@ -219,7 +227,8 @@ describe('Bet resolution logic', () => {
         const outcomes = getWagerOutcomes(moveWagers, 'Bf3');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
-          [WagerStatus.LOST]: moveWagers.map((w) => String(w._id)),
+          [WagerStatus.LOST]: [],
+          [WagerStatus.CANCELLED]: moveWagers.map((w) => String(w._id)),
         });
       });
     });
@@ -230,12 +239,13 @@ describe('Bet resolution logic', () => {
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
           [WagerStatus.LOST]: [],
+          [WagerStatus.CANCELLED]: [],
         });
       });
     });
   });
 
-  describe('Working getWDLWinningsByUserId', () => {
+  describe('Working getWDLWinningsByUser', () => {
     it('Handles white win', () => {
       const winningsByUserId = getWDLWinningsByUser(wdlWagers, GameStatus.WHITE_WIN);
       expect(winningsByUserId).toEqual({
@@ -282,7 +292,7 @@ describe('Bet resolution logic', () => {
     });
   });
 
-  describe('Working getCriticalMoveWinningsByUserId', () => {
+  describe('Working getCriticalMoveWinningsByUser', () => {
     describe('Multiperson pool', () => {
       it('With winners 1', () => {
         const winningsByUserId = getCriticalMoveWinningsByUser(moveWagers, 'e4');
