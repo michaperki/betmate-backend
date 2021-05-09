@@ -11,4 +11,4 @@ export interface ProcessedWager {
 export type UserWinnings = Record<string, number>;
 export type WagerResults = Record<WagerOutcomes, string[]>;
 export type WinningsFn = (wagers: WagerDoc[], correctMove: string) => UserWinnings;
-export type WagerProcesser = (wagers: WagerDoc[], correctWager: string) => ProcessedWager[];
+export type WagerProcessor = (wagers: WagerDoc[], correctWager: string) => ProcessedWager[];

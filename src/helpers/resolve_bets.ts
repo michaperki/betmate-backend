@@ -1,36 +1,20 @@
-/* eslint-disable no-nested-ternary */
 import { ChessInstance } from 'chess.js';
 import { userController, wagerController } from 'controllers';
-import {
-  WagerDoc, WagerStatus,
-} from 'types/models';
-import {
-  ProcessedWager, WagerProcesser as WagerProcessor,
-} from 'types/wagers';
+import { WagerDoc, WagerStatus } from 'types/models';
+import { ProcessedWager, WagerProcessor } from 'types/wagers';
 
-export const processWager = (correctMove: string, winningPoolShare = 1, returnWagers = false) => (
-  (w: WagerDoc): ProcessedWager => {
-    const odds = w.wdl ? w.odds : winningPoolShare;
-    const baseWager = { _id: w._id, better_id: w.better_id };
+export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
+  (wager: WagerDoc): ProcessedWager => {
+    const baseWager = { _id: wager._id, better_id: wager.better_id };
+    const odds = wager.wdl ? wager.odds : winningPoolShare;
+
     switch (true) {
       case returnWagers:
-        return {
-          ...baseWager,
-          winnings: w.amount,
-          outcome: WagerStatus.CANCELLED,
-        };
-      case w.data === correctMove:
-        return {
-          ...baseWager,
-          winnings: w.amount * odds,
-          outcome: WagerStatus.WON,
-        };
+        return { ...baseWager, outcome: WagerStatus.CANCELLED, winnings: wager.amount };
+      case wager.data === correctWager:
+        return { ...baseWager, outcome: WagerStatus.WON, winnings: wager.amount * odds };
       default:
-        return {
-          ...baseWager,
-          winnings: 0,
-          outcome: WagerStatus.LOST,
-        };
+        return { ...baseWager, outcome: WagerStatus.LOST, winnings: 0 };
     }
   }
 );
@@ -46,8 +30,8 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
     .filter((w) => w.data === correctMove)
     .reduce((sum, w) => sum + w.amount, 0);
 
-  const returnBets = winningPool === 0;
   const winningPoolShare = totalPool / winningPool;
+  const returnBets = winningPool === 0;
 
   return wagers.map(processWager(correctMove, winningPoolShare, returnBets));
 };
