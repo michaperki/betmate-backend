@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import { Wager } from 'models';
 import { GameStatus, WagerStatus } from 'types/models';
-import { getCriticalMoveWinningsByUser, getWagerOutcomes, getWDLWinningsByUser } from '../resolve_bets';
+import { getCriticalMoveWinningsByUser, getWagerResults, getWDLWinningsByUser } from '../resolve_bets';
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();
@@ -150,7 +150,7 @@ describe('Bet resolution logic', () => {
   describe('Working getWagerOutcomes', () => {
     describe('For WDL bets', () => {
       it('Handles white win', () => {
-        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.WHITE_WIN);
+        const outcomes = getWagerResults(wdlWagers, GameStatus.WHITE_WIN);
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id)],
           [WagerStatus.LOST]: [String(wdlWager2._id), String(wdlWager4._id), String(wdlWager5._id), String(wdlWager6._id)],
@@ -159,7 +159,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('Handles black win', () => {
-        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.BLACK_WIN);
+        const outcomes = getWagerResults(wdlWagers, GameStatus.BLACK_WIN);
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager2._id), String(wdlWager5._id)],
           [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager3._id), String(wdlWager4._id), String(wdlWager6._id)],
@@ -168,7 +168,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('Handles draw', () => {
-        const outcomes = getWagerOutcomes(wdlWagers, GameStatus.DRAW);
+        const outcomes = getWagerResults(wdlWagers, GameStatus.DRAW);
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(wdlWager4._id), String(wdlWager6._id)],
           [WagerStatus.LOST]: [String(wdlWager0._id), String(wdlWager1._id), String(wdlWager2._id), String(wdlWager3._id), String(wdlWager5._id)],
@@ -177,7 +177,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('Handles no bets', () => {
-        const outcomes = getWagerOutcomes([], GameStatus.WHITE_WIN);
+        const outcomes = getWagerResults([], GameStatus.WHITE_WIN);
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
           [WagerStatus.LOST]: [],
@@ -188,7 +188,7 @@ describe('Bet resolution logic', () => {
 
     describe('For move bets', () => {
       it('With winners 1', () => {
-        const outcomes = getWagerOutcomes(moveWagers, 'e4');
+        const outcomes = getWagerResults(moveWagers, 'e4');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id)],
           [WagerStatus.LOST]: [String(moveWager1._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
@@ -197,7 +197,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('With winners 2', () => {
-        const outcomes = getWagerOutcomes(moveWagers, 'd4');
+        const outcomes = getWagerResults(moveWagers, 'd4');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager1._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id), String(moveWager6._id)],
@@ -206,7 +206,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('With winners 3', () => {
-        const outcomes = getWagerOutcomes(moveWagers, 'Nc3');
+        const outcomes = getWagerResults(moveWagers, 'Nc3');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager4._id), String(moveWager5._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager6._id)],
@@ -215,7 +215,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('With winners 4', () => {
-        const outcomes = getWagerOutcomes(moveWagers, 'Nf3');
+        const outcomes = getWagerResults(moveWagers, 'Nf3');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [String(moveWager6._id)],
           [WagerStatus.LOST]: [String(moveWager0._id), String(moveWager1._id), String(moveWager2._id), String(moveWager3._id), String(moveWager4._id), String(moveWager5._id)],
@@ -224,7 +224,7 @@ describe('Bet resolution logic', () => {
       });
 
       it('No winners', () => {
-        const outcomes = getWagerOutcomes(moveWagers, 'Bf3');
+        const outcomes = getWagerResults(moveWagers, 'Bf3');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
           [WagerStatus.LOST]: [],
@@ -235,7 +235,7 @@ describe('Bet resolution logic', () => {
 
     describe('Empty pool', () => {
       it('Any move', () => {
-        const outcomes = getWagerOutcomes([], 'd4');
+        const outcomes = getWagerResults([], 'd4');
         expect(outcomes).toEqual({
           [WagerStatus.WON]: [],
           [WagerStatus.LOST]: [],
