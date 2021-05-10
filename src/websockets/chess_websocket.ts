@@ -2,18 +2,28 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc, GameStatus } from 'types/models';
+import { ChessDoc, GameStatus, UserDoc } from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { chessController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
 import { MoveData } from 'types/game_loop';
+import { Users } from 'models';
+import { parseToken } from 'authentication/jwt';
 
-const websocket = (socket: Socket): void => {
+type AuthSocket = Socket & {
+  request: {
+    user: UserDoc
+  }
+};
+
+const websocket = (socket: AuthSocket): void => {
   socket.emit('on_connect', 'connected to /chess');
+  console.log(socket.request.user);
 
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessController.getChessGame(gameId);
+    console.log('joining', gameId);
     if (!chessDoc) return socket.emit('error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
@@ -24,6 +34,35 @@ const websocket = (socket: Socket): void => {
   socket.on('leave_game', (gameId: string) => {
     socket.leave(gameId);
     return socket.emit('leave_game', { gameId, message: 'Left room' });
+  });
+
+  socket.on('join_auth', async (token: string) => {
+    try {
+      const parsed = parseToken(token);
+      const user = parsed?.sub && await Users.findById(parsed.sub).then((doc) => doc);
+      if (user) {
+        console.log('joined', parsed.sub);
+        socket.join(parsed.sub);
+        return socket.emit('join_auth', { message: 'Successfully joined' });
+      }
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    } catch (error) {
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    }
+  });
+
+  socket.on('leave_auth', (token: string) => {
+    try {
+      const parsed = parseToken(token);
+      if (parsed?.sub) {
+        console.log('leave', parsed.sub);
+        socket.leave(parsed.sub);
+        return socket.emit('leave_auth', { message: 'Successfully left' });
+      }
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    } catch (error) {
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    }
   });
 
   socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
@@ -56,7 +95,7 @@ const websocket = (socket: Socket): void => {
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveWagers(move.gameId, chessGame).then((wagerResults) => {
-      if (wagerResults) socket.to(move.gameId).emit('wager_result', { gameId: move.gameId, data: wagerResults.map((w) => w.toJSON()) });
+      if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));
       else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
     });
 
@@ -87,7 +126,7 @@ const websocket = (socket: Socket): void => {
       await chessController.updateChessGame(move.gameId, completeFields);
 
       resolveWdlWagers(move.gameId, gameStatus).then((wagerResults) => {
-        if (wagerResults) socket.to(move.gameId).emit('wager_result', { gameId: move.gameId, data: wagerResults.map((w) => w.toJSON()) });
+        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));
         else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
       });
     }

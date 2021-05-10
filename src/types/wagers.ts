@@ -16,3 +16,4 @@ type WagerProcessorOutput = {
 export type WagerProcessor = (wagers: WagerDoc[], correctWager: string) => WagerProcessorOutput;
 export type WagerResults = Record<WagerOutcomes, Types.ObjectId[]>;
 export type UserWinnings = Record<string, number>;
+export type UserWagers = Record<string, WagerDoc[]>;
