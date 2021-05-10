@@ -2,7 +2,9 @@ import mongoose, { Types } from 'mongoose';
 import { Wager } from 'models';
 import { GameStatus, WagerStatus, WagerDoc } from 'types/models';
 import { ProcessedWager } from 'types/wagers';
-import { processWager, processCriticalMoveWagers, processWDLWagers } from '../resolve_bets';
+import {
+  processWager, processCriticalMoveWagers, processWDLWagers, getUserWinnings, getWagerResults,
+} from '../resolve_bets';
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();
@@ -218,7 +220,7 @@ describe('Bet resolution logic', () => {
         testProcessWager(processMoveNf3, moveWager5, WagerStatus.LOST, 0);
       });
 
-      it('No winners (return wagers', () => {
+      it('No winners (return wagers)', () => {
         const processMoveBc8 = processWager('Bc8', 6.2, true);
         testProcessWager(processMoveBc8, moveWager0, WagerStatus.CANCELLED, 50);
         testProcessWager(processMoveBc8, moveWager1, WagerStatus.CANCELLED, 50);
@@ -233,7 +235,7 @@ describe('Bet resolution logic', () => {
 
   describe('Working processWDLWagers', () => {
     it('Handles white win', () => {
-      const processedWagers = processWDLWagers(wdlWagers, GameStatus.WHITE_WIN);
+      const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.WHITE_WIN);
       const expectedWagers: ProcessedWager[] = [
         { ...getWagerIDs(wdlWager0), outcome: WagerStatus.WON, winnings: 75 },
         { ...getWagerIDs(wdlWager1), outcome: WagerStatus.WON, winnings: 150 },
@@ -248,7 +250,7 @@ describe('Bet resolution logic', () => {
     });
 
     it('Handles black win', () => {
-      const processedWagers = processWDLWagers(wdlWagers, GameStatus.BLACK_WIN);
+      const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.BLACK_WIN);
       const expectedWagers: ProcessedWager[] = [
         { ...getWagerIDs(wdlWager0), outcome: WagerStatus.LOST, winnings: 0 },
         { ...getWagerIDs(wdlWager1), outcome: WagerStatus.LOST, winnings: 0 },
@@ -263,7 +265,7 @@ describe('Bet resolution logic', () => {
     });
 
     it('Handles draw', () => {
-      const processedWagers = processWDLWagers(wdlWagers, GameStatus.DRAW);
+      const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.DRAW);
       const expectedWagers: ProcessedWager[] = [
         { ...getWagerIDs(wdlWager0), outcome: WagerStatus.LOST, winnings: 0 },
         { ...getWagerIDs(wdlWager1), outcome: WagerStatus.LOST, winnings: 0 },
@@ -278,7 +280,7 @@ describe('Bet resolution logic', () => {
     });
 
     it('Handles no winners', () => {
-      const processedWagers = processWDLWagers(wdlWagers, 'UNEXPECTED_OUTCOME');
+      const { processedWagers } = processWDLWagers(wdlWagers, 'UNEXPECTED_OUTCOME');
       const expectedWagers: ProcessedWager[] = [
         { ...getWagerIDs(wdlWager0), outcome: WagerStatus.LOST, winnings: 0 },
         { ...getWagerIDs(wdlWager1), outcome: WagerStatus.LOST, winnings: 0 },
@@ -293,7 +295,7 @@ describe('Bet resolution logic', () => {
     });
 
     it('Handles no wager data', () => {
-      const processedWagers = processWDLWagers([], GameStatus.WHITE_WIN);
+      const { processedWagers } = processWDLWagers([], GameStatus.WHITE_WIN);
       expect(processedWagers).toEqual([]);
     });
   });
@@ -301,7 +303,7 @@ describe('Bet resolution logic', () => {
   describe('Working processCriticalMoveWagers', () => {
     describe('Multiperson pool', () => {
       it('With winners 1', () => {
-        const processedWagers = processCriticalMoveWagers(moveWagers, 'e4');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers(moveWagers, 'e4');
         // $420 in pool, $100/$420 placed on the correct move
         const expectedWagers = [
           { ...getWagerIDs(moveWager0), outcome: WagerStatus.WON, winnings: 210 },
@@ -311,13 +313,14 @@ describe('Bet resolution logic', () => {
           { ...getWagerIDs(moveWager4), outcome: WagerStatus.LOST, winnings: 0 },
           { ...getWagerIDs(moveWager5), outcome: WagerStatus.LOST, winnings: 0 },
           { ...getWagerIDs(moveWager6), outcome: WagerStatus.LOST, winnings: 0 },
-        ].map((pw) => ({ ...pw, winning_pool_share: 4.2 }));
+        ];
 
         processedWagers.forEach((pw, i) => expect(pw).toEqual(expectedWagers[i]));
+        expect(winningPoolShare).toBe(4.2);
       });
 
       it('With winners 2', () => {
-        const processedWagers = processCriticalMoveWagers(moveWagers, 'd4');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers(moveWagers, 'd4');
         // $420 in pool, $50/$420 placed on the correct move
         const expectedWagers = [
           { ...getWagerIDs(moveWager0), outcome: WagerStatus.LOST, winnings: 0 },
@@ -327,13 +330,14 @@ describe('Bet resolution logic', () => {
           { ...getWagerIDs(moveWager4), outcome: WagerStatus.LOST, winnings: 0 },
           { ...getWagerIDs(moveWager5), outcome: WagerStatus.LOST, winnings: 0 },
           { ...getWagerIDs(moveWager6), outcome: WagerStatus.LOST, winnings: 0 },
-        ].map((pw) => ({ ...pw, winning_pool_share: 8.4 }));
+        ];
 
         processedWagers.forEach((pw, i) => expect(pw).toEqual(expectedWagers[i]));
+        expect(winningPoolShare).toBe(8.4);
       });
 
       it('With winners 3', () => {
-        const processedWagers = processCriticalMoveWagers(moveWagers, 'Nc3');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers(moveWagers, 'Nc3');
         // $420 in pool, $175/$420 placed on the correct move
         const expectedWagers = [
           { ...getWagerIDs(moveWager0), outcome: WagerStatus.LOST, winnings: 0 },
@@ -343,13 +347,14 @@ describe('Bet resolution logic', () => {
           { ...getWagerIDs(moveWager4), outcome: WagerStatus.WON, winnings: 180 },
           { ...getWagerIDs(moveWager5), outcome: WagerStatus.WON, winnings: 240 },
           { ...getWagerIDs(moveWager6), outcome: WagerStatus.LOST, winnings: 0 },
-        ].map((pw) => ({ ...pw, winning_pool_share: 2.4 }));
+        ];
 
         processedWagers.forEach((pw, i) => expect(pw).toEqual(expectedWagers[i]));
+        expect(winningPoolShare).toBe(2.4);
       });
 
       it('No winners', () => {
-        const processedWagers = processCriticalMoveWagers(moveWagers, 'Bc8');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers(moveWagers, 'Bc8');
         // $420 in pool, $0/$420 placed on the correct move
         const expectedWagers = [
           { ...getWagerIDs(moveWager0), outcome: WagerStatus.CANCELLED, winnings: 50 },
@@ -359,34 +364,288 @@ describe('Bet resolution logic', () => {
           { ...getWagerIDs(moveWager4), outcome: WagerStatus.CANCELLED, winnings: 75 },
           { ...getWagerIDs(moveWager5), outcome: WagerStatus.CANCELLED, winnings: 100 },
           { ...getWagerIDs(moveWager6), outcome: WagerStatus.CANCELLED, winnings: 95 },
-        ].map((pw) => ({ ...pw, winning_pool_share: Number('Infinity') }));
+        ];
 
         processedWagers.forEach((pw, i) => expect(pw).toEqual(expectedWagers[i]));
+        expect(winningPoolShare).toBe(Number('Infinity'));
       });
     });
 
     describe('One person pool', () => {
       it('Person wins', () => {
-        const processedWagers = processCriticalMoveWagers([moveWager0], 'e4');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers([moveWager0], 'e4');
         // $50 in pool, $50/$50 placed on the correct move
         expect(processedWagers).toEqual([{
-          ...getWagerIDs(moveWager0), outcome: WagerStatus.WON, winnings: 50, winning_pool_share: 1,
+          ...getWagerIDs(moveWager0), outcome: WagerStatus.WON, winnings: 50,
         }]);
+        expect(winningPoolShare).toBe(1);
       });
 
       it('Person loses', () => {
-        const processedWagers = processCriticalMoveWagers([moveWager0], 'd4');
+        const { processedWagers, winningPoolShare } = processCriticalMoveWagers([moveWager0], 'd4');
         // $50 in pool, $0/$50 placed on the correct move
         expect(processedWagers).toEqual([{
-          ...getWagerIDs(moveWager0), outcome: WagerStatus.CANCELLED, winnings: 50, winning_pool_share: Number('Infinity'),
+          ...getWagerIDs(moveWager0), outcome: WagerStatus.CANCELLED, winnings: 50,
         }]);
+        expect(winningPoolShare).toBe(Number('Infinity'));
       });
     });
 
     describe('Empty pool', () => {
       it('Any wager', () => {
-        const winningsByUserId = processCriticalMoveWagers([], 'e4');
-        expect(winningsByUserId).toEqual([]);
+        const { processedWagers } = processCriticalMoveWagers([], 'e4');
+        expect(processedWagers).toEqual([]);
+      });
+    });
+  });
+
+  describe('Working getUserWinnings', () => {
+    describe('WDL Bets', () => {
+      it('Handles white win', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.WHITE_WIN);
+        const winningsByUserId = getUserWinnings(processedWagers);
+        expect(winningsByUserId).toEqual({
+          [String(player1Id)]: 225, // 2/3 bets won (50 * 1.5 + 100 * 1.5)
+          [String(player2Id)]: 300, // 1/1 bets won (200 * 1.5)
+          [String(player3Id)]: 0, // 0/1 bets won
+          [String(player4Id)]: 0, // 0/2 bets won
+        });
+      });
+
+      it('Handles black win', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.BLACK_WIN);
+        const winningsByUserId = getUserWinnings(processedWagers);
+        expect(winningsByUserId).toEqual({
+          [String(player1Id)]: 125, // 1/3 bets won (50 * 2.5)
+          [String(player2Id)]: 0, // 0/1 bets won
+          [String(player3Id)]: 0, // 0/1 bets won
+          [String(player4Id)]: 250, // 1/2 bets won (100 * 2.5)
+        });
+      });
+
+      it('Handles draw', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.DRAW);
+        const winningsByUserId = getUserWinnings(processedWagers);
+        expect(winningsByUserId).toEqual({
+          [String(player1Id)]: 0, // 0/3 bets won
+          [String(player2Id)]: 0, // 0/1 bets won
+          [String(player3Id)]: 225, // 1/1 bets won (75 * 3)
+          [String(player4Id)]: 300, // 1/2 bets won (100 * 3)
+        });
+      });
+
+      it('Handles no wager data', () => {
+        const { processedWagers } = processWDLWagers([], GameStatus.WHITE_WIN);
+        const winningsByUserId = getUserWinnings(processedWagers);
+        expect(winningsByUserId).toEqual({});
+      });
+    });
+
+    describe('Move bets', () => {
+      describe('Multiperson pool', () => {
+        it('With winners 1', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'e4');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // $420 in pool, $100/$420 placed on the correct move
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 315, // 75% of winning pool
+            [String(player2Id)]: 105, // 25% of winning pool
+            [String(player3Id)]: 0, // one wrong bet
+            [String(player4Id)]: 0, // two wrong bets
+          });
+        });
+
+        it('With winners 2', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'd4');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // $420 in pool, $50/$420 placed on the correct move
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 420, // 100% of winning pool
+            [String(player2Id)]: 0, // one wrong bet
+            [String(player3Id)]: 0, // one wrong bet
+            [String(player4Id)]: 0, // two wrong bets
+          });
+        });
+
+        it('With winners 3', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'Nc3');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // $420 in pool, $175/$420 placed on the correct move
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 0, // three wrong bets
+            [String(player2Id)]: 0, // one wrong bet
+            [String(player3Id)]: 180, // 43% of winning pool
+            [String(player4Id)]: 240, // 57% of winning pool
+          });
+        });
+
+        it('No winners', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'Bc5');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // everyone gets refund
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 125,
+            [String(player2Id)]: 25,
+            [String(player3Id)]: 75,
+            [String(player4Id)]: 195,
+          });
+        });
+      });
+
+      describe('Single person pool', () => {
+        it('Person wins', () => {
+          const { processedWagers } = processCriticalMoveWagers([moveWager0], 'e4');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // $50 in pool, $50/$50 placed on the correct move
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 50, // player 1 wins back their $50
+          });
+        });
+
+        it('Person loses', () => {
+          const { processedWagers } = processCriticalMoveWagers([moveWager0], 'd4');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          // $50 in pool, $0/$50 placed on the correct move
+          expect(winningsByUserId).toEqual({
+            [String(player1Id)]: 50, // player 1 gets refund
+          });
+        });
+      });
+
+      describe('Empty pool', () => {
+        it('Any move', () => {
+          const { processedWagers } = processCriticalMoveWagers([], 'd4');
+          const winningsByUserId = getUserWinnings(processedWagers);
+          expect(winningsByUserId).toEqual({});
+        });
+      });
+    });
+  });
+
+  describe('Working getWagerResults', () => {
+    describe('WDL Bets', () => {
+      it('Handles white win', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.WHITE_WIN);
+        const wagerResults = getWagerResults(processedWagers);
+        expect(wagerResults).toEqual({
+          [WagerStatus.WON]: [wdlWager0._id, wdlWager1._id, wdlWager3._id],
+          [WagerStatus.LOST]: [wdlWager2._id, wdlWager4._id, wdlWager5._id, wdlWager6._id],
+          [WagerStatus.CANCELLED]: [],
+        });
+      });
+
+      it('Handles black win', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.BLACK_WIN);
+        const wagerResults = getWagerResults(processedWagers);
+        expect(wagerResults).toEqual({
+          [WagerStatus.WON]: [wdlWager2._id, wdlWager5._id],
+          [WagerStatus.LOST]: [wdlWager0._id, wdlWager1._id, wdlWager3._id, wdlWager4._id, wdlWager6._id],
+          [WagerStatus.CANCELLED]: [],
+        });
+      });
+
+      it('Handles draw', () => {
+        const { processedWagers } = processWDLWagers(wdlWagers, GameStatus.DRAW);
+        const wagerResults = getWagerResults(processedWagers);
+        expect(wagerResults).toEqual({
+          [WagerStatus.WON]: [wdlWager4._id, wdlWager6._id],
+          [WagerStatus.LOST]: [wdlWager0._id, wdlWager1._id, wdlWager2._id, wdlWager3._id, wdlWager5._id],
+          [WagerStatus.CANCELLED]: [],
+        });
+      });
+
+      it('Handles no wager data', () => {
+        const { processedWagers } = processWDLWagers([], GameStatus.WHITE_WIN);
+        const wagerResults = getWagerResults(processedWagers);
+        expect(wagerResults).toEqual({
+          [WagerStatus.WON]: [],
+          [WagerStatus.LOST]: [],
+          [WagerStatus.CANCELLED]: [],
+        });
+      });
+    });
+
+    describe('Move bets', () => {
+      describe('Multiperson pool', () => {
+        it('With winners 1', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'e4');
+          const wagerResults = getWagerResults(processedWagers);
+          // $420 in pool, $100/$420 placed on the correct move
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [moveWager0._id, moveWager2._id, moveWager3._id],
+            [WagerStatus.LOST]: [moveWager1._id, moveWager4._id, moveWager5._id, moveWager6._id],
+            [WagerStatus.CANCELLED]: [],
+          });
+        });
+
+        it('With winners 2', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'd4');
+          const wagerResults = getWagerResults(processedWagers);
+          // $420 in pool, $50/$420 placed on the correct move
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [moveWager1._id],
+            [WagerStatus.LOST]: [moveWager0._id, moveWager2._id, moveWager3._id, moveWager4._id, moveWager5._id, moveWager6._id],
+            [WagerStatus.CANCELLED]: [],
+          });
+        });
+
+        it('With winners 3', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'Nc3');
+          const wagerResults = getWagerResults(processedWagers);
+          // $420 in pool, $175/$420 placed on the correct move
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [moveWager4._id, moveWager5._id],
+            [WagerStatus.LOST]: [moveWager0._id, moveWager1._id, moveWager2._id, moveWager3._id, moveWager6._id],
+            [WagerStatus.CANCELLED]: [],
+          });
+        });
+
+        it('No winners', () => {
+          const { processedWagers } = processCriticalMoveWagers(moveWagers, 'Bc5');
+          const wagerResults = getWagerResults(processedWagers);
+          // everyone gets refund
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: [],
+            [WagerStatus.CANCELLED]: [moveWager0._id, moveWager1._id, moveWager2._id, moveWager3._id, moveWager4._id, moveWager5._id, moveWager6._id],
+          });
+        });
+      });
+
+      describe('Single person pool', () => {
+        it('Person wins', () => {
+          const { processedWagers } = processCriticalMoveWagers([moveWager0], 'e4');
+          const wagerResults = getWagerResults(processedWagers);
+          // $50 in pool, $50/$50 placed on the correct move
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [moveWager0._id],
+            [WagerStatus.LOST]: [],
+            [WagerStatus.CANCELLED]: [],
+          });
+        });
+
+        it('Person loses', () => {
+          const { processedWagers } = processCriticalMoveWagers([moveWager0], 'd4');
+          const wagerResults = getWagerResults(processedWagers);
+          // $50 in pool, $0/$50 placed on the correct move
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: [],
+            [WagerStatus.CANCELLED]: [moveWager0._id],
+          });
+        });
+      });
+
+      describe('Empty pool', () => {
+        it('Any move', () => {
+          const { processedWagers } = processCriticalMoveWagers([], 'd4');
+          const wagerResults = getWagerResults(processedWagers);
+          expect(wagerResults).toEqual({
+            [WagerStatus.WON]: [],
+            [WagerStatus.LOST]: [],
+            [WagerStatus.CANCELLED]: [],
+          });
+        });
       });
     });
   });

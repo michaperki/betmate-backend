@@ -6,9 +6,13 @@ export interface ProcessedWager {
   better_id: Types.ObjectId,
   winnings: number,
   outcome: WagerOutcomes
-  winning_pool_share?: number
 }
 
-export type WagerProcessor = (wagers: WagerDoc[], correctWager: string) => ProcessedWager[];
-export type WagerResults = Record<WagerOutcomes, ProcessedWager[]>;
+type WagerProcessorOutput = {
+  processedWagers: ProcessedWager[],
+  winningPoolShare?: number
+};
+
+export type WagerProcessor = (wagers: WagerDoc[], correctWager: string) => WagerProcessorOutput;
+export type WagerResults = Record<WagerOutcomes, Types.ObjectId[]>;
 export type UserWinnings = Record<string, number>;

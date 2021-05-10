@@ -24,9 +24,9 @@ export const processWager = (correctWager: string, winningPoolShare = 1, returnW
   }
 );
 
-export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => (
-  wagers.map(processWager(correctOutcome))
-);
+export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
+  processedWagers: wagers.map(processWager(correctOutcome)),
+});
 
 export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) => {
   const totalPool = wagers
@@ -38,12 +38,13 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
   const winningPoolShare = totalPool / winningPool;
   const returnBets = winningPool === 0;
 
-  return wagers
-    .map(processWager(correctMove, winningPoolShare, returnBets))
-    .map((pw) => ({ ...pw, winning_pool_share: winningPoolShare }));
+  return {
+    processedWagers: wagers.map(processWager(correctMove, winningPoolShare, returnBets)),
+    winningPoolShare,
+  };
 };
 
-const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
+export const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
   pw.reduce((uw, w) => {
     const userID = String(w.better_id);
     return {
@@ -53,10 +54,10 @@ const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
   }, {})
 );
 
-const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
-  [WagerStatus.WON]: pw.filter((w) => w.outcome === WagerStatus.WON),
-  [WagerStatus.LOST]: pw.filter((w) => w.outcome === WagerStatus.LOST),
-  [WagerStatus.CANCELLED]: pw.filter((w) => w.outcome === WagerStatus.CANCELLED),
+export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
+  [WagerStatus.WON]: pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id),
+  [WagerStatus.LOST]: pw.filter((w) => w.outcome === WagerStatus.LOST).map((w) => w._id),
+  [WagerStatus.CANCELLED]: pw.filter((w) => w.outcome === WagerStatus.CANCELLED).map((w) => w._id),
 });
 
 const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]> => {
@@ -71,16 +72,14 @@ const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]
   return updatedUsers.filter((u): u is UserDoc => u !== null);
 };
 
-const updateWagerResults = async (wagerResults: WagerResults): Promise<WagerDoc[]> => {
+const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?: number): Promise<WagerDoc[]> => {
   const wagersToUpdate = Object
     .entries(wagerResults)
-    .map(async ([outcome, pws]) => {
-      const ids = pws.map((pw) => pw._id);
-      const { winning_pool_share: wps } = pws[0];
+    .map(async ([outcome, ids]) => {
       const updateQuery: UpdateQuery<WagerDoc> = {
         resolved: true,
         status: outcome as WagerOutcomes,
-        ...(wps && { winning_pool_share: wps }),
+        ...(winningPoolShare && { winning_pool_share: winningPoolShare }),
       };
 
       const res = await wagerController.updateManyWagers({ _id: { $in: ids } }, updateQuery);
@@ -92,13 +91,13 @@ const updateWagerResults = async (wagerResults: WagerResults): Promise<WagerDoc[
 };
 
 const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<WagerDoc[]> => {
-  const processedWagers = processWagers(wagers, correctWager);
+  const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
 
   const userWinnings = getUserWinnings(processedWagers);
   const wagerResults = getWagerResults(processedWagers);
 
   updateUserWinnings(userWinnings);
-  return updateWagerResults(wagerResults);
+  return updateWagerResults(wagerResults, winningPoolShare);
 };
 
 export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
