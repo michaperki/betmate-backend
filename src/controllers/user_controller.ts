@@ -13,6 +13,14 @@ const tokenForUser = (user: UserDoc): string => {
   return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
 };
 
+const decodeToken = (token: string, noVerify = false): any => {
+  try {
+    return jwt.decode(token, env.get('AUTH_SECRET').required().asString(), noVerify);
+  } catch (error) {
+    return null;
+  }
+};
+
 const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
   Users
     .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
@@ -109,6 +117,7 @@ const deleteUser: RequestHandler = async (req, res) => {
 
 const userController = {
   tokenForUser,
+  decodeToken,
   updateUserData,
   getAllUsers,
   createNewUser,

@@ -2,24 +2,15 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc, GameStatus, UserDoc } from 'types/models';
+import { ChessDoc, GameStatus } from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessController } from 'controllers';
+import { chessController, userController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
 import { MoveData } from 'types/game_loop';
-import { Users } from 'models';
-import { parseToken } from 'authentication/jwt';
 
-type AuthSocket = Socket & {
-  request: {
-    user: UserDoc
-  }
-};
-
-const websocket = (socket: AuthSocket): void => {
+const websocket = (socket: Socket): void => {
   socket.emit('on_connect', 'connected to /chess');
-  console.log(socket.request.user);
 
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessController.getChessGame(gameId);
@@ -37,32 +28,25 @@ const websocket = (socket: AuthSocket): void => {
   });
 
   socket.on('join_auth', async (token: string) => {
-    try {
-      const parsed = parseToken(token);
-      const user = parsed?.sub && await Users.findById(parsed.sub).then((doc) => doc);
-      if (user) {
-        console.log('joined', parsed.sub);
-        socket.join(parsed.sub);
-        return socket.emit('join_auth', { message: 'Successfully joined' });
-      }
-      return socket.emit('socket_error', { message: 'Error parsing token' });
-    } catch (error) {
-      return socket.emit('socket_error', { message: 'Error parsing token' });
+    const payload = userController.decodeToken(token);
+    if (payload?.sub) {
+      if (socket.rooms.has(payload.sub)) return true;
+
+      socket.join(payload.sub);
+      return socket.emit('join_auth', { message: 'Successfully joined' });
     }
+    const unverifiedPayload = userController.decodeToken(token, true);
+    if (unverifiedPayload?.sub) socket.leave(unverifiedPayload.sub);
+    return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
   socket.on('leave_auth', (token: string) => {
-    try {
-      const parsed = parseToken(token);
-      if (parsed?.sub) {
-        console.log('leave', parsed.sub);
-        socket.leave(parsed.sub);
-        return socket.emit('leave_auth', { message: 'Successfully left' });
-      }
-      return socket.emit('socket_error', { message: 'Error parsing token' });
-    } catch (error) {
-      return socket.emit('socket_error', { message: 'Error parsing token' });
+    const payload = userController.decodeToken(token, true);
+    if (payload?.sub) {
+      socket.leave(payload.sub);
+      return socket.emit('leave_auth', { message: 'Successfully left' });
     }
+    return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
   socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
