@@ -1,11 +1,13 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
+import {
+  FilterQuery, UpdateQuery, Query, Types,
+} from 'mongoose';
 import { documentNotFoundError } from 'helpers/constants';
 import { WagerDoc } from 'types/models';
 import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
 // import { requestWithValidation } from 'helpers/validation';
-import { FilterQuery } from 'mongoose';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -22,10 +24,24 @@ const getWager = (id: string): Promise<WagerDoc | null> => (
     .catch(() => null)
 );
 
-const getUserWagers = (userID: string, fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> => (
+const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> => (
   Wager
-    .find({ better_id: userID, ...fields })
+    .find(fields)
     .then((docs) => docs)
+    .catch(() => null)
+);
+
+const updateWager = async (id: Types.ObjectId | string, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc | null> => (
+  Wager
+    .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
+    .then((doc) => doc)
+    .catch(() => null)
+);
+
+const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>): Promise<Query<WagerDoc>[] | null> => (
+  Wager
+    .updateMany(conditions, fields)
+    .then((res) => res)
     .catch(() => null)
 );
 
@@ -86,12 +102,16 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
 };
 
 const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const wagers = await getUserWagers(req.user._id, req.query);
+  const fields = { better_id: req.user._id, ...req.query };
+  const wagers = await getWagers(fields);
   if (!wagers) res.status(500).send({ error: 'An issue occured' });
   else res.status(200).send(wagers);
 };
 
 const wagerController = {
+  getWagers,
+  updateWager,
+  updateManyWagers,
   createWagerRequest,
   getWagerRequest,
   getUserWagersRequest,

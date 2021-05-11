@@ -1,113 +1,125 @@
 import { ChessInstance } from 'chess.js';
-import { Users, Wager } from 'models';
-import WagerModel from 'models/wager_model';
-import { WagerDoc } from 'types/models';
+import { userController, wagerController } from 'controllers';
+import { UpdateQuery } from 'mongoose';
+import {
+  UserDoc, WagerDoc, WagerOutcomes, WagerStatus,
+} from 'types/models';
+import {
+  ProcessedWager, UserWinnings, WagerProcessor, WagerResults,
+} from 'types/wagers';
 
-export const getWagersByUserId = (wagers: WagerDoc[]): Record<string, string[]> => wagers.reduce((wagersById, currWager) => {
-  const userId = String(currWager.better_id);
+export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
+  (wager: WagerDoc): ProcessedWager => {
+    const baseWager = { _id: wager._id, better_id: wager.better_id };
+    const odds = wager.wdl ? wager.odds : winningPoolShare;
+
+    switch (true) {
+      case returnWagers:
+        return { ...baseWager, outcome: WagerStatus.CANCELLED, winnings: wager.amount };
+      case wager.data === correctWager:
+        return { ...baseWager, outcome: WagerStatus.WON, winnings: wager.amount * odds };
+      default:
+        return { ...baseWager, outcome: WagerStatus.LOST, winnings: 0 };
+    }
+  }
+);
+
+export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
+  processedWagers: wagers.map(processWager(correctOutcome)),
+});
+
+export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) => {
+  const totalPool = wagers
+    .reduce((sum, w) => sum + w.amount, 0);
+  const winningPool = wagers
+    .filter((w) => w.data === correctMove)
+    .reduce((sum, w) => sum + w.amount, 0);
+
+  const winningPoolShare = totalPool / winningPool;
+  const returnBets = winningPool === 0;
+
   return {
-    ...wagersById,
-    [userId]: [...(wagersById[userId] || []), currWager.id],
+    processedWagers: wagers.map(processWager(correctMove, winningPoolShare, returnBets)),
+    winningPoolShare,
   };
-}, {});
+};
 
-export const getCriticalMoveWinningsByUserId = (wagers: WagerDoc[], correctMove: string): Record<string, number> => {
-  let totalPool = 0;
-  let winningPool = 0;
-  wagers.forEach((wager) => {
-    // wager.data is assumed to always be in SAN notation
-    if (wager.data === correctMove) winningPool += wager.amount;
-    totalPool += wager.amount;
+export const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
+  pw.reduce((uw, w) => {
+    const userID = String(w.better_id);
+    return {
+      ...uw,
+      [userID]: (uw[userID] || 0) + w.winnings,
+    };
+  }, {})
+);
+
+export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
+  [WagerStatus.WON]: pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id),
+  [WagerStatus.LOST]: pw.filter((w) => w.outcome === WagerStatus.LOST).map((w) => w._id),
+  [WagerStatus.CANCELLED]: pw.filter((w) => w.outcome === WagerStatus.CANCELLED).map((w) => w._id),
+});
+
+const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]> => {
+  const usersToUpdate = Object
+    .entries(userWinnings)
+    .map(([id, winnings]) => (
+      userController
+        .updateUserData(id, { $inc: { account: winnings } })
+    ));
+
+  const updatedUsers = await Promise.all(usersToUpdate);
+  return updatedUsers.filter((u): u is UserDoc => u !== null);
+};
+
+const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?: number): Promise<WagerDoc[]> => {
+  const wagersToUpdate = Object
+    .entries(wagerResults)
+    .map(async ([outcome, ids]) => {
+      const updateQuery: UpdateQuery<WagerDoc> = {
+        resolved: true,
+        status: outcome as WagerOutcomes,
+        ...(winningPoolShare && { winning_pool_share: winningPoolShare }),
+      };
+
+      const res = await wagerController.updateManyWagers({ _id: { $in: ids } }, updateQuery);
+      return res && wagerController.getWagers({ _id: { $in: ids } });
+    });
+
+  const updatedWagers = await Promise.all(wagersToUpdate);
+  return updatedWagers.filter((w): w is WagerDoc[] => w !== null).flat();
+};
+
+const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<WagerDoc[]> => {
+  const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
+
+  const userWinnings = getUserWinnings(processedWagers);
+  const wagerResults = getWagerResults(processedWagers);
+
+  updateUserWinnings(userWinnings);
+  return updateWagerResults(wagerResults, winningPoolShare);
+};
+
+export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
+  const moveNum = chessGame.history().length;
+  const [lastMove] = chessGame.history().slice(-1);
+
+  const wagers = await wagerController.getWagers({
+    game_id: gameId,
+    wdl: false,
+    move_number: moveNum,
+    resolved: false,
   });
 
-  if (winningPool === 0) {
-    return wagers.reduce((refundsById, currWager) => {
-      const userId = String(currWager.better_id);
-      return {
-        ...refundsById,
-        [userId]: (refundsById[userId] || 0) + currWager.amount,
-      };
-    }, {});
-  }
-
-  return wagers.reduce((winningsById, currWager) => {
-    const userId = String(currWager.better_id);
-    const winnings = currWager.data === correctMove
-      ? (currWager.amount / winningPool) * totalPool
-      : 0;
-
-    return {
-      ...winningsById,
-      [userId]: (winningsById[userId] || 0) + winnings,
-    };
-  }, {});
+  return wagers && await resolveWagers(wagers, lastMove, processCriticalMoveWagers);
 };
 
-export const getWDLWinningsByUserId = (wagers: WagerDoc[], correctOutcome: string): Record<string, number> => wagers.reduce((winningsById, currWager) => {
-  const userId = String(currWager.better_id);
-  const winnings = currWager.data === correctOutcome
-    ? currWager.odds * currWager.amount
-    : 0;
+export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<WagerDoc[] | null> => {
+  const wagers = await wagerController.getWagers({
+    game_id: gameId,
+    wdl: true,
+    resolved: false,
+  });
 
-  return {
-    ...winningsById,
-    [userId]: (winningsById[userId] || 0) + winnings,
-  };
-}, {});
-
-export const resolveBets = async (winningsById: Record<string, number>, wagersById: Record<string, string[]>): Promise<WagerDoc[] | null> => {
-  try {
-    const wagerUpdates = (
-      Object.keys(winningsById)
-        .map(async (better_id) => {
-          const winnings = winningsById[better_id];
-          const wagerIds = wagersById[better_id];
-          await Users.findByIdAndUpdate(better_id, { $inc: { account: winnings } });
-          await Wager.updateMany({ _id: { $in: wagerIds } }, { resolved: true });
-          return Wager.find(wagerIds);
-        })
-    );
-    const resolvedWagersById = await Promise.all(wagerUpdates);
-    return resolvedWagersById.flat();
-  } catch (error) {
-    return null;
-  }
-};
-
-export const resolveCriticalMoveBets = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
-  try {
-    const moveNum = chessGame.history().length;
-    const [lastMove] = chessGame.history().slice(-1);
-
-    const wagers = await WagerModel.find({
-      game_id: gameId,
-      wdl: false,
-      move_number: moveNum,
-      resolved: false,
-    });
-
-    const winningsById = getCriticalMoveWinningsByUserId(wagers, lastMove);
-    const wagersById = getWagersByUserId(wagers);
-
-    return await resolveBets(winningsById, wagersById);
-  } catch (error) {
-    return null;
-  }
-};
-
-export const resolveWdlBets = async (gameId: string, gameStatus: string): Promise<WagerDoc[] | null> => {
-  try {
-    const wagers = await WagerModel.find({
-      game_id: gameId,
-      wdl: true,
-      resolved: false,
-    });
-
-    const winningsById = getWDLWinningsByUserId(wagers, gameStatus);
-    const wagersById = getWagersByUserId(wagers);
-
-    return await resolveBets(winningsById, wagersById);
-  } catch (error) {
-    return null;
-  }
+  return wagers && await resolveWagers(wagers, gameStatus, processWDLWagers);
 };
