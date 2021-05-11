@@ -14,11 +14,9 @@ const websocket = (socket: Socket): void => {
 
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessController.getChessGame(gameId);
-    console.log('joining', gameId);
     if (!chessDoc) return socket.emit('error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
-
     return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
   });
 
