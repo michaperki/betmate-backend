@@ -64,7 +64,7 @@ const websocket = (socket: Socket): void => {
 
     const updateMessage = {
       state: chessGame.fen(),
-      move_hist: chessGame.history(),
+      move_hist: [...chessDoc.move_hist, move.data.san],
       time_white: timeWhite,
       time_black: timeBlack,
     };

@@ -54,7 +54,7 @@ export const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
   }, {})
 );
 
-export const getUserWagers = (wagers: WagerDoc[]): Record<string, WagerDoc[]> => (
+export const getUserWagers = (wagers: WagerDoc[]): UserWagers => (
   wagers.reduce((userWagers, w) => {
     const userID = String(w.better_id);
     return {
