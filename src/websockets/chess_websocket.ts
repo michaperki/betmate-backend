@@ -2,11 +2,20 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc, GameStatus, MoveData } from 'types/models';
+import {
+  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+} from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { chessController, userController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
+
+interface PoolBetMessage {
+  gameId: string
+  type: 'move'
+  data: string
+  amount: number
+}
 
 const websocket = (socket: Socket): void => {
   socket.emit('on_connect', 'connected to /chess');
@@ -92,6 +101,7 @@ const websocket = (socket: Socket): void => {
       time_white: timeWhite,
       time_black: timeBlack,
       odds,
+      pool_wagers: { move: [] as unknown as Types.Array<AnonMoveWager> },
     };
 
     const result = await chessController.updateChessGame(move.gameId, fields);
@@ -112,6 +122,12 @@ const websocket = (socket: Socket): void => {
       });
     }
     return true;
+  });
+
+  socket.on('pool_wager', async (wager: PoolBetMessage) => {
+    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}`]: { data: wager.data, amount: wager.amount } } });
+    if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
+    return socket.emit('socket_error', { message: 'issue updating' });
   });
 };
 

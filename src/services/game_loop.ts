@@ -2,7 +2,9 @@
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { ChessDoc, GameStatus, MoveData } from 'types/models';
+import {
+  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+} from 'types/models';
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
@@ -97,6 +99,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         ...updateMessage,
         move_hist: [...moveHist] as Types.Array<MoveData>,
         odds,
+        pool_wagers: { move: [] as unknown as Types.Array<AnonMoveWager> },
       };
 
       // don't check if update successful

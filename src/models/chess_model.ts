@@ -6,7 +6,9 @@ import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
 import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
-import { MovesSchema, OddsSchema, PlayerSchema } from './helper_schemas';
+import {
+  AnonMoveWagerSchema, MovesSchema, OddsSchema, PlayerSchema,
+} from './helper_schemas';
 
 const ChessSchema = new Schema({
   state: {
@@ -44,7 +46,7 @@ const ChessSchema = new Schema({
     default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
   },
   pool_wagers: {
-    move: { type: Map, of: Number, default: {} },
+    move: { type: [AnonMoveWagerSchema], default: [] },
   },
 }, {
   toJSON: {
