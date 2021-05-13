@@ -2,7 +2,7 @@ import { CHESS_START } from 'helpers/constants';
 import { isGameComplete } from 'helpers/validation/chess';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
-import { ChessDoc, GameStatus } from 'types/models';
+import { ChessDoc, GameStatus, MoveData } from 'types/models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
@@ -12,13 +12,14 @@ const chessDataA: Partial<ChessDoc> = {
   player_black: { name: 'playerB', elo: 400 },
 };
 
+const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
 // all fields
 const chessDataB: Partial<ChessDoc> = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
-  move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'] as Types.Array<string>,
+  move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove] as Types.Array<MoveData>,
   time_white: 293,
   time_black: 291,
 };
@@ -27,7 +28,6 @@ const chessDataB: Partial<ChessDoc> = {
 const badChessData = {
   state: 'r2qkbnr/pppbp1pp/2n2p3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1', // bad fen
   game_status: 'begun', // Not in enum GameStatus
-  wagers: ['fakeWagerID'], // Not a real id for wager
   time_white: -10, // Should be positive
   time_black: -10, // Should be positive
   player_white: { name: 'playerA', elo: 200 },
@@ -46,13 +46,13 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game.player_white.elo).toBe(data.player_white?.elo);
   expect(game.player_black.name).toBe(data.player_black?.name);
   expect(game.player_black.elo).toBe(data.player_black?.elo);
-  expect([...game.move_hist]).toStrictEqual(data.move_hist ?? []);
-  expect([...game.wagers]).toStrictEqual([]);
+  game.move_hist.forEach((move, i) => expect({ san: move.san, time: move.time, is_white: move.is_white }).toEqual(data.move_hist?.[i]));
   expect(game.time_white).toBe(data.time_white ?? 600);
   expect(game.time_black).toBe(data.time_black ?? 600);
   expect(game.odds.white_win).toBeDefined();
   expect(game.odds.draw).toBeDefined();
   expect(game.odds.black_win).toBeDefined();
+  expect(game.pool_wagers.move).toBeDefined();
   expect(game.created_at).toBeInstanceOf(Date);
   expect(game.updated_at).toBeInstanceOf(Date);
 };
@@ -143,7 +143,7 @@ describe('Chess model validation', () => {
         });
 
         // eslint-disable-next-line max-len
-        expect(saveError.message).toBe('Chess validation failed: wagers.0: Cast to ObjectId failed for value "fakeWagerID" at path "wagers", wagers: Cast to Array failed for value "[ \'fakeWagerID\' ]" at path "wagers", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
+        expect(saveError.message).toBe('Chess validation failed: state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
         done();
       } catch (error) {
         done(error);
@@ -191,7 +191,7 @@ describe('Chess model validation', () => {
       try {
         const {
           // eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
-          player_black, player_white, wagers, ...badDataFields
+          player_black, player_white, ...badDataFields
         } = badChessData;
 
         const updateError = await new Promise<Error>((res, rej) => {

@@ -2,12 +2,11 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import { ChessDoc, GameStatus } from 'types/models';
+import { ChessDoc, GameStatus, MoveData } from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { chessController, userController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
-import { MoveData } from 'types/game_loop';
 
 const websocket = (socket: Socket): void => {
   socket.emit('on_connect', 'connected to /chess');
@@ -62,7 +61,7 @@ const websocket = (socket: Socket): void => {
 
     const updateMessage = {
       state: chessGame.fen(),
-      move_hist: [...chessDoc.move_hist, move.data.san],
+      move_hist: [...chessDoc.move_hist, move.data],
       time_white: timeWhite,
       time_black: timeBlack,
     };
@@ -87,7 +86,7 @@ const websocket = (socket: Socket): void => {
 
     const fields: UpdateQuery<ChessDoc> = {
       state: chessGame.fen(),
-      move_hist: chessGame.history() as Types.Array<string>,
+      move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
       game_status: gameStatus,
       complete,
       time_white: timeWhite,

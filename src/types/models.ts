@@ -58,22 +58,30 @@ export interface Player {
   elo: number
 }
 
+export interface MoveData {
+  san: string,
+  time: number,
+  is_white: boolean
+}
+
 export interface Chess {
   state: string,
   complete: boolean,
   game_status: GameStatus,
   player_white: Player,
   player_black: Player,
-  move_hist: string[],
-  wagers: Types.ObjectId[],
+  move_hist: MoveData[],
   time_white: number,
   time_black: number,
   odds: WDLData,
+  pool_wagers: {
+    move: Record<string, number>
+  },
   created_at: Date,
   updated_at: Date,
 }
 
 export interface ChessDoc extends Chess, Document {
-  move_hist: Types.Array<string>,
+  move_hist: Types.Array<MoveData>,
   wagers: Types.Array<Types.ObjectId>
 }

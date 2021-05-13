@@ -2,7 +2,7 @@
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
-import { ChessDoc, GameStatus } from 'types/models';
+import { ChessDoc, GameStatus, MoveData } from 'types/models';
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
@@ -57,6 +57,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   // Play game
   let [whiteTime, blackTime] = [gameTime, gameTime];
   const chessGame = new Chess();
+  const moveHist: MoveData[] = [];
 
   try {
     for (const move of game.moves) {
@@ -74,9 +75,11 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
 
+      moveHist.push(move);
+
       const updateMessage = {
         state: chessGame.fen(),
-        move_hist: chessGame.history(),
+        move_hist: [...moveHist],
         time_white: whiteTime,
         time_black: blackTime,
       };
@@ -92,7 +95,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // update gameDoc
       const gameUpdate: UpdateQuery<ChessDoc> = {
         ...updateMessage,
-        move_hist: chessGame.history() as Types.Array<string>,
+        move_hist: [...moveHist] as Types.Array<MoveData>,
         odds,
       };
 

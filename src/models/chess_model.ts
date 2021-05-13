@@ -6,7 +6,7 @@ import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
 import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
-import { OddsSchema, PlayerSchema } from './helper_schemas';
+import { MovesSchema, OddsSchema, PlayerSchema } from './helper_schemas';
 
 const ChessSchema = new Schema({
   state: {
@@ -36,13 +36,15 @@ const ChessSchema = new Schema({
     required: true,
     immutable: true,
   },
-  move_hist: { type: [String], default: [] },
-  wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
+  move_hist: { type: [MovesSchema], default: [] },
   time_white: { type: Number, min: 0, default: 600 },
   time_black: { type: Number, min: 0, default: 600 },
   odds: {
     type: OddsSchema,
     default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
+  },
+  pool_wagers: {
+    move: { type: Map, of: Number, default: {} },
   },
 }, {
   toJSON: {
