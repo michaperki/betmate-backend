@@ -101,7 +101,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // resolve wagers on the move just played, if any
       resolveCriticalMoveWagers(gameId, chessGame).then((wagerResults) => {
-        if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
+        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
         else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
       });
     }
@@ -114,7 +114,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     await chessController.updateChessGame(gameDoc._id, completeFields);
 
     resolveWdlWagers(gameId, game.outcome).then((wagerResults) => {
-      if (wagerResults) socket.to(gameId).emit('wager_result', { gameId, data: wagerResults.map((w) => w.toJSON()) });
+      if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
       else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
     });
   } catch (error) {

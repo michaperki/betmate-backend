@@ -5,7 +5,7 @@ import {
   UserDoc, WagerDoc, WagerOutcomes, WagerStatus,
 } from 'types/models';
 import {
-  ProcessedWager, UserWinnings, WagerProcessor, WagerResults,
+  ProcessedWager, UserWagers, UserWinnings, WagerProcessor, WagerResults,
 } from 'types/wagers';
 
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
@@ -54,6 +54,16 @@ export const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
   }, {})
 );
 
+export const getUserWagers = (wagers: WagerDoc[]): UserWagers => (
+  wagers.reduce((userWagers, w) => {
+    const userID = String(w.better_id);
+    return {
+      ...userWagers,
+      [userID]: [...(userWagers[userID] || []), w],
+    };
+  }, {})
+);
+
 export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
   [WagerStatus.WON]: pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id),
   [WagerStatus.LOST]: pw.filter((w) => w.outcome === WagerStatus.LOST).map((w) => w._id),
@@ -90,17 +100,18 @@ const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?:
   return updatedWagers.filter((w): w is WagerDoc[] => w !== null).flat();
 };
 
-const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<WagerDoc[]> => {
+const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<UserWagers> => {
   const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
 
   const userWinnings = getUserWinnings(processedWagers);
   const wagerResults = getWagerResults(processedWagers);
 
   updateUserWinnings(userWinnings);
-  return updateWagerResults(wagerResults, winningPoolShare);
+  const updatedWagers = await updateWagerResults(wagerResults, winningPoolShare);
+  return getUserWagers(updatedWagers);
 };
 
-export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<WagerDoc[] | null> => {
+export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers | null> => {
   const moveNum = chessGame.history().length;
   const [lastMove] = chessGame.history().slice(-1);
 
@@ -114,7 +125,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
   return wagers && await resolveWagers(wagers, lastMove, processCriticalMoveWagers);
 };
 
-export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<WagerDoc[] | null> => {
+export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers | null> => {
   const wagers = await wagerController.getWagers({
     game_id: gameId,
     wdl: true,
