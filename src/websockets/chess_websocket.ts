@@ -73,6 +73,7 @@ const websocket = (socket: Socket): void => {
       move_hist: [...chessDoc.move_hist, move.data],
       time_white: timeWhite,
       time_black: timeBlack,
+      pool_wagers: { move: [] },
     };
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });

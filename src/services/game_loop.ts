@@ -84,6 +84,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         move_hist: [...moveHist],
         time_white: whiteTime,
         time_black: blackTime,
+        pool_wagers: { move: [] },
       };
 
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
