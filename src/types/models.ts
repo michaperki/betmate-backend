@@ -69,6 +69,11 @@ export interface AnonMoveWager {
   amount: number
 }
 
+export interface PoolWagerState {
+  options: string[]
+  wagers: AnonMoveWager[]
+}
+
 export interface Chess {
   state: string,
   complete: boolean,
@@ -80,7 +85,7 @@ export interface Chess {
   time_black: number,
   odds: WDLData,
   pool_wagers: {
-    move: AnonMoveWager[]
+    move: PoolWagerState
   },
   created_at: Date,
   updated_at: Date,
@@ -89,6 +94,9 @@ export interface Chess {
 export interface ChessDoc extends Chess, Document {
   move_hist: Types.Array<MoveData>,
   pool_wagers: {
-    move: Types.Array<AnonMoveWager>
+    move: {
+      options: Types.Array<string>
+      wagers: Types.Array<AnonMoveWager>
+    }
   }
 }

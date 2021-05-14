@@ -7,7 +7,7 @@ import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
 import {
-  AnonMoveWagerSchema, MovesSchema, OddsSchema, PlayerSchema,
+  MovesSchema, OddsSchema, PlayerSchema, PoolWagerSchema,
 } from './helper_schemas';
 
 const ChessSchema = new Schema({
@@ -46,7 +46,7 @@ const ChessSchema = new Schema({
     default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
   },
   pool_wagers: {
-    move: { type: [AnonMoveWagerSchema], default: [] },
+    move: { type: PoolWagerSchema, default: { options: [], wagers: [] } },
   },
 }, {
   toJSON: {

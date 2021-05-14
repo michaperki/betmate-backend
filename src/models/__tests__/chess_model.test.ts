@@ -53,6 +53,8 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game.odds.draw).toBeDefined();
   expect(game.odds.black_win).toBeDefined();
   expect(game.pool_wagers.move).toBeDefined();
+  expect(game.pool_wagers.move.options).toBeDefined();
+  expect(game.pool_wagers.move.wagers).toBeDefined();
   expect(game.created_at).toBeInstanceOf(Date);
   expect(game.updated_at).toBeInstanceOf(Date);
 };
@@ -212,7 +214,7 @@ describe('Chess model validation', () => {
       try {
         const {
           // eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
-          player_black, player_white, wagers, ...updateFields
+          player_black, player_white, ...updateFields
         } = chessDataB;
 
         const updatedGame = await Chess.findByIdAndUpdate(gameIdA, updateFields, { new: true, runValidators: true });

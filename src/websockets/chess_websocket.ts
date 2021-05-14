@@ -78,11 +78,11 @@ const websocket = (socket: Socket): void => {
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
 
-    const odds = await microservice
-      .getWDL(chessGame.fen(), timeWhite, timeBlack)
-      .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+    // const odds = await microservice
+    //   .getWDL(chessGame.fen(), timeWhite, timeBlack)
+    //   .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
 
-    socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, odds });
+    // socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, odds });
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveWagers(move.gameId, chessGame).then((wagerResults) => {
@@ -90,23 +90,48 @@ const websocket = (socket: Socket): void => {
       else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
     });
 
+    const oddsPromise = microservice
+      .getWDL(chessGame.fen(), timeWhite, timeBlack)
+      .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+    const topMovesPromise = microservice
+      .getTopMoves(chessGame.fen(), 3)
+      .then((res) => res ?? []);
+
+    Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
+      const oddsUpdate = {
+        gameId: move.gameId,
+        odds,
+        pool_wagers: {
+          move: {
+            options: topMoves,
+          },
+        },
+      };
+
+      socket.to(move.gameId).emit('new_odds', oddsUpdate);
+
+      // update gameDoc
+      const gameUpdate: UpdateQuery<ChessDoc> = {
+        ...updateMessage,
+        move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
+        odds,
+        pool_wagers: {
+          move: {
+            wagers: [] as unknown as Types.Array<AnonMoveWager>,
+            options: topMoves as Types.Array<string>,
+          },
+        },
+      };
+
+      // don't check if update successful
+
+      chessController
+        .updateChessGame(move.gameId, gameUpdate)
+        .then((res) => res || socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error saving' }));
+    });
+
     const gameStatus = getChessStatus(chessGame);
-
     const complete = gameStatus !== GameStatus.IN_PROGRESS;
-
-    const fields: UpdateQuery<ChessDoc> = {
-      state: chessGame.fen(),
-      move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
-      game_status: gameStatus,
-      complete,
-      time_white: timeWhite,
-      time_black: timeBlack,
-      odds,
-      pool_wagers: { move: [] as unknown as Types.Array<AnonMoveWager> },
-    };
-
-    const result = await chessController.updateChessGame(move.gameId, fields);
-    if (!result) socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error saving' });
 
     // update wagers for each user
     if (complete) {

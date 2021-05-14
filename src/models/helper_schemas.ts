@@ -1,6 +1,8 @@
 import { Schema } from 'mongoose';
 import { WDLData } from 'types/microservice';
-import { AnonMoveWager, MoveData, Player } from 'types/models';
+import {
+  AnonMoveWager, MoveData, Player, PoolWagerState,
+} from 'types/models';
 
 export const PlayerSchema = new Schema<Player>({
   name: { type: String, required: true },
@@ -37,4 +39,9 @@ export const MovesSchema = new Schema<MoveData>({
 export const AnonMoveWagerSchema = new Schema<AnonMoveWager>({
   data: { type: String, required: true },
   amount: { type: Number, required: true, min: 0 },
+}, { _id: false });
+
+export const PoolWagerSchema = new Schema<PoolWagerState>({
+  options: { type: [String], default: [] },
+  wagers: { type: [AnonMoveWagerSchema], default: [] },
 }, { _id: false });

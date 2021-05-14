@@ -84,27 +84,48 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         move_hist: [...moveHist],
         time_white: whiteTime,
         time_black: blackTime,
-        pool_wagers: { move: [] },
+        pool_wagers: { move: { options: [], wagers: [] } },
       };
 
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
 
-      const odds = await microservice
+      const oddsPromise = microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+      const topMovesPromise = microservice
+        .getTopMoves(chessGame.fen(), 3)
+        .then((res) => res ?? []);
 
-      socket.to(gameId).emit('new_odds', { gameId, odds });
+      Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
+        const oddsUpdate = {
+          gameId,
+          odds,
+          pool_wagers: {
+            move: {
+              options: topMoves,
+              wagers: [],
+            },
+          },
+        };
 
-      // update gameDoc
-      const gameUpdate: UpdateQuery<ChessDoc> = {
-        ...updateMessage,
-        move_hist: [...moveHist] as Types.Array<MoveData>,
-        odds,
-        pool_wagers: { move: [] as unknown as Types.Array<AnonMoveWager> },
-      };
+        socket.to(gameId).emit('new_odds', oddsUpdate);
 
-      // don't check if update successful
-      chessController.updateChessGame(gameDoc._id, gameUpdate);
+        // update gameDoc
+        const gameUpdate: UpdateQuery<ChessDoc> = {
+          ...updateMessage,
+          move_hist: [...moveHist] as Types.Array<MoveData>,
+          odds,
+          pool_wagers: {
+            move: {
+              wagers: [] as unknown as Types.Array<AnonMoveWager>,
+              options: topMoves as Types.Array<string>,
+            },
+          },
+        };
+
+        // don't check if update successful
+        chessController.updateChessGame(gameDoc._id, gameUpdate);
+      });
 
       // resolve wagers on the move just played, if any
       resolveCriticalMoveWagers(gameId, chessGame).then((wagerResults) => {
