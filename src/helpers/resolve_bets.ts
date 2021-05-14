@@ -111,9 +111,10 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
   return getUserWagers(updatedWagers);
 };
 
-export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers | null> => {
+export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance, topMoves: string[]): Promise<UserWagers | null> => {
   const moveNum = chessGame.history().length;
   const [lastMove] = chessGame.history().slice(-1);
+  const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
 
   const wagers = await wagerController.getWagers({
     game_id: gameId,
@@ -122,7 +123,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
     resolved: false,
   });
 
-  return wagers && await resolveWagers(wagers, lastMove, processCriticalMoveWagers);
+  return wagers && await resolveWagers(wagers, correctMove, processCriticalMoveWagers);
 };
 
 export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers | null> => {

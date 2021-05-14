@@ -78,14 +78,8 @@ const websocket = (socket: Socket): void => {
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
 
-    // const odds = await microservice
-    //   .getWDL(chessGame.fen(), timeWhite, timeBlack)
-    //   .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
-
-    // socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, odds });
-
     // resolve wagers on the move just played, if any
-    resolveCriticalMoveWagers(move.gameId, chessGame).then((wagerResults) => {
+    resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options).then((wagerResults) => {
       if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));
       else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
     });

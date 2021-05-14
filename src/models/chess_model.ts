@@ -60,8 +60,11 @@ ChessSchema.pre('save', async function (next) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const doc: Partial<ChessType> & Document = this;
     if (this.isNew) {
-      const data = await microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+      const dataPromise = microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+      const moveOptionsPromise = microservice.getTopMoves(doc.state ?? CHESS_START, 3);
+      const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);
       doc.odds = data ?? doc.odds;
+      if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions ?? [];
     }
     doc.complete = isGameComplete(doc.game_status ?? GameStatus.NOT_STARTED);
 
