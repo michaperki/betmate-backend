@@ -22,10 +22,20 @@ export const optionalChessFieldsValid = [
   bodyNotAllowed('wagers'),
   bodyNotAllowed('odds'),
 
-  body('move_hist.*')
+  body('move_hist.*.san')
     .if(body('move_hist').isArray().exists())
     .isString()
-    .withMessage("Elements of 'move_hist' must be strings"),
+    .withMessage("Elements of 'move_hist.*.san' must be a string"),
+
+  body('move_hist.*.time')
+    .if(body('move_hist').isArray().exists())
+    .isFloat({ min: 0 })
+    .withMessage("Elements of 'move_hist.*.time' must be a number"),
+
+  body('move_hist.*.is_white')
+    .if(body('move_hist').isArray().exists())
+    .isBoolean()
+    .withMessage("Elements of 'move_hist.*.is_white' must be a boolean"),
 
   createBodyField('time_white', 'number', false)
     .isFloat({ min: 0 })

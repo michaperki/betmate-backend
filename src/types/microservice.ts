@@ -4,8 +4,10 @@ export type WDLData = {
   black_win: number
 };
 
-export type WDLResponse = {
+export type TopMoveData = string[];
+
+export type MicroserviceResponse<T> = {
   message: string,
-  data: WDLData | null,
+  data: T | null,
   error: string | null
 };

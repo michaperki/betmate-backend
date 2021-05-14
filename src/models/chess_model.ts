@@ -6,7 +6,9 @@ import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
 import { microservice } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
-import { OddsSchema, PlayerSchema } from './helper_schemas';
+import {
+  MovesSchema, OddsSchema, PlayerSchema, PoolWagerSchema,
+} from './helper_schemas';
 
 const ChessSchema = new Schema({
   state: {
@@ -36,13 +38,15 @@ const ChessSchema = new Schema({
     required: true,
     immutable: true,
   },
-  move_hist: { type: [String], default: [] },
-  wagers: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
+  move_hist: { type: [MovesSchema], default: [] },
   time_white: { type: Number, min: 0, default: 600 },
   time_black: { type: Number, min: 0, default: 600 },
   odds: {
     type: OddsSchema,
     default: { white_win: 0.0, draw: 0.0, black_win: 0.0 } as WDLData,
+  },
+  pool_wagers: {
+    move: { type: PoolWagerSchema, default: { options: [], wagers: [] } },
   },
 }, {
   toJSON: {
@@ -56,8 +60,11 @@ ChessSchema.pre('save', async function (next) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const doc: Partial<ChessType> & Document = this;
     if (this.isNew) {
-      const data = await microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+      const dataPromise = microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
+      const moveOptionsPromise = microservice.getTopMoves(doc.state ?? CHESS_START, 3);
+      const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);
       doc.odds = data ?? doc.odds;
+      if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions ?? [];
     }
     doc.complete = isGameComplete(doc.game_status ?? GameStatus.NOT_STARTED);
 

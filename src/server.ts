@@ -9,6 +9,7 @@ import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
 import { run300Loop, run900Loop } from 'services/game_loop';
+import { chessController } from 'controllers';
 import {
   authRouter, userRouter, chessRouter, wagerRouter,
 } from './routers';
@@ -43,13 +44,15 @@ app.use('/wager', wagerRouter);
 const chessWebsocket = io.of('/chessws');
 chessWebsocket.on('connection', chessWS);
 
-run300Loop(chessWebsocket);
-run900Loop(chessWebsocket);
+// purge stale games before running game loops
+chessController.purgeStaleGames().then(() => {
+  run300Loop(chessWebsocket);
+  run900Loop(chessWebsocket);
+});
 
 // default index route
 app.get('/', (req, res) => {
-  // For testing
-  res.sendFile(`${__dirname}/index.html`);
+  res.status(200).send('Welcome to the backend');
 });
 
 // DB Setup

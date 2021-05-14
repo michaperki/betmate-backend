@@ -8,4 +8,4 @@ export const PORT = process.env.PORT || 9090;
 
 export const CHESS_START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-export const MICROSERVICE_URL = 'http://34.222.10.87:8000'; // 'http://localhost:5000';
+export const MICROSERVICE_URL = 'http://34.222.10.87:8000'; // 'http://localhost:8000'; //

@@ -1,10 +1,4 @@
-import { GameStatus, Player } from './models';
-
-export interface MoveData {
-  san: string,
-  time: number,
-  is_white: boolean
-}
+import { GameStatus, MoveData, Player } from './models';
 
 export interface ReplaySchema {
   white: Player,

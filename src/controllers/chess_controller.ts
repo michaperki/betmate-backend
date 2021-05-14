@@ -32,6 +32,8 @@ const createChessGame = async (fields: CreateQuery<ChessDoc>): Promise<ChessDoc 
     .catch(() => null)
 );
 
+const purgeStaleGames = (): Promise<boolean> => Chess.deleteMany({ complete: false }).then((res) => !!res);
+
 const getChessGameRequest: RequestHandler = (req, res) => {
   getChessGame(req.params.id)
     .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
@@ -60,6 +62,7 @@ const chessController = {
   createChessGame,
   getChessGame,
   updateChessGame,
+  purgeStaleGames,
   createChessGameRequest,
   getChessGameRequest,
   getManyChessGamesRequest,

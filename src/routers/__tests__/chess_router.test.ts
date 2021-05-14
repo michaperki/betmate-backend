@@ -1,13 +1,14 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
 import { documentNotFoundError } from 'helpers/constants';
-import { GameStatus } from 'types/models';
+import { GameStatus, MoveData } from 'types/models';
 import { chessRouter } from 'routers';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(chessRouter);
 
+const fillerMove: MoveData = { san: 'd4', time: 10, is_white: true };
 // minimal fields
 const chessDataA = {
   player_white: { name: 'playerA', elo: 200 },
@@ -21,7 +22,7 @@ const chessDataB = {
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerC', elo: 1200 },
   player_black: { name: 'playerD', elo: 1400 },
-  move_hist: ['d4', 'd5', 'Bf4', 'Nc6', 'e3', 'f6', 'Bb5', 'Bd7'],
+  move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove],
   time_white: 293,
   time_black: 291,
 };
@@ -34,7 +35,6 @@ const validateBody = (body: any) => {
   expect(body.complete).toBeDefined();
   expect(body.game_status).toBeDefined();
   expect(body.move_hist).toBeDefined();
-  expect(body.wagers).toBeDefined();
   expect(body.time_white).toBeDefined();
   expect(body.time_black).toBeDefined();
   expect(body.player_white).toBeDefined();
@@ -44,6 +44,9 @@ const validateBody = (body: any) => {
   expect(body.odds.white_win).toBeDefined();
   expect(body.odds.draw).toBeDefined();
   expect(body.odds.black_win).toBeDefined();
+  expect(body.pool_wagers.move).toBeDefined();
+  expect(body.pool_wagers.move.options).toBeDefined();
+  expect(body.pool_wagers.move.wagers).toBeDefined();
   expect(body._id).toBeDefined();
   expect(body.__v).toBeUndefined();
 };
