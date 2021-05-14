@@ -151,7 +151,7 @@ const websocket = (socket: Socket): void => {
   });
 
   socket.on('pool_wager', async (wager: PoolBetMessage) => {
-    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}`]: { data: wager.data, amount: wager.amount } } });
+    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
     if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
     return socket.emit('socket_error', { message: 'issue updating' });
   });
