@@ -82,13 +82,21 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       const updateMessage = {
         state: chessGame.fen(),
-        move_hist: [...moveHist],
+        move_hist: [...moveHist] as Types.Array<MoveData>,
         time_white: whiteTime,
         time_black: blackTime,
-        pool_wagers: { move: { options: [], wagers: [] } },
+        pool_wagers: {
+          move: {
+            wagers: [] as unknown as Types.Array<AnonMoveWager>,
+            options: [] as unknown as Types.Array<string>,
+          },
+        },
       };
 
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
+
+      // update gameDoc
+      chessController.updateChessGame(gameDoc._id, updateMessage);
 
       // resolve wagers on the move just played, if any
       resolveCriticalMoveWagers(gameId, chessGame, currTopMoves).then((wagerResults) => {
@@ -108,22 +116,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
         currTopMoves = topMoves;
         const oddsUpdate = {
-          gameId,
-          odds,
-          pool_wagers: {
-            move: {
-              options: topMoves,
-              wagers: [],
-            },
-          },
-        };
-
-        socket.to(gameId).emit('new_odds', oddsUpdate);
-
-        // update gameDoc
-        const gameUpdate: UpdateQuery<ChessDoc> = {
-          ...updateMessage,
-          move_hist: [...moveHist] as Types.Array<MoveData>,
           odds,
           pool_wagers: {
             move: {
@@ -133,8 +125,9 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           },
         };
 
-        // don't check if update successful
-        chessController.updateChessGame(gameDoc._id, gameUpdate);
+        socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
+
+        chessController.updateChessGame(gameDoc._id, oddsUpdate);
       });
     }
 
