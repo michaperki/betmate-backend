@@ -42,6 +42,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   const gameFields = {
     player_white: game.white,
     player_black: game.black,
+    time_white: gameTime,
+    time_black: gameTime,
   };
   // create game and put into pregame
   const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
