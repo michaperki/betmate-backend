@@ -7,7 +7,7 @@ import {
 import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
 import { microservice } from 'services';
 
@@ -105,15 +105,19 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // resolve wagers on the move just played, if any
       // safety check to see if topMoves are valid
-      if (liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0) {
-        const currTopMoves = liveTopMoves;
-        delay(200)
-          .then(() => resolveCriticalMoveWagers(gameId, chessGame, currTopMoves))
-          .then((wagerResults) => {
-            if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-            else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
-          });
-      }
+      const currTopMoves = liveTopMoves;
+      const validTopMoves = liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0;
+      delay(200)
+        .then(() => (
+          validTopMoves
+            ? resolveCriticalMoveWagers(gameId, chessGame, currTopMoves)
+            : cancelCriticalMoveWagers(gameId, chessGame)
+        ))
+        .then((wagerResults) => {
+          if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
+          else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
+        });
+
       liveTopMoves = [];
 
       const oddsPromise = microservice

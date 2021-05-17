@@ -135,3 +135,16 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
 
   return wagers && await resolveWagers(wagers, gameStatus, processWDLWagers);
 };
+
+export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers | null> => {
+  const moveNum = chessGame.history().length;
+
+  const wagers = await wagerController.getWagers({
+    game_id: gameId,
+    wdl: false,
+    move_number: moveNum,
+    resolved: false,
+  });
+
+  return wagers && await resolveWagers(wagers, 'no data', processCriticalMoveWagers);
+};
