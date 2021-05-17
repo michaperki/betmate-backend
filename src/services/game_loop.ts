@@ -57,6 +57,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   // Start game
   const updatedGame = await chessController.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
   if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
+  socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
   // Play game
   let [whiteTime, blackTime] = [gameTime, gameTime];
