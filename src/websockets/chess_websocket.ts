@@ -9,20 +9,12 @@ import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bet
 import { chessController, userController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
+import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 
-interface PoolBetMessage {
-  gameId: string
-  type: 'move'
-  data: string
-  amount: number
-}
-
-const websocket = (socket: Socket): void => {
-  socket.emit('on_connect', 'connected to /chess');
-
+const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessController.getChessGame(gameId);
-    if (!chessDoc) return socket.emit('error', { gameId, message: 'Could not find game' });
+    if (!chessDoc) return socket.emit('game_error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
     return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
@@ -55,7 +47,7 @@ const websocket = (socket: Socket): void => {
     return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
-  socket.on('pool_wager', async (wager: PoolBetMessage) => {
+  socket.on('pool_wager', async (wager) => {
     const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
     if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
     return socket.emit('socket_error', { message: 'issue updating' });

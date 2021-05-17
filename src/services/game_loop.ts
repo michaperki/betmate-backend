@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
-import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models';
@@ -14,6 +13,7 @@ import { microservice } from 'services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
+import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 
 const PREGAME_TIME = 9;
 
@@ -31,7 +31,7 @@ const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: num
   return { game, gameTimeLength };
 };
 
-const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => async (socket: Namespace<DefaultEventsMap>): Promise<boolean> => {
+const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<boolean> => {
   // get game data
   const { game, gameTimeLength } = getRandomGameData(data, gameTime, increment);
 
@@ -63,7 +63,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   let [whiteTime, blackTime] = [gameTime, gameTime];
   const chessGame = new Chess();
   const moveHist: MoveData[] = [];
-  let currTopMoves = updatedGame.pool_wagers.move.options.map(String);
+  let liveTopMoves = updatedGame.pool_wagers.move.options.map(String);
+  let liveTopMovesNumber = 1;
 
   try {
     for (const move of game.moves) {
@@ -102,11 +103,17 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       chessController.updateChessGame(gameDoc._id, updateMessage);
 
       // resolve wagers on the move just played, if any
-      resolveCriticalMoveWagers(gameId, chessGame, currTopMoves).then((wagerResults) => {
-        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-        else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
-      });
-      currTopMoves = [];
+      // safety check to see if topMoves are valid
+      if (liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0) {
+        const currTopMoves = liveTopMoves;
+        delay(200)
+          .then(() => resolveCriticalMoveWagers(gameId, chessGame, currTopMoves))
+          .then((wagerResults) => {
+            if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
+            else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
+          });
+      }
+      liveTopMoves = [];
 
       const oddsPromise = microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
@@ -117,7 +124,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
-        currTopMoves = topMoves;
+        liveTopMoves = topMoves;
+        liveTopMovesNumber += 1;
         const oddsUpdate = {
           odds,
           pool_wagers: {
@@ -141,10 +149,12 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
     await chessController.updateChessGame(gameDoc._id, completeFields);
 
-    resolveWdlWagers(gameId, game.outcome).then((wagerResults) => {
-      if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-      else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
-    });
+    delay(200)
+      .then(() => resolveWdlWagers(gameId, game.outcome))
+      .then((wagerResults) => {
+        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
+        else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
+      });
   } catch (error) {
     console.log('Error:', error.message);
     socket.emit('game_error', { gameId, message: error.message });
