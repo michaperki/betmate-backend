@@ -67,7 +67,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   let liveTopMovesNumber = 1;
 
   try {
-    for (const move of game.moves) {
+    for (const [i, move] of Array.from(game.moves.entries())) {
+      // const move = game.moves[i];
       // calculate delay required to broadcast move
       const prevTimer = move.is_white ? whiteTime : blackTime;
       const waitTime = prevTimer - move.time + increment;
@@ -125,7 +126,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
         liveTopMoves = topMoves;
-        liveTopMovesNumber += 1;
+        liveTopMovesNumber = i + 2;
         const oddsUpdate = {
           odds,
           pool_wagers: {
