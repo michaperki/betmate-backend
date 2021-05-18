@@ -9,20 +9,12 @@ import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bet
 import { chessController, userController } from 'controllers';
 import { microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
+import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 
-interface PoolBetMessage {
-  gameId: string
-  type: 'move'
-  data: string
-  amount: number
-}
-
-const websocket = (socket: Socket): void => {
-  socket.emit('on_connect', 'connected to /chess');
-
+const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessController.getChessGame(gameId);
-    if (!chessDoc) return socket.emit('error', { gameId, message: 'Could not find game' });
+    if (!chessDoc) return socket.emit('game_error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
     return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
@@ -55,6 +47,12 @@ const websocket = (socket: Socket): void => {
     return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
+  socket.on('pool_wager', async (wager) => {
+    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
+    if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
+    return socket.emit('socket_error', { message: 'issue updating' });
+  });
+
   socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
     // need to add protection for who can move.
     const chessDoc = await chessController.getChessGame(move.gameId);
@@ -70,13 +68,20 @@ const websocket = (socket: Socket): void => {
 
     const updateMessage = {
       state: chessGame.fen(),
-      move_hist: [...chessDoc.move_hist, move.data],
+      move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
       time_white: timeWhite,
       time_black: timeBlack,
-      pool_wagers: { move: [] },
+      pool_wagers: {
+        move: {
+          wagers: [] as unknown as Types.Array<AnonMoveWager>,
+          options: [] as unknown as Types.Array<string>,
+        },
+      },
     };
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
+
+    chessController.updateChessGame(move.gameId, updateMessage);
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options).then((wagerResults) => {
@@ -93,21 +98,6 @@ const websocket = (socket: Socket): void => {
 
     Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
       const oddsUpdate = {
-        gameId: move.gameId,
-        odds,
-        pool_wagers: {
-          move: {
-            options: topMoves,
-          },
-        },
-      };
-
-      socket.to(move.gameId).emit('new_odds', oddsUpdate);
-
-      // update gameDoc
-      const gameUpdate: UpdateQuery<ChessDoc> = {
-        ...updateMessage,
-        move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
         odds,
         pool_wagers: {
           move: {
@@ -117,10 +107,12 @@ const websocket = (socket: Socket): void => {
         },
       };
 
+      socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, ...oddsUpdate });
+
       // don't check if update successful
 
       chessController
-        .updateChessGame(move.gameId, gameUpdate)
+        .updateChessGame(move.gameId, oddsUpdate)
         .then((res) => res || socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error saving' }));
     });
 
@@ -142,12 +134,6 @@ const websocket = (socket: Socket): void => {
       });
     }
     return true;
-  });
-
-  socket.on('pool_wager', async (wager: PoolBetMessage) => {
-    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
-    if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
-    return socket.emit('socket_error', { message: 'issue updating' });
   });
 };
 
