@@ -14,10 +14,9 @@ import { microservice } from 'services';
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { delay } from 'helpers/utils';
 
 const PREGAME_TIME = 9;
-
-const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: number): GameData => {
 // select random game
@@ -105,14 +104,11 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // resolve wagers on the move just played, if any
       // safety check to see if topMoves are valid
-      const currTopMoves = liveTopMoves;
       const validTopMoves = liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0;
-      delay(200)
-        .then(() => (
-          validTopMoves
-            ? resolveCriticalMoveWagers(gameId, chessGame, currTopMoves)
-            : cancelCriticalMoveWagers(gameId, chessGame)
-        ))
+
+      (validTopMoves
+        ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
+        : cancelCriticalMoveWagers(gameId, chessGame))
         .then((wagerResults) => {
           if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
           else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
@@ -154,8 +150,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
     await chessController.updateChessGame(gameDoc._id, completeFields);
 
-    delay(200)
-      .then(() => resolveWdlWagers(gameId, game.outcome))
+    resolveWdlWagers(gameId, game.outcome)
       .then((wagerResults) => {
         if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
         else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });

@@ -7,6 +7,7 @@ import {
 import {
   ProcessedWager, UserWagers, UserWinnings, WagerProcessor, WagerResults,
 } from 'types/wagers';
+import { delay } from './utils';
 
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
   (wager: WagerDoc): ProcessedWager => {
@@ -116,6 +117,8 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
   const [lastMove] = chessGame.history().slice(-1);
   const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
 
+  await delay(500);
+
   const wagers = await wagerController.getWagers({
     game_id: gameId,
     wdl: false,
@@ -127,6 +130,8 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
 };
 
 export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers | null> => {
+  await delay(500);
+
   const wagers = await wagerController.getWagers({
     game_id: gameId,
     wdl: true,
@@ -138,6 +143,8 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
 
 export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers | null> => {
   const moveNum = chessGame.history().length;
+
+  await delay(500);
 
   const wagers = await wagerController.getWagers({
     game_id: gameId,
