@@ -16,7 +16,7 @@ import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { delay } from 'helpers/utils';
 
-const PREGAME_TIME = 9;
+const PREGAME_TIME = 90;
 
 const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: number): GameData => {
 // select random game

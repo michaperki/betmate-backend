@@ -48,6 +48,8 @@ chessWebsocket.on('connection', chessWS);
 chessController.purgeStaleGames().then(() => {
   run300Loop(chessWebsocket);
   run900Loop(chessWebsocket);
+  setTimeout(() => run300Loop(chessWebsocket), 300000);
+  setTimeout(() => run900Loop(chessWebsocket), 900000);
 });
 
 // default index route
