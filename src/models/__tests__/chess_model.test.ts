@@ -17,6 +17,7 @@ const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
 const chessDataB: Partial<ChessDoc> = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   game_status: GameStatus.IN_PROGRESS,
+  time_format: '900+10',
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
   move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove] as Types.Array<MoveData>,
@@ -40,6 +41,7 @@ let gameIdB = '';
 const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game._id).toBeDefined();
   expect(game.state).toBe(data.state ?? CHESS_START);
+  expect(game.time_format).toBe(data.time_format ?? '300+0');
   expect(game.complete).toBe(isGameComplete(data.game_status ?? GameStatus.NOT_STARTED));
   expect(game.game_status).toBe(data.game_status ?? GameStatus.NOT_STARTED);
   expect(game.player_white.name).toBe(data.player_white?.name);
@@ -214,7 +216,7 @@ describe('Chess model validation', () => {
       try {
         const {
           // eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
-          player_black, player_white, ...updateFields
+          player_black, player_white, time_format, ...updateFields
         } = chessDataB;
 
         const updatedGame = await Chess.findByIdAndUpdate(gameIdA, updateFields, { new: true, runValidators: true });

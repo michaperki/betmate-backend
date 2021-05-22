@@ -19,6 +19,7 @@ const ChessSchema = new Schema({
       message: (props) => Chess().validate_fen(props.value).error,
     },
   },
+  time_format: { type: String, default: '300+0', immutable: true },
   complete: { type: Boolean, default: false },
   game_status: {
     type: String,
