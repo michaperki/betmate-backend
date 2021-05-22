@@ -41,6 +41,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   const gameFields = {
     player_white: game.white,
     player_black: game.black,
+    time_format: `${gameTime}+${increment}`,
     time_white: gameTime,
     time_black: gameTime,
   };
