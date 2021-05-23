@@ -64,7 +64,7 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
 
     // check user has enough money to place bet
-    if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'insufficient funds' });
+    if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
 
     // fetch live status of the game after bet was placed
     // this makes it harder for betters to exploit any lag in the chess model being updated via the websocket
@@ -73,9 +73,9 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
         // TODO: get currentMove from 3rd party API rather than chess model
         const currentMove = await Chess.findById(game_id).then((doc) => doc?.move_hist.length);
         if (currentMove === undefined) {
-          reject(new Error('error getting live update of the game'));
+          reject(new Error('Error getting live update of the game'));
         } else if (move_number !== currentMove + 1) {
-          reject(new Error('outdated bet'));
+          reject(new Error('Outdated bet'));
         } else {
           resolve();
         }
@@ -89,7 +89,7 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
     const doc = await wager.save();
     return res.status(200).json(doc.toJSON());
   } catch (error) {
-    if (error.message === 'outdated bet') return res.status(401).send({ error: error.message });
+    if (error.message === 'Outdated bet') return res.status(401).send({ error: error.message });
     return res.status(500).json({ error: error.message });
   }
 };
