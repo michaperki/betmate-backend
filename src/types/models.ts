@@ -76,6 +76,7 @@ export interface PoolWagerState {
 
 export interface Chess {
   state: string,
+  time_format: string,
   complete: boolean,
   game_status: GameStatus,
   player_white: Player,

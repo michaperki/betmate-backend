@@ -19,6 +19,7 @@ const chessDataA = {
 const chessDataB = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   complete: false,
+  time_format: '900+10',
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerC', elo: 1200 },
   player_black: { name: 'playerD', elo: 1400 },
@@ -32,6 +33,7 @@ const invalidID = 'invalidID';
 
 const validateBody = (body: any) => {
   expect(body.state).toBeDefined();
+  expect(body.time_format).toBeDefined();
   expect(body.complete).toBeDefined();
   expect(body.game_status).toBeDefined();
   expect(body.move_hist).toBeDefined();
