@@ -1,6 +1,6 @@
 import { ChessInstance } from 'chess.js';
-import { userController, wagerController } from 'controllers';
 import { UpdateQuery } from 'mongoose';
+import { userService, wagerService } from 'services';
 import {
   UserDoc, WagerDoc, WagerOutcomes, WagerStatus,
 } from 'types/models';
@@ -75,7 +75,7 @@ const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]
   const usersToUpdate = Object
     .entries(userWinnings)
     .map(([id, winnings]) => (
-      userController
+      userService
         .updateUserData(id, { $inc: { account: winnings } })
     ));
 
@@ -93,8 +93,8 @@ const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?:
         ...(winningPoolShare && { winning_pool_share: winningPoolShare }),
       };
 
-      const res = await wagerController.updateManyWagers({ _id: { $in: ids } }, updateQuery);
-      return res && wagerController.getWagers({ _id: { $in: ids } });
+      const res = await wagerService.updateManyWagers({ _id: { $in: ids } }, updateQuery);
+      return res && wagerService.getWagers({ _id: { $in: ids } });
     });
 
   const updatedWagers = await Promise.all(wagersToUpdate);
@@ -119,7 +119,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
 
   await delay(500);
 
-  const wagers = await wagerController.getWagers({
+  const wagers = await wagerService.getWagers({
     game_id: gameId,
     wdl: false,
     move_number: moveNum,
@@ -132,7 +132,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
 export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers | null> => {
   await delay(500);
 
-  const wagers = await wagerController.getWagers({
+  const wagers = await wagerService.getWagers({
     game_id: gameId,
     wdl: true,
     resolved: false,
@@ -146,7 +146,7 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessI
 
   await delay(500);
 
-  const wagers = await wagerController.getWagers({
+  const wagers = await wagerService.getWagers({
     game_id: gameId,
     wdl: false,
     move_number: moveNum,

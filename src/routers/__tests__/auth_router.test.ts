@@ -73,7 +73,7 @@ describe('Working auth router', () => {
     it('rejects requests with a non-unique email address', async (done) => {
       try {
         const res = await request.post('/signup').send(mockUser);
-        // expect(res.status).toBe(400);
+        expect(res.status).toBe(400);
         expect(res.body.errors[0].msg).toBe('Email address already associated to a user');
         done();
       } catch (error) {

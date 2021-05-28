@@ -17,20 +17,7 @@ router.use(requireAuth);
 
 // find and return all users
 router.route('/')
-  .get(userController.getAllUsers)
-  .post(userController.createNewUser);
-
-// Create new user
-
-// // ! TESTING ONLY
-// .delete(requireAuth, async (req, res) => {
-//   try {
-//     await Users.deleteMany({ });
-//     return res.status(200).json({ message: 'Successfully deleted all users.' });
-//   } catch (error) {
-//     return res.status(500).json({ message: error.message });
-//   }
-// });
+  .get(userController.getAllUsers);
 
 router.route('/:id')
   .get(userController.getUser)

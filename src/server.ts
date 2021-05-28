@@ -8,8 +8,8 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
-import { run300Loop, run900Loop } from 'services/game_loop';
-import { chessController } from 'controllers';
+import { run300Loop, run900Loop } from 'websockets/game_loop';
+import { chessService } from 'services';
 import {
   authRouter, userRouter, chessRouter, wagerRouter,
 } from './routers';
@@ -45,7 +45,7 @@ const chessWebsocket = io.of('/chessws');
 chessWebsocket.on('connection', chessWS);
 
 // purge stale games before running game loops
-chessController.purgeStaleGames().then(() => {
+chessService.purgeStaleGames().then(() => {
   run300Loop(chessWebsocket);
   run900Loop(chessWebsocket);
   setTimeout(() => run300Loop(chessWebsocket), 300000);

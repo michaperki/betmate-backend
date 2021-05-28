@@ -3,7 +3,7 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
 import { CHESS_START } from 'helpers/constants';
 import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
-import { microservice } from 'services';
+import microservice from 'services/microservice';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
 import {

@@ -1,4 +1,4 @@
-import { authController } from 'controllers';
+import { userService } from 'services';
 import { createBodyField } from '.';
 
 export const userFieldsValid = [
@@ -7,7 +7,7 @@ export const userFieldsValid = [
     .withMessage((v: string) => `'${v}' is not a valid email`)
     .toLowerCase()
     .custom((v: string) => (
-      authController
+      userService
         .emailAvailable(v)
         .then((res) => (res ? Promise.resolve() : Promise.reject()))
     ))

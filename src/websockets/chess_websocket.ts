@@ -6,14 +6,14 @@ import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessController, userController } from 'controllers';
-import { microservice } from 'services';
+import { chessService, microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { decodeToken } from 'helpers/utils';
 
 const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
   socket.on('join_game', async (gameId: string) => {
-    const chessDoc = await chessController.getChessGame(gameId);
+    const chessDoc = await chessService.getChessGame(gameId);
     if (!chessDoc) return socket.emit('game_error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
@@ -26,20 +26,20 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
   });
 
   socket.on('join_auth', async (token: string) => {
-    const payload = userController.decodeToken(token);
+    const payload = decodeToken(token);
     if (payload?.sub) {
       if (socket.rooms.has(payload.sub)) return true;
 
       socket.join(payload.sub);
       return socket.emit('join_auth', { message: 'Successfully joined' });
     }
-    const unverifiedPayload = userController.decodeToken(token, true);
+    const unverifiedPayload = decodeToken(token, true);
     if (unverifiedPayload?.sub) socket.leave(unverifiedPayload.sub);
     return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
   socket.on('leave_auth', (token: string) => {
-    const payload = userController.decodeToken(token, true);
+    const payload = decodeToken(token, true);
     if (payload?.sub) {
       socket.leave(payload.sub);
       return socket.emit('leave_auth', { message: 'Successfully left' });
@@ -48,14 +48,14 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
   });
 
   socket.on('pool_wager', async (wager) => {
-    const newGame = await chessController.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
+    const newGame = await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
     if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
     return socket.emit('socket_error', { message: 'issue updating' });
   });
 
   socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
     // need to add protection for who can move.
-    const chessDoc = await chessController.getChessGame(move.gameId);
+    const chessDoc = await chessService.getChessGame(move.gameId);
     if (!chessDoc) return socket.emit('game_error', { gameId: move.gameId, message: 'Could not find game' });
 
     const chessGame = new ChessGame(chessDoc.state);
@@ -81,7 +81,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
 
     socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
 
-    chessController.updateChessGame(move.gameId, updateMessage);
+    chessService.updateChessGame(move.gameId, updateMessage);
 
     // resolve wagers on the move just played, if any
     resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options).then((wagerResults) => {
@@ -111,7 +111,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
 
       // don't check if update successful
 
-      chessController
+      chessService
         .updateChessGame(move.gameId, oddsUpdate)
         .then((res) => res || socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error saving' }));
     });
@@ -126,7 +126,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
         game_status: gameStatus,
       };
       socket.to(move.gameId).emit('game_over', { gameId: move.gameId, ...completeFields });
-      await chessController.updateChessGame(move.gameId, completeFields);
+      await chessService.updateChessGame(move.gameId, completeFields);
 
       resolveWdlWagers(move.gameId, gameStatus).then((wagerResults) => {
         if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));

@@ -4,12 +4,11 @@ import { Namespace } from 'socket.io';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models';
-import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
-import { microservice } from 'services';
+import { chessService, microservice } from 'services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
@@ -46,7 +45,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
+  const gameDoc = await chessService.createChessGame(gameFields as CreateQuery<ChessDoc>);
   if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
@@ -55,7 +54,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   await delay(PREGAME_TIME * 1000);
 
   // Start game
-  const updatedGame = await chessController.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
+  const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
   if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
@@ -101,7 +100,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
 
       // update gameDoc
-      chessController.updateChessGame(gameDoc._id, updateMessage);
+      chessService.updateChessGame(gameDoc._id, updateMessage);
 
       // resolve wagers on the move just played, if any
       // safety check to see if topMoves are valid
@@ -140,7 +139,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
         socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
 
-        chessController.updateChessGame(gameDoc._id, oddsUpdate);
+        chessService.updateChessGame(gameDoc._id, oddsUpdate);
       });
     }
 
@@ -149,7 +148,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       complete: true,
     };
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
-    await chessController.updateChessGame(gameDoc._id, completeFields);
+    await chessService.updateChessGame(gameDoc._id, completeFields);
 
     resolveWdlWagers(gameId, game.outcome)
       .then((wagerResults) => {

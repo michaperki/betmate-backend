@@ -1,67 +1,16 @@
-import jwt from 'jwt-simple';
-import env from 'env-var';
 import { RequestHandler } from 'express';
-import { UserDoc } from 'types/models';
-import { Users } from 'models';
 import {
-  documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
+  documentNotFoundError, getSuccessfulDeletionMessage,
 } from 'helpers/constants';
-import { Types, UpdateQuery } from 'mongoose';
-
-const tokenForUser = (user: UserDoc): string => {
-  const timestamp = new Date().getTime();
-  return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
-};
-
-const decodeToken = (token: string, noVerify = false): any => {
-  try {
-    return jwt.decode(token, env.get('AUTH_SECRET').required().asString(), noVerify);
-  } catch (error) {
-    return null;
-  }
-};
-
-const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
-  Users
-    .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
-);
+import { userService } from 'services';
 
 const getAllUsers: RequestHandler = async (req, res) => {
   try {
-    const users = await Users.find({});
-    const cleanedUsers = await Promise.all(users.map((user) => new Promise((resolve) => {
-      const userJSON = user.toJSON();
-      delete userJSON.password;
-      resolve(user);
-    })));
-    return res.status(200).json(cleanedUsers);
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
+    const users = await userService.getUsers({});
 
-const createNewUser: RequestHandler = async (req, res) => {
-  try {
-    const user = new Users();
-
-    const {
-      email, password, first_name: firstName, last_name: lastName,
-    } = req.body;
-
-    if (!email) return res.status(400).json({ message: getFieldNotFoundError('email') });
-    if (!password) return res.status(400).json({ message: getFieldNotFoundError('password') });
-
-    user.email = email;
-    user.password = password;
-    user.first_name = firstName || '';
-    user.last_name = lastName || '';
-
-    const savedUser = await user.save();
-    const json = savedUser.toJSON();
-    delete json.password;
-    return res.status(201).json(json);
+    return users
+      ? res.status(200).json(users)
+      : res.status(500).json({ message: 'Error getting users' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
@@ -69,14 +18,11 @@ const createNewUser: RequestHandler = async (req, res) => {
 
 const getUser: RequestHandler = async (req, res) => {
   try {
-    const user = await Users.findById(req.params.id);
-    const json = user?.toJSON();
-    delete json.password;
-    return res.status(200).json(json);
+    const user = await userService.getUser(req.params.id);
+    return user
+      ? res.status(200).json(user)
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
     return res.status(500).json({ message: error.message });
   }
 };
@@ -90,37 +36,28 @@ const updateUser: RequestHandler = async (req, res) => {
       return currBody;
     }, {});
 
-    const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, whitelistedBody, { new: true });
-    const json = updatedUser?.toJSON();
-
-    delete json.password;
-    return res.status(200).json(json);
+    const updatedUser = await userService.updateUserData(req.params.id, whitelistedBody);
+    return updatedUser
+      ? res.status(200).json(updatedUser)
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
     return res.status(500).json({ message: error.message });
   }
 };
 
 const deleteUser: RequestHandler = async (req, res) => {
   try {
-    await Users.findOneAndDelete({ _id: req.params.id });
-    return res.json({ message: getSuccessfulDeletionMessage(req.params.id) });
+    const deleteResult = await userService.deleteUser(req.params.id);
+    return deleteResult
+      ? res.json({ message: getSuccessfulDeletionMessage(req.params.id) })
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
     return res.status(500).json({ message: error.message });
   }
 };
 
 const userController = {
-  tokenForUser,
-  decodeToken,
-  updateUserData,
   getAllUsers,
-  createNewUser,
   getUser,
   updateUser,
   deleteUser,
