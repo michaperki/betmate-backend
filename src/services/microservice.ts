@@ -1,11 +1,16 @@
 import axios from 'axios';
+import env from 'env-var';
+import dotenv from 'dotenv';
 import querystring from 'querystring';
 import { WDLData, TopMoveData, MicroserviceResponse } from 'types/microservice';
 import { MICROSERVICE_URL } from 'helpers/constants';
 
+dotenv.config();
+const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
+
 const getWDL = (fen: string, white_time: number, black_time: number): Promise<WDLData | null> => (
   axios
-    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/models/wdl?${querystring.stringify({ fen, white_time, black_time })}`)
+    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/dev/wdl?${querystring.stringify({ fen, white_time, black_time })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
     .catch((error) => {
       console.log(error.request.data);
@@ -15,7 +20,7 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
 
 const getTopMoves = (fen: string, n: number): Promise<TopMoveData | null> => (
   axios
-    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/models/top_moves?${querystring.stringify({ fen, n })}`)
+    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
     .catch((error) => {
       console.log(error.request.data);
