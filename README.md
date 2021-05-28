@@ -25,11 +25,7 @@ If you also want to run the microservice locally, follow the setup instructions 
 
 ## Testing
 
-To run tests
-- Add a file `globalConfig.json` with the fields `mongoUri` and `mongoDBName`.
-    - `mongoUri` is formatted as "mongodb://localhost:53393/\<test-dbname>?"
-    - `mongoDBName` is formatted as "\<test-dbname>"
-- Then run `yarn test`.
+Run `yarn test`.
 
 ## Repository Structure
 
