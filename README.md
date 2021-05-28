@@ -17,6 +17,8 @@ You must have `Node.js` and `Yarn` installed to run this project
 1. Clone this repository
 2. In the console, run `yarn`
 3. Add a `.env` file to setup `AUTH_SECRET` and `MONGODB_URI`
+    - `AUTH_SECRET` can be any string
+    - `MONGODB_URI` is formatted as "mongodb://localhost:27017/\<dbname>" ([documentation](https://docs.mongodb.com/manual/reference/connection-string/))
 4. Run `yarn dev`
 
 If you also want to run the microservice locally, follow the setup instructions in the [microservice README](https://github.com/dali-lab/betmate-model-microservice) and change line 11 in `src/helpers/constants.ts` accordingly.
@@ -25,6 +27,8 @@ If you also want to run the microservice locally, follow the setup instructions 
 
 To run tests
 - Add a file `globalConfig.json` with the fields `mongoUri` and `mongoDBName`.
+    - `mongoUri` is formatted as "mongodb://localhost:53393/\<test-dbname>?"
+    - `mongoDBName` is formatted as "\<test-dbname>"
 - Then run `yarn test`.
 
 ## Repository Structure

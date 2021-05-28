@@ -69,6 +69,8 @@ describe('Wager model validation', () => {
       const user = await new Users(userData).save();
       userID = user._id;
       const game = await new Chess(chessData).save();
+      console.log('game', game);
+      console.log('user', user);
       gameID = game._id;
       done();
     } catch (error) {
@@ -96,21 +98,11 @@ describe('Wager model validation', () => {
         const validWager = new Wager(wagerData);
         const savedWager = await validWager.save();
 
-        // Checks chess has been saved to testing DB
-        // expect(savedWager._id).toBeDefined();
-        // expect(savedWager.game_id).toBe(game._id);
-        // expect(savedWager.better_id).toBe(user._id);
-        // expect(savedWager.wdl).toBe(wagerDataWDL.wdl);
-        // expect(savedWager.amount).toBe(wagerDataWDL.amount);
-        // expect(savedWager.odds).toBe(wagerDataWDL.odds);
-        // expect(savedWager.data).toBe(wagerDataWDL.data);
-        // expect(savedWager.resolved).toBe(false);
-        // expect(savedWager.status).toBe(WagerStatus.PENDING);
-        // expect(savedWager.created_at).toBeInstanceOf(Date);
-        // expect(savedWager.updated_at).toBeInstanceOf(Date);
+        // Checks wager has been saved to testing DB
         validateWager(savedWager, wagerData);
 
         wagerID = savedWager._id;
+        console.log('finished');
 
         done();
       } catch (error) {
