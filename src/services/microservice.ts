@@ -13,7 +13,8 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
     .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/dev/wdl?${querystring.stringify({ fen, white_time, black_time })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
     .catch((error) => {
-      console.log(error.request.data);
+      const { code, message, stack } = error.toJSON();
+      console.log('Microservice error:', { code, message, stack });
       return null;
     })
 );
@@ -23,7 +24,8 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData | null> => (
     .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
     .catch((error) => {
-      console.log(error.request.data);
+      const { code, message, stack } = error.toJSON();
+      console.log('Microservice error:', { code, message, stack });
       return null;
     })
 );

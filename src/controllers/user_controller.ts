@@ -3,7 +3,18 @@ import {
   documentNotFoundError, getSuccessfulDeletionMessage,
 } from 'helpers/constants';
 import { userService } from 'services';
+import { RequestWithJWT } from 'types/requests';
 
+/**
+ * Get all users from request.
+ *
+ * No filter criteria.
+ *
+ * Need to add information protection as it makes all user info public
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
 const getAllUsers: RequestHandler = async (req, res) => {
   try {
     const users = await userService.getUsers({});
@@ -16,9 +27,18 @@ const getAllUsers: RequestHandler = async (req, res) => {
   }
 };
 
-const getUser: RequestHandler = async (req, res) => {
+/**
+ * Get user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    const user = await userService.getUser(req.params.id);
+    console.log(req.user._id);
+    const user = await userService.getUser(req.user._id);
     return user
       ? res.status(200).json(user)
       : res.status(404).json({ message: documentNotFoundError });
@@ -27,16 +47,25 @@ const getUser: RequestHandler = async (req, res) => {
   }
 };
 
-const updateUser: RequestHandler = async (req, res) => {
+/**
+ * Update user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const updateUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
     // this makes sure the user isn't updating something illegal like their balance
     const allowedChanges = ['first_name', 'last_name', 'email', 'password'];
-    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => {
-      if (allowedChanges.includes(key)) return { ...currBody, [key]: req.body[key] };
-      return currBody;
-    }, {});
+    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => (
+      allowedChanges.includes(key)
+        ? { ...currBody, [key]: req.body[key] }
+        : currBody
+    ), {});
 
-    const updatedUser = await userService.updateUserData(req.params.id, whitelistedBody);
+    const updatedUser = await userService.updateUserData(req.user._id, whitelistedBody);
     return updatedUser
       ? res.status(200).json(updatedUser)
       : res.status(404).json({ message: documentNotFoundError });
@@ -45,11 +74,19 @@ const updateUser: RequestHandler = async (req, res) => {
   }
 };
 
-const deleteUser: RequestHandler = async (req, res) => {
+/**
+ * Update user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const deleteUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    const deleteResult = await userService.deleteUser(req.params.id);
+    const deleteResult = await userService.deleteUser(req.user._id);
     return deleteResult
-      ? res.json({ message: getSuccessfulDeletionMessage(req.params.id) })
+      ? res.json({ message: getSuccessfulDeletionMessage(req.user._id) })
       : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
     return res.status(500).json({ message: error.message });

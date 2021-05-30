@@ -9,6 +9,7 @@ import User from 'models/user_model';
 
 dotenv.config();
 
+// We expect JWT token to be passed as bearer token
 const jwtOptions = {
   jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
   secretOrKey: process.env.AUTH_SECRET,

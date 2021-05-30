@@ -17,11 +17,11 @@ router.use(requireAuth);
 
 // find and return all users
 router.route('/')
-  .get(userController.getAllUsers);
-
-router.route('/:id')
   .get(userController.getUser)
   .put(userController.updateUser)
   .delete(userController.deleteUser);
+
+router.route('/all')
+  .get(userController.getAllUsers);
 
 export default router;

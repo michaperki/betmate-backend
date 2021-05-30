@@ -4,6 +4,8 @@ import { chessService } from 'services';
 
 /**
  * Get game from request.
+ *
+ * Uses request param as id
  */
 const getChessGameRequest: RequestHandler = (req, res) => {
   chessService.getChessGame(req.params.id)
@@ -14,19 +16,24 @@ const getChessGameRequest: RequestHandler = (req, res) => {
 /**
  * Get many games from request.
  *
+ * Uses query as criteria
+ *
  * Request must be prefixed with appropriate validation middleware
  * - `chessFilterParams`
  * - `cannotQueryTimestamps`
  * - `validateRequest`
  */
-const getManyChessGamesRequest: RequestHandler = (req, res) => {
-  chessService.getManyChessGames(req.query)
-    .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
-    .catch((error) => res.status(500).json({ errors: [error] }));
+const getManyChessGamesRequest: RequestHandler = async (req, res) => {
+  const games = await chessService.getManyChessGames(req.query);
+  return games
+    ? res.status(200).send(games)
+    : res.status(404).json({ errors: [documentNotFoundError] });
 };
 
 /**
  * Update game from request.
+ *
+ * Uses request param as ID and body as update query
  *
  * Request must be prefixed with appropriate validation middleware
  * - `optionalChessFieldsValid`
@@ -40,6 +47,8 @@ const updateChessGameRequest: RequestHandler = async (req, res) => {
 
 /**
  * Create game from request.
+ *
+ * Uses request body as game fields.
  *
  * Request must be prefixed with appropriate validation middleware
  * - `containsPlayers`

@@ -1,22 +1,35 @@
 import supertest from 'supertest';
 import { userRouter } from 'routers';
 
+import { Users } from 'models';
 import {
   mockUser, connectDB, dropDB,
 } from '../../../__jest__/helpers';
 
-const request = supertest(userRouter);
+// eslint-disable-next-line @typescript-eslint/naming-convention, no-unused-vars
+const { _id, ...userData } = mockUser;
 
-let validId = '';
-const invalidId = 'invalidId';
+const request = supertest(userRouter);
 
 // Mocks requireAuth server middleware
 jest.mock('authentication/requireAuth');
 
-describe('Working resource router', () => {
+describe('Working user router', () => {
   beforeAll(async (done) => {
     try {
       connectDB(done);
+    } catch (error) {
+      done(error);
+    }
+  });
+
+  beforeAll(async (done) => {
+    try {
+      await new Users(mockUser).save();
+
+      await new Users({ ...userData, email: 'test2@test.com' }).save();
+      await new Users({ ...userData, email: 'test3@test.com' }).save();
+      done();
     } catch (error) {
       done(error);
     }
@@ -31,99 +44,15 @@ describe('Working resource router', () => {
   });
 
   describe('single event modification', () => {
-    describe('create one', () => {
-      // * NOTE: Can require multiple checks depending on number of user permission levels
-      it('requires valid permissions', async (done) => {
-        try {
-          const res = await request.post('/')
-            .send(mockUser);
-
-          expect(res.status).toBe(401);
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
-      // * NOTE: Can require multiple checks depending on number of required fields
-      // it('requires valid data', async (done) => {
-
-      // });
-
-      // * NOTE: Can require multiple checks depending on number of non-unique fields
-      describe('blocks creation of resource with non-unique field', () => {
-        it('blocks resource creation when missing email', async (done) => {
-          try {
-            const res = await request.post('/')
-              .set('Authorization', 'Bearer dummy_token')
-              .send({ password: mockUser.password });
-
-            expect(res.status).toBe(400);
-            expect(res.body.message).toBe('Missing required "email" field');
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-
-        it('blocks resource creation when missing password', async (done) => {
-          try {
-            const res = await request.post('/')
-              .set('Authorization', 'Bearer dummy_token')
-              .send({ email: mockUser.email });
-
-            expect(res.status).toBe(400);
-            expect(res.body.message).toBe('Missing required "password" field');
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-      });
-
-      it('succeeds', async (done) => {
-        try {
-          const res = await request.post('/')
-            .set('Authorization', 'Bearer dummy_token')
-            .send(mockUser);
-
-          expect(res.status).toBe(201);
-
-          // Resource exists with all required fields
-          expect(res.body.first_name).toBeDefined();
-          expect(res.body.last_name).toBeDefined();
-          expect(res.body.email).toBeDefined();
-          expect(res.body._id).toBeDefined();
-
-          validId = res.body._id;
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-    });
-
     describe('fetch one', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
-          const res = await request.get(`/${validId}`)
+          const res = await request
+            .get('/')
             .send(mockUser);
 
           expect(res.status).toBe(401);
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
-      it('catches resource doesn\'t exist', async (done) => {
-        try {
-          const res = await request.get(`/${invalidId}`)
-            .set('Authorization', 'Bearer dummy_token');
-
-          expect(res.status).toBe(404);
-          expect(res.body.message).toBe('Couldn\'t find resource with given id');
           done();
         } catch (error) {
           done(error);
@@ -132,7 +61,8 @@ describe('Working resource router', () => {
 
       it('succeeds with sensitive information removed', async (done) => {
         try {
-          const res = await request.get(`/${validId}`)
+          const res = await request
+            .get('/')
             .set('Authorization', 'Bearer dummy_token');
 
           expect(res.status).toBe(200);
@@ -149,7 +79,8 @@ describe('Working resource router', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
-          const res = await request.put(`/${validId}`)
+          const res = await request
+            .put('/')
             .send(mockUser);
 
           expect(res.status).toBe(401);
@@ -169,23 +100,10 @@ describe('Working resource router', () => {
 
       // });
 
-      it('catches resource doesn\'t exist', async (done) => {
-        try {
-          const res = await request.put(`/${invalidId}`)
-            .set('Authorization', 'Bearer dummy_token')
-            .send({ title: 'New title' });
-
-          expect(res.status).toBe(404);
-          expect(res.body.message).toBe('Couldn\'t find resource with given id');
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
       it('succeeds with sensitive information removed', async (done) => {
         try {
-          const res = await request.put(`/${validId}`)
+          const res = await request
+            .put('/')
             .set('Authorization', 'Bearer dummy_token')
             .send({ first_name: 'Not Joe' });
 
@@ -203,7 +121,7 @@ describe('Working resource router', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
-          const res = await request.delete(`/${validId}`)
+          const res = await request.delete('/')
             .send(mockUser);
 
           expect(res.status).toBe(401);
@@ -213,22 +131,10 @@ describe('Working resource router', () => {
         }
       });
 
-      it('catches resource doesn\'t exist', async (done) => {
-        try {
-          const res = await request.delete(`/${invalidId}`)
-            .set('Authorization', 'Bearer dummy_token');
-
-          expect(res.status).toBe(404);
-          expect(res.body.message).toBe('Couldn\'t find resource with given id');
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
       it('succeeds', async (done) => {
         try {
-          const res = await request.delete(`/${validId}`)
+          const res = await request
+            .delete('/')
             .set('Authorization', 'Bearer dummy_token');
 
           expect(res.status).toBe(200);
@@ -267,7 +173,8 @@ describe('Working resource router', () => {
       // * NOTE: Can require multiple checks depending on number of user permission levels
       it('requires valid permissions', async (done) => {
         try {
-          const res = await request.get('/')
+          const res = await request
+            .get('/all')
             .send(mockUser);
 
           expect(res.status).toBe(401);
@@ -289,16 +196,8 @@ describe('Working resource router', () => {
 
       it('succeeds', async (done) => {
         try {
-          // Create two new resources
-          await request.post('/')
-            .set('Authorization', 'Bearer dummy_token')
-            .send({ email: 'test1@test.com', password: mockUser.password });
-
-          await request.post('/')
-            .set('Authorization', 'Bearer dummy_token')
-            .send({ email: 'test2@test.com', password: mockUser.password });
-
-          const res = await request.get('/')
+          const res = await request
+            .get('/all')
             .set('Authorization', 'Bearer dummy_token');
 
           expect(res.status).toBe(200);

@@ -3,6 +3,16 @@ import { RequestWithJWT } from 'types/requests';
 import { userService } from 'services';
 import { tokenForUser } from 'helpers/utils';
 
+/**
+ * Sign up user from request
+ * - Create `User` document in database
+ * - Create JWT token
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `userFieldsValid`
+ * - `validateRequest`
+ */
 const signUpUserRequest: RequestHandler = async (req, res) => {
   try {
     const {
@@ -17,10 +27,29 @@ const signUpUserRequest: RequestHandler = async (req, res) => {
   }
 };
 
+/**
+ * Sign in user from request
+ * - Authenticate user via `requireSignIn` middleware
+ * - Get `User` document via `requireSignIn` middleware
+ * - Create JWT token
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireSignIn`
+ */
 const signInUser: RequestHandler = (req: RequestWithJWT, res) => (
   res.json({ token: tokenForUser(req.user), user: req.user })
 );
 
+/**
+ * Get user info from request
+ * - Authenticate user via `requireAuth` middleware
+ * - Get `User` document via `requireAuth` middleware
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
 const jwtSignIn: RequestHandler = (req: RequestWithJWT, res) => (
   res.json({ user: req.user })
 );

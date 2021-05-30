@@ -16,6 +16,7 @@ type WagerRequestBody = {
  * Create wager from request
  *
  * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
  * - `createWagerFieldsValid`
  * - `validateRequest`
  *
@@ -52,6 +53,9 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  * Get wager specified in request
  *
  * ID of requesting user must match `better_id` field of wager
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
  */
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   const wager = await wagerService.getWager(req.params.id);
@@ -64,6 +68,7 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  * Get all wagers of requesting user
  *
  * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
  * - `wagerFilterParams`
  * - `cannotQueryTimestamps`
  * - `validateRequest`
