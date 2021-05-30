@@ -1,3 +1,4 @@
+import { delay } from 'helpers/utils';
 import { Wager } from 'models';
 import {
   CreateQuery, FilterQuery, Query, Types, UpdateQuery,
@@ -55,25 +56,21 @@ const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery
     .catch(() => null)
 );
 
+/**
+ * Create wager in database with provided fields
+ * @param fields to create wager
+ * @returns Promise of created wager, or null if error occurs
+ *
+ * Process will wait 1 second to account for input lag. After wait, will check if wager is still valid
+ */
 const createWager = async (fields: CreateQuery<WagerDoc>): Promise<WagerDoc | null> => {
-  try {
-    await new Promise<void>((resolve, reject) => {
-      setTimeout(async () => {
-        // TODO: get currentMove from 3rd party API rather than chess model
-        const currentMove = await chessService.getChessGame(fields.game_id).then((doc) => doc?.move_hist.length);
-        if (currentMove === undefined) {
-          reject(new Error('Error getting live update of the game'));
-        } else if (fields.move_number !== currentMove + 1) {
-          reject(new Error('Outdated bet'));
-        } else {
-          resolve();
-        }
-      }, 1000); // timeout accounts for any lag in the API used to get live game updates
-    });
-    return await new Wager(fields).save();
-  } catch (error) {
-    return null;
-  }
+  await delay(1000);
+  const currentMove = await chessService.getChessGame(fields.game_id).then((doc) => doc?.move_hist.length);
+  const wagerValid = currentMove !== undefined && fields.move_number === currentMove + 1;
+
+  return wagerValid
+    ? await new Wager(fields).save()
+    : null;
 };
 
 const wagerService = {
