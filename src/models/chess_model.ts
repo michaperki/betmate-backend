@@ -56,6 +56,9 @@ const ChessSchema = new Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
+/**
+ * Get initial WDL odds and move options of game from microservice.
+ */
 ChessSchema.pre('save', async function (next) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -64,6 +67,7 @@ ChessSchema.pre('save', async function (next) {
       const dataPromise = microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
       const moveOptionsPromise = microservice.getTopMoves(doc.state ?? CHESS_START, 3);
       const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);
+
       doc.odds = data ?? doc.odds;
       if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions ?? [];
     }

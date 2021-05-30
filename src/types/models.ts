@@ -8,12 +8,10 @@ export interface User {
   last_name?: string,
   full_name?: string,
   account: number,
-  wager_hist: string[],
 }
 
 export type CompareCallback = (err: Error, isMatch?: boolean) => void;
 export interface UserDoc extends User, Document {
-  wager_hist: Types.Array<string>,
   comparePassword: (password: string, callback: CompareCallback) => void
 }
 

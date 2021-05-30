@@ -69,8 +69,6 @@ describe('Wager model validation', () => {
       const user = await new Users(userData).save();
       userID = user._id;
       const game = await new Chess(chessData).save();
-      console.log('game', game);
-      console.log('user', user);
       gameID = game._id;
       done();
     } catch (error) {
@@ -102,7 +100,6 @@ describe('Wager model validation', () => {
         validateWager(savedWager, wagerData);
 
         wagerID = savedWager._id;
-        console.log('finished');
 
         done();
       } catch (error) {

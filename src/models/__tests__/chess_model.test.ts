@@ -83,12 +83,10 @@ describe('Chess model validation', () => {
       try {
         // Creates a new chess object
         const validGame = new Chess(chessDataA);
-        console.log('valid game', validGame);
         const savedGame = await validGame.save();
-        console.log('saved game', savedGame);
 
         // Checks chess has been saved to testing DB
-        // validateGame(validGame, chessDataA);
+        validateGame(savedGame, chessDataA);
 
         gameIdA = validGame._id;
 

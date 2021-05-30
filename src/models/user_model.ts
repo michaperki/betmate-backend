@@ -10,7 +10,6 @@ const UserSchema = new Schema({
   first_name: String,
   last_name: String,
   account: { type: Number, default: 1000 },
-  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
 }, {
   toObject: {
     virtuals: true,

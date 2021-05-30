@@ -37,7 +37,6 @@ const getAllUsers: RequestHandler = async (req, res) => {
  */
 const getUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    console.log(req.user._id);
     const user = await userService.getUser(req.user._id);
     return user
       ? res.status(200).json(user)
