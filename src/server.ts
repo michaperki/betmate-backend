@@ -35,7 +35,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
 // declare routers
-app.use('/auth', authRouter); // NOTE: Not secured
+app.use('/auth', authRouter);
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
@@ -48,6 +48,8 @@ chessWebsocket.on('connection', chessWS);
 chessService.purgeStaleGames().then(() => {
   run300Loop(chessWebsocket);
   run900Loop(chessWebsocket);
+
+  // secondary loops
   setTimeout(() => run300Loop(chessWebsocket), 300000);
   setTimeout(() => run900Loop(chessWebsocket), 900000);
 });
