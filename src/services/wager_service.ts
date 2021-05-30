@@ -3,7 +3,7 @@ import { Wager } from 'models';
 import {
   CreateQuery, FilterQuery, Query, Types, UpdateQuery,
 } from 'mongoose';
-import { WagerDoc } from 'types/models';
+import { WagerDoc } from 'types/models/wager';
 import chessService from './chess_service';
 
 /**

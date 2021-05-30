@@ -1,12 +1,11 @@
 import { ChessInstance } from 'chess.js';
 import { UpdateQuery } from 'mongoose';
 import { userService, wagerService } from 'services';
+import { UserDoc } from 'types/models/user';
 import {
-  UserDoc, WagerDoc, WagerOutcomes, WagerStatus,
-} from 'types/models';
-import {
-  ProcessedWager, UserWagers, UserWinnings, WagerProcessor, WagerResults,
-} from 'types/wagers';
+  ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
+} from 'types/models/wager';
+
 import { delay } from './utils';
 
 /**

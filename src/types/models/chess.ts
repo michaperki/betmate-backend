@@ -1,19 +1,7 @@
 import { Document, Types } from 'mongoose';
-import { WDLData } from './microservice';
+import { WDLData } from 'types/microservice';
 
-export interface User {
-  email: string,
-  password: string,
-  first_name?: string,
-  last_name?: string,
-  full_name?: string,
-  account: number,
-}
-
-export type CompareCallback = (err: Error, isMatch?: boolean) => void;
-export interface UserDoc extends User, Document {
-  comparePassword: (password: string, callback: CompareCallback) => void
-}
+/* -------- Helper Types -------- */
 
 export enum GameStatus {
   NOT_STARTED = 'not_started',
@@ -22,34 +10,6 @@ export enum GameStatus {
   WHITE_WIN = 'white_win',
   IN_PROGRESS = 'in_progress',
 }
-
-export type WagerWDL = GameStatus.WHITE_WIN | GameStatus.DRAW | GameStatus.BLACK_WIN;
-export enum WagerStatus {
-  PENDING = 'pending',
-  WON = 'won',
-  LOST = 'lost',
-  CANCELLED = 'cancelled',
-}
-
-export type WagerOutcomes = Exclude<WagerStatus, WagerStatus.PENDING>;
-
-export interface Wager {
-  game_id: Types.ObjectId,
-  better_id: Types.ObjectId,
-  wdl: boolean,
-  amount: number,
-  odds: number,
-  data: string,
-  move_number: number,
-  resolved: boolean,
-  status: WagerStatus,
-  winning_pool_share: number,
-  winnings: number,
-  created_at: Date,
-  updated_at: Date,
-}
-
-export interface WagerDoc extends Wager, Document {}
 
 export interface Player {
   name: string,
@@ -71,6 +31,8 @@ export interface PoolWagerState {
   options: string[]
   wagers: AnonMoveWager[]
 }
+
+/* -------- Main Types -------- */
 
 export interface Chess {
   state: string,

@@ -1,4 +1,6 @@
-import { GameStatus, MoveData, Player } from './models';
+import { GameStatus, MoveData, Player } from './models/chess';
+
+/* -------- Main Types -------- */
 
 export interface ReplaySchema {
   white: Player,

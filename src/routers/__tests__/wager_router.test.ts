@@ -5,7 +5,7 @@ import { Chess, Wager } from 'models';
 import { wagerRouter } from 'routers';
 
 import { documentNotFoundError } from 'helpers/constants';
-import { GameStatus, MoveData } from 'types/models';
+import { GameStatus, MoveData } from 'types/models/chess';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);

@@ -1,9 +1,9 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
 import { documentNotFoundError } from 'helpers/constants';
-import { GameStatus, MoveData } from 'types/models';
 import { chessRouter } from 'routers';
 
+import { GameStatus, MoveData } from 'types/models/chess';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(chessRouter);

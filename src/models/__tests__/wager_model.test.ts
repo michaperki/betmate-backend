@@ -1,8 +1,9 @@
 import { isWagerResolved } from 'helpers/validation/wagers';
 import { Chess, Users, Wager } from 'models';
 import { Types, UpdateQuery } from 'mongoose';
+import { GameStatus } from 'types/models/chess';
+import { WagerDoc, WagerStatus } from 'types/models/wager';
 
-import { GameStatus, WagerDoc, WagerStatus } from 'types/models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const chessData = {

@@ -4,8 +4,8 @@ import { Strategy as JwtStrategy, ExtractJwt } from 'passport-jwt';
 import dotenv from 'dotenv';
 
 import { RequestHandler } from 'express';
-import { UserDoc } from 'types/models';
 import User from 'models/user_model';
+import { UserDoc } from 'types/models/user';
 
 dotenv.config();
 

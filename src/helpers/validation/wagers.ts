@@ -5,8 +5,8 @@ import {
   queryNotAllowed,
   bodyNotAllowed,
 } from 'helpers/validation';
-import { WagerStatus } from 'types/models';
 import { query } from 'express-validator';
+import { WagerStatus } from 'types/models/wager';
 
 export const isWagerStatus = (v: string): boolean => Object.values(WagerStatus).includes(v as WagerStatus);
 export const isWagerResolved = (v: string): boolean => [WagerStatus.WON, WagerStatus.LOST].includes(v as WagerStatus);

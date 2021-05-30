@@ -1,8 +1,7 @@
 /* eslint-disable func-names */
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-
-import { CompareCallback, UserDoc, User } from 'types/models';
+import { CompareCallback, User, UserDoc } from 'types/models/user';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },

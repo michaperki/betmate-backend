@@ -1,3 +1,5 @@
+/* -------- Main Types -------- */
+
 export type WDLData = {
   white_win: number,
   draw: number,

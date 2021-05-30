@@ -2,14 +2,14 @@
 import { Socket } from 'socket.io';
 import { Chess as ChessGame } from 'chess.js';
 import { Types, UpdateQuery } from 'mongoose';
-import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
-} from 'types/models';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { chessService, microservice } from 'services';
 import { getChessStatus } from 'helpers/chess_logic';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { decodeToken } from 'helpers/utils';
+import {
+  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+} from 'types/models/chess';
 
 const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
   socket.on('join_game', async (gameId: string) => {

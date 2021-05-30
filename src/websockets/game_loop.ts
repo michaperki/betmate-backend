@@ -1,9 +1,6 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
-import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
-} from 'types/models';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
@@ -14,6 +11,9 @@ import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { delay } from 'helpers/utils';
+import {
+  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+} from 'types/models/chess';
 
 const PREGAME_TIME = 90;
 

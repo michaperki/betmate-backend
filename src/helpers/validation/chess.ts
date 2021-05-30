@@ -3,7 +3,7 @@ import { body, query } from 'express-validator';
 import {
   bodyNotAllowed, createBodyField, createQueryField, queryNotAllowed,
 } from 'helpers/validation';
-import { GameStatus } from 'types/models';
+import { GameStatus } from 'types/models/chess';
 
 /**
  * Typechecking for string that should be of type `GameStatus`

@@ -2,7 +2,7 @@ import { Chess } from 'models';
 import {
   CreateQuery, FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
-import { ChessDoc } from 'types/models';
+import { ChessDoc } from 'types/models/chess';
 
 /**
  * Retreives game from database by ID
