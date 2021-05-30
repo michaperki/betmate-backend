@@ -8,6 +8,8 @@ import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(chessRouter);
 
+/* -------- Set up data -------- */
+
 const fillerMove: MoveData = { san: 'd4', time: 10, is_white: true };
 // minimal fields
 const chessDataA = {
@@ -30,6 +32,8 @@ const chessDataB = {
 
 let validID = '';
 const invalidID = 'invalidID';
+
+/* -------- Helper function -------- */
 
 const validateBody = (body: any) => {
   expect(body.state).toBeDefined();
@@ -55,6 +59,8 @@ const validateBody = (body: any) => {
 
 // Mocks requireAuth server middleware
 jest.mock('authentication/requireAuth');
+
+/* -------- Tests -------- */
 
 describe('Working chess router', () => {
   beforeAll(async (done) => {

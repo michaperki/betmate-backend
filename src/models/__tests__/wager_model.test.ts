@@ -6,6 +6,8 @@ import { WagerDoc, WagerStatus } from 'types/models/wager';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
+/* -------- Set up data -------- */
+
 const chessData = {
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
@@ -40,6 +42,8 @@ let userID = '';
 let gameID = '';
 let wagerID = '';
 
+/* -------- Helper function -------- */
+
 const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager._id).toBeDefined();
   expect(wager.game_id).toStrictEqual(data.game_id);
@@ -55,6 +59,8 @@ const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager.created_at).toBeInstanceOf(Date);
   expect(wager.updated_at).toBeInstanceOf(Date);
 };
+
+/* -------- Tests -------- */
 
 describe('Wager model validation', () => {
   beforeAll(async (done) => {

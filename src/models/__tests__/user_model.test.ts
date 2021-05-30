@@ -3,6 +3,8 @@ import { Users as UserModel } from 'models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
+/* -------- Set up data -------- */
+
 const userData = {
   email: 'test@test.com',
   password: 'password',
@@ -10,6 +12,8 @@ const userData = {
   last_name: 'Smith',
   resource: null,
 };
+
+/* -------- Tests -------- */
 
 describe('User model validation', () => {
   beforeAll(async (done) => {

@@ -5,6 +5,8 @@ import { mockUser, connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);
 
+/* -------- Tests -------- */
+
 describe('Working auth router', () => {
   beforeAll(async (done) => {
     try {

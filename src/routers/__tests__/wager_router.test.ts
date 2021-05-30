@@ -10,6 +10,8 @@ import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);
 
+/* -------- Set up data -------- */
+
 const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
 
 const chessData = {
@@ -61,6 +63,8 @@ const validateBody = (body: any) => {
 
 // Mocks requireAuth server middleware
 jest.mock('authentication/requireAuth');
+
+/* -------- Tests -------- */
 
 describe('Working wager router', () => {
   beforeAll(async (done) => {

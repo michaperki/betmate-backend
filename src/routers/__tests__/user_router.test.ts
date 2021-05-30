@@ -14,6 +14,8 @@ const request = supertest(userRouter);
 // Mocks requireAuth server middleware
 jest.mock('authentication/requireAuth');
 
+/* -------- Tests -------- */
+
 describe('Working user router', () => {
   beforeAll(async (done) => {
     try {

@@ -6,6 +6,8 @@ import { ChessDoc, GameStatus, MoveData } from 'types/models/chess';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
+/* -------- Set up data -------- */
+
 // minimal fields
 const chessDataA: Partial<ChessDoc> = {
   player_white: { name: 'playerA', elo: 200 },
@@ -38,6 +40,8 @@ const badChessData = {
 let gameIdA = '';
 let gameIdB = '';
 
+/* -------- Helper function -------- */
+
 const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game._id).toBeDefined();
   expect(game.state).toBe(data.state ?? CHESS_START);
@@ -60,6 +64,8 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game.created_at).toBeInstanceOf(Date);
   expect(game.updated_at).toBeInstanceOf(Date);
 };
+
+/* -------- Tests -------- */
 
 describe('Chess model validation', () => {
   beforeAll(async (done) => {
