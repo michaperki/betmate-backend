@@ -5,32 +5,42 @@ An overview of the basic route layout of this server
 ```text
 server (/)
 │
-├── /users
-│   ├── /
-│   │   ├── GET -> get all users (x)
-│   │
-│   ├── /:id
-│   │   ├── GET -> check token (x)
-│   │   ├── POST -> create token from credentials (x)
-│   │   ├── PUT -> update user (x)
-│   │   ├── DELETE -> remove user (x)
+├── /auth
+│   ├── /signup
+│   │   └── POST -> create user and JWT token
 │   │
 │   ├── /signin
-│   │   ├── POST -> sign user in to admin panel (x)  #IMPORTANT: we will be using password for admin code
+│   │   └── POST -> get user and create JWT token
 │   │
-│   ├── /verify/:id
-│   │   ├── GET -> verify user token for automatic signing in ()   # I think it is already in the /:id code
-|   |
-│
-├── /resources
+│   └── /jwt-signin
+│       └── GET -> get user
+│    
+├── /chess
 │   ├── /
-│   │   ├── GET -> get all resources (x)
-│   │   ├── POST -> create a resource (x)
+│   │   ├── GET -> get many chess games
+│   │   └── POST -> create chess game
 │   │
-│   ├── /:id                                       // advanced (inquiries with token and id management)
-│   │   ├── GET -> get specific resource (x)
-│   │   ├── PUT -> update specific resource (x)
-│   │   ├── DELETE -> delete specific resource (x)
+│   └── /:id
+│       ├── GET -> get specific chess game
+│       └── PUT -> update specific chess game
+│
+├── /users
+│   ├── /
+│   │   ├── GET -> get user
+│   │   ├── PUT -> update user
+│   │   └── DELETE -> remove user
+│   │
+│   └── /all
+│       └── GET -> get all users
+│
+└── /wager
+    ├── /
+    │   └── GET -> get all wagers of user
+    │
+    └── /:id
+        ├── GET -> get specific wager
+        └── POST -> create wager
+
 ```
 
 ## Authentication Flow

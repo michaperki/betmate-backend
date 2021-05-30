@@ -30,7 +30,6 @@ router
     chessController.createChessGameRequest,
   );
 
-// FOR TESTING ONLY
 router.route('/:id')
   .get(chessController.getChessGameRequest)
   .put(...optionalChessFieldsValid, validateRequest, chessController.updateChessGameRequest);
