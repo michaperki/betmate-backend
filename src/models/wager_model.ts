@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { isWagerResolved, isWagerStatus } from 'helpers/validation/wagers';
 import mongoose, { Document, Schema } from 'mongoose';
-import { WagerDoc, WagerStatus, Wager as WagerType } from 'types/models';
+import { Wager as WagerType, WagerDoc, WagerStatus } from 'types/models/wager';
 
 const WagerSchema = new Schema({
   game_id: {

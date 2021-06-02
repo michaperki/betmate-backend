@@ -1,11 +1,11 @@
 /* eslint-disable func-names */
 import mongoose, { Document, Schema } from 'mongoose';
-import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models';
 import { CHESS_START } from 'helpers/constants';
 import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
-import { microservice } from 'services';
+import microservice from 'services/microservice';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
+import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models/chess';
 import {
   MovesSchema, OddsSchema, PlayerSchema, PoolWagerSchema,
 } from './helper_schemas';
@@ -56,6 +56,9 @@ const ChessSchema = new Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
+/**
+ * Get initial WDL odds and move options of game from microservice.
+ */
 ChessSchema.pre('save', async function (next) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -64,6 +67,7 @@ ChessSchema.pre('save', async function (next) {
       const dataPromise = microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
       const moveOptionsPromise = microservice.getTopMoves(doc.state ?? CHESS_START, 3);
       const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);
+
       doc.odds = data ?? doc.odds;
       if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions ?? [];
     }

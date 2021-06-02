@@ -1,10 +1,12 @@
 import mongoose, { Types } from 'mongoose';
 import { Wager } from 'models';
-import { GameStatus, WagerStatus, WagerDoc } from 'types/models';
-import { ProcessedWager } from 'types/wagers';
+import { GameStatus } from 'types/models/chess';
+import { WagerDoc, WagerStatus, ProcessedWager } from 'types/models/wager';
 import {
   processWager, processCriticalMoveWagers, processWDLWagers, getUserWinnings, getWagerResults,
 } from '../resolve_bets';
+
+/* -------- Set up data -------- */
 
 const gameId = new mongoose.Types.ObjectId();
 const player1Id = new mongoose.Types.ObjectId();
@@ -149,6 +151,8 @@ const moveWager6 = new Wager({
 // 420
 const moveWagers = [moveWager0, moveWager1, moveWager2, moveWager3, moveWager4, moveWager5, moveWager6];
 
+/* -------- Helper functions -------- */
+
 const testProcessWager = (wagerProcessor: (w: WagerDoc) => ProcessedWager, wager: WagerDoc, expOutcome: string, expWinnings: number) => {
   const processedWager = wagerProcessor(wager);
   expect(processedWager).toEqual({
@@ -160,6 +164,8 @@ const testProcessWager = (wagerProcessor: (w: WagerDoc) => ProcessedWager, wager
 };
 
 const getWagerIDs = (w: WagerDoc): { _id: Types.ObjectId, better_id: Types.ObjectId } => ({ _id: w._id, better_id: w.better_id });
+
+/* -------- Tests -------- */
 
 describe('Bet resolution logic', () => {
   describe('Working processWager', () => {

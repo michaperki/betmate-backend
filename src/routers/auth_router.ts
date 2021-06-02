@@ -5,6 +5,8 @@ import express from 'express';
 import { requireSignin, requireAuth } from 'authentication';
 
 import { authController } from 'controllers';
+import { userFieldsValid } from 'helpers/validation/auth';
+import { validateRequest } from 'helpers/validation';
 
 const router = express();
 
@@ -16,7 +18,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router.route('/signup')
-  .post(authController.signUpUser);
+  .post(...userFieldsValid, validateRequest, authController.signUpUserRequest);
 
 // Send user object and server will send back authToken and user object
 router.route('/signin')

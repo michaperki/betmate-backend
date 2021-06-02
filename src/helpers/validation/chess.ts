@@ -3,9 +3,20 @@ import { body, query } from 'express-validator';
 import {
   bodyNotAllowed, createBodyField, createQueryField, queryNotAllowed,
 } from 'helpers/validation';
-import { GameStatus } from 'types/models';
+import { GameStatus } from 'types/models/chess';
 
+/**
+ * Typechecking for string that should be of type `GameStatus`
+ * @param v string value of interest
+ * @returns whether or not `v` is of type `GameStatus`
+ */
 export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
+
+/**
+ * Check if string signifies a "complete" `GameStatus
+ * @param v string value of interest
+ * @returns whether or not `v` is a "complete" `GameStatus`
+ */
 export const isGameComplete = (v: string): boolean => [GameStatus.WHITE_WIN, GameStatus.BLACK_WIN, GameStatus.DRAW].includes(v as GameStatus);
 
 export const containsPlayers = [

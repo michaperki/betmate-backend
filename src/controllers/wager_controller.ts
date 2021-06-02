@@ -1,13 +1,8 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import {
-  FilterQuery, UpdateQuery, Query, Types,
-} from 'mongoose';
 import { documentNotFoundError } from 'helpers/constants';
-import { WagerDoc } from 'types/models';
-import { Wager, Chess, Users } from 'models';
 import { RequestWithJWT } from 'types/requests';
-// import { requestWithValidation } from 'helpers/validation';
+import { chessService, userService, wagerService } from 'services';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -17,101 +12,75 @@ type WagerRequestBody = {
   move_number: number,
 };
 
-const getWager = (id: string): Promise<WagerDoc | null> => (
-  Wager
-    .findById(id)
-    .then((doc) => doc)
-    .catch(() => null)
-);
-
-const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> => (
-  Wager
-    .find(fields)
-    .then((docs) => docs)
-    .catch(() => null)
-);
-
-const updateWager = async (id: Types.ObjectId | string, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc | null> => (
-  Wager
-    .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
-);
-
-const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>): Promise<Query<WagerDoc>[] | null> => (
-  Wager
-    .updateMany(conditions, fields)
-    .then((res) => res)
-    .catch(() => null)
-);
-
+/**
+ * Create wager from request
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ * - `createWagerFieldsValid`
+ * - `validateRequest`
+ *
+ * Creating a wager can fail for the following reasons
+ * - Game specified not found
+ * - Game specified already finished
+ * - User does not have enough money in account to create wager
+ * - After accounting for input lag (1 second), game state has changed
+ */
 const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  try {
-    const {
-      wdl,
-      amount,
-      data,
-      odds,
-      move_number,
-    } : WagerRequestBody = req.body;
+  const { amount } : WagerRequestBody = req.body;
 
-    const better_id = req.user._id;
-    const game_id = req.params.id;
+  const better_id = req.user._id;
+  const game_id = req.params.id;
 
-    // check game exists and hasn't ended
-    const game = await Chess.findById(game_id);
-    if (!game) return res.status(404).send({ error: documentNotFoundError });
-    if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
+  // check game exists and hasn't ended
+  const game = await chessService.getChessGame(game_id);
+  if (!game) return res.status(404).send({ error: documentNotFoundError });
+  if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
 
-    // check user has enough money to place bet
-    if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
+  // check user has enough money to place bet
+  if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
 
-    // fetch live status of the game after bet was placed
-    // this makes it harder for betters to exploit any lag in the chess model being updated via the websocket
-    await new Promise<void>((resolve, reject) => {
-      setTimeout(async () => {
-        // TODO: get currentMove from 3rd party API rather than chess model
-        const currentMove = await Chess.findById(game_id).then((doc) => doc?.move_hist.length);
-        if (currentMove === undefined) {
-          reject(new Error('Error getting live update of the game'));
-        } else if (move_number !== currentMove + 1) {
-          reject(new Error('Outdated bet'));
-        } else {
-          resolve();
-        }
-      }, 1000); // timeout accounts for any lag in the API used to get live game updates
-    });
-    const wager = new Wager({
-      game_id, better_id, wdl, amount, data, odds, move_number,
-    });
+  const doc = await wagerService.createWager({ game_id, better_id, ...req.body });
 
-    await Users.findByIdAndUpdate(req.user._id, { $inc: { account: -amount } });
-    const doc = await wager.save();
-    return res.status(200).json(doc.toJSON());
-  } catch (error) {
-    if (error.message === 'Outdated bet') return res.status(401).send({ error: error.message });
-    return res.status(500).json({ error: error.message });
+  if (doc) {
+    await userService.updateUserData(req.user._id, { $inc: { account: -amount } });
+    return res.status(200).json(doc);
   }
+  return res.status(401).send({ error: 'Outdated bet' });
 };
 
+/**
+ * Get wager specified in request
+ *
+ * ID of requesting user must match `better_id` field of wager
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const wager = await getWager(req.params.id);
-  if (!wager) { res.status(404).send({ error: documentNotFoundError }); return; }
-  if (!wager.better_id.equals(req.user._id)) { res.status(400).send({ error: 'Unauthorized' }); return; }
-  res.status(200).send(wager);
+  const wager = await wagerService.getWager(req.params.id);
+  if (!wager) return res.status(404).send({ error: documentNotFoundError });
+  if (!wager.better_id.equals(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
+  return res.status(200).send(wager);
 };
 
+/**
+ * Get all wagers of requesting user
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ * - `wagerFilterParams`
+ * - `cannotQueryTimestamps`
+ * - `validateRequest`
+ */
 const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   const fields = { better_id: req.user._id, ...req.query };
-  const wagers = await getWagers(fields);
+  const wagers = await wagerService.getWagers(fields);
   if (!wagers) res.status(500).send({ error: 'An issue occured' });
   else res.status(200).send(wagers);
 };
 
 const wagerController = {
-  getWagers,
-  updateWager,
-  updateManyWagers,
   createWagerRequest,
   getWagerRequest,
   getUserWagersRequest,

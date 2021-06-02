@@ -1,6 +1,8 @@
 import { UpdateQuery } from 'mongoose';
-import { ChessDoc, MoveData, WagerDoc } from './models';
+import { ChessDoc, MoveData } from './models/chess';
+import { WagerDoc } from './models/wager';
 
+/* -------- Helper Types -------- */
 interface PoolBetMessage {
   gameId: string
   type: 'move'
@@ -18,6 +20,8 @@ interface GameUpdateMessage extends UpdateQuery<ChessDoc> {
 }
 
 type Emitter<T> = (message: T) => void;
+
+/* -------- Main Types -------- */
 
 export interface ChessListenEvents {
   'join_game': (gameId: string) => Promise<boolean>

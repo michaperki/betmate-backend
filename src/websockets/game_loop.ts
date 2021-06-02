@@ -1,23 +1,29 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
-import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
-} from 'types/models';
-import { chessController } from 'controllers';
 import { CreateQuery, UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
-import { microservice } from 'services';
+import { chessService, microservice } from 'services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { delay } from 'helpers/utils';
+import {
+  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+} from 'types/models/chess';
 
 const PREGAME_TIME = 90;
 
+/**
+ * Fetch random game from static data
+ * @param data static JSON
+ * @param gameTime time format
+ * @param interval time format
+ * @returns game recording and time length of game
+ */
 const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: number): GameData => {
 // select random game
   const gameSelection = Math.floor(Math.random() * data.length);
@@ -30,11 +36,32 @@ const getRandomGameData = (data: ReplaySchema[], gameTime: number, interval: num
   return { game, gameTimeLength };
 };
 
+/**
+ * Run loop that broadcasts random games
+ * @param gameTime time format
+ * @param increment time format
+ * @param data corresponding to time format
+ * @param socket from `/chessws` namespace
+ *
+ * Procedure
+ *   - Get random game from `data`
+ *   - Set up next call of `runLoop()` based on length of selected game
+ *   - Create new game in database
+ *   - Wait for pregame time to conclude
+ *   - For each `move` in selected game
+ *     - Determine time user took to make move, wait that long
+ *     - Update game with respect to `move`
+ *     - Broadcast update
+ *     - Resolve move wagers, broadcast results to each user
+ *     - Get new odds and move options from microservice. With resulting data, update game and broadcast
+ *   - Broadcast that game is over
+ *   - Resolve win/draw/loss wagers, broadcast results to each user
+ */
 const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<boolean> => {
   // get game data
   const { game, gameTimeLength } = getRandomGameData(data, gameTime, increment);
 
-  // start new game two minutes before this one finishes
+  // start new loop PREGAME_TIME/2 seconds before this one finishes
   // This may seem that it causes recursion, but it does not https://stackoverflow.com/questions/13506852/infinite-timer-loop-with-javascript-no-setinterval/13506904#13506904
   setTimeout(() => runLoop(gameTime, increment, data)(socket), (gameTimeLength - (PREGAME_TIME / 2)) * 1000);
 
@@ -46,7 +73,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessController.createChessGame(gameFields as CreateQuery<ChessDoc>);
+  const gameDoc = await chessService.createChessGame(gameFields as CreateQuery<ChessDoc>);
   if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
@@ -55,7 +82,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   await delay(PREGAME_TIME * 1000);
 
   // Start game
-  const updatedGame = await chessController.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
+  const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
   if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
@@ -101,12 +128,13 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
 
       // update gameDoc
-      chessController.updateChessGame(gameDoc._id, updateMessage);
+      chessService.updateChessGame(gameDoc._id, updateMessage);
 
       // resolve wagers on the move just played, if any
       // safety check to see if topMoves are valid
       const validTopMoves = liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0;
 
+      // Resolve move bets if options valid, otherwise cancel bets
       (validTopMoves
         ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
         : cancelCriticalMoveWagers(gameId, chessGame))
@@ -115,8 +143,10 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
         });
 
+      // reset top moves
       liveTopMoves = [];
 
+      // Get new odds from microservice
       const oddsPromise = microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
@@ -138,19 +168,21 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           },
         };
 
+        // Broadcast new odds, save to database
         socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
-
-        chessController.updateChessGame(gameDoc._id, oddsUpdate);
+        chessService.updateChessGame(gameDoc._id, oddsUpdate);
       });
     }
 
+    // Broadcast that game is complete, save to database
     const completeFields: UpdateQuery<ChessDoc> = {
       game_status: game.outcome,
       complete: true,
     };
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
-    await chessController.updateChessGame(gameDoc._id, completeFields);
+    await chessService.updateChessGame(gameDoc._id, completeFields);
 
+    // Resolve win/draw/loss wagers
     resolveWdlWagers(gameId, game.outcome)
       .then((wagerResults) => {
         if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));

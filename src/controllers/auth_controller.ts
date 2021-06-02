@@ -1,60 +1,61 @@
 import { RequestHandler } from 'express';
-import validator from 'email-validator';
-import { getFieldNotFoundError } from 'helpers/constants';
-import { Users } from 'models';
-import userController from 'controllers/user_controller';
 import { RequestWithJWT } from 'types/requests';
+import { userService } from 'services';
+import { tokenForUser } from 'helpers/utils';
 
-const signUpUser: RequestHandler = async (req, res) => {
+/**
+ * Sign up user from request
+ * - Create `User` document in database
+ * - Create JWT token
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `userFieldsValid`
+ * - `validateRequest`
+ */
+const signUpUserRequest: RequestHandler = async (req, res) => {
   try {
     const {
       email, password, firstName, lastName,
     } = req.body;
 
-    // Validate email and password
-    if (!email || !validator.validate(email)) {
-      return res.status(400).json({ message: 'Please enter a valid email address' });
-    } if (!password) {
-      return res.status(400).json({ message: getFieldNotFoundError('password') });
-    }
-
-    // Check if a user already has this email address
-    const user = await Users.findOne({ email });
-    if (user) { return res.status(409).json({ message: 'Email address already associated to a user' }); }
-
-    // Make a new user from passed data
-    const newUser = new Users({
-      email: email.toLowerCase(),
-      password,
-      first_name: firstName || '',
-      last_name: lastName || '',
-    });
-
     // Save the user then transmit to frontend
-    const savedUser = await newUser.save();
-    const json = savedUser.toJSON();
-    delete json.password;
-    return res.status(201).json({ token: userController.tokenForUser(savedUser), user: json });
+    const user = await userService.createUser(email, password, firstName, lastName);
+    return res.status(201).json({ token: tokenForUser(user), user });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
-const signInUser: RequestHandler = (req: RequestWithJWT, res) => {
-  // This information is loaded or rejected by passport
-  const json = req.user.toJSON();
-  delete json.password;
-  return res.json({ token: userController.tokenForUser(json), user: json });
-};
+/**
+ * Sign in user from request
+ * - Authenticate user via `requireSignIn` middleware
+ * - Get `User` document via `requireSignIn` middleware
+ * - Create JWT token
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireSignIn`
+ */
+const signInUser: RequestHandler = (req: RequestWithJWT, res) => (
+  res.json({ token: tokenForUser(req.user), user: req.user })
+);
 
-const jwtSignIn: RequestHandler = (req: RequestWithJWT, res) => {
-  const json = req.user.toJSON();
-  delete json.password;
-  return res.json({ user: json });
-};
+/**
+ * Get user info from request
+ * - Authenticate user via `requireAuth` middleware
+ * - Get `User` document via `requireAuth` middleware
+ * - Return both to caller
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const jwtSignIn: RequestHandler = (req: RequestWithJWT, res) => (
+  res.json({ user: req.user })
+);
 
 const authController = {
-  signUpUser,
+  signUpUserRequest,
   signInUser,
   jwtSignIn,
 };

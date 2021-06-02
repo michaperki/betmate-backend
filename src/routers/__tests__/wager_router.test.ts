@@ -5,10 +5,12 @@ import { Chess, Wager } from 'models';
 import { wagerRouter } from 'routers';
 
 import { documentNotFoundError } from 'helpers/constants';
-import { GameStatus, MoveData } from 'types/models';
+import { GameStatus, MoveData } from 'types/models/chess';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);
+
+/* -------- Set up data -------- */
 
 const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
 
@@ -61,6 +63,8 @@ const validateBody = (body: any) => {
 
 // Mocks requireAuth server middleware
 jest.mock('authentication/requireAuth');
+
+/* -------- Tests -------- */
 
 describe('Working wager router', () => {
   beforeAll(async (done) => {

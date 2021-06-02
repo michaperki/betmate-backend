@@ -1,9 +1,12 @@
 import { isWagerResolved } from 'helpers/validation/wagers';
 import { Chess, Users, Wager } from 'models';
 import { Types, UpdateQuery } from 'mongoose';
+import { GameStatus } from 'types/models/chess';
+import { WagerDoc, WagerStatus } from 'types/models/wager';
 
-import { GameStatus, WagerDoc, WagerStatus } from 'types/models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
+
+/* -------- Set up data -------- */
 
 const chessData = {
   player_white: { name: 'playerA', elo: 200 },
@@ -39,6 +42,8 @@ let userID = '';
 let gameID = '';
 let wagerID = '';
 
+/* -------- Helper function -------- */
+
 const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager._id).toBeDefined();
   expect(wager.game_id).toStrictEqual(data.game_id);
@@ -54,6 +59,8 @@ const validateWager = (wager: WagerDoc, data: Partial<WagerDoc>) => {
   expect(wager.created_at).toBeInstanceOf(Date);
   expect(wager.updated_at).toBeInstanceOf(Date);
 };
+
+/* -------- Tests -------- */
 
 describe('Wager model validation', () => {
   beforeAll(async (done) => {
@@ -96,18 +103,7 @@ describe('Wager model validation', () => {
         const validWager = new Wager(wagerData);
         const savedWager = await validWager.save();
 
-        // Checks chess has been saved to testing DB
-        // expect(savedWager._id).toBeDefined();
-        // expect(savedWager.game_id).toBe(game._id);
-        // expect(savedWager.better_id).toBe(user._id);
-        // expect(savedWager.wdl).toBe(wagerDataWDL.wdl);
-        // expect(savedWager.amount).toBe(wagerDataWDL.amount);
-        // expect(savedWager.odds).toBe(wagerDataWDL.odds);
-        // expect(savedWager.data).toBe(wagerDataWDL.data);
-        // expect(savedWager.resolved).toBe(false);
-        // expect(savedWager.status).toBe(WagerStatus.PENDING);
-        // expect(savedWager.created_at).toBeInstanceOf(Date);
-        // expect(savedWager.updated_at).toBeInstanceOf(Date);
+        // Checks wager has been saved to testing DB
         validateWager(savedWager, wagerData);
 
         wagerID = savedWager._id;

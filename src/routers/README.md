@@ -6,9 +6,11 @@ The following cases are the basic cases that **any** CRUD (create, read, update,
 
 1) Authentication router: controls access to app resources via token generation and validation
 
-2) Resource router: a partially auth-protected generic router with CRUD operations (to be replaced with other project-specific collections)
+2) Chess router: a router with some CRUD operations for chess games
 
-3) User router: manages user objects, intended for use in admin panels and profile pages
+3) User router: manages user objects, intended for use in profile pages
+
+4) Wager router: an auth-protected router with some CRUD operations for wagers
 
 Below is a key for how to interpret the following cases.
 

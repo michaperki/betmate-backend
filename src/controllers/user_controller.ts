@@ -1,126 +1,99 @@
-import jwt from 'jwt-simple';
-import env from 'env-var';
 import { RequestHandler } from 'express';
-import { UserDoc } from 'types/models';
-import { Users } from 'models';
 import {
-  documentNotFoundError, getFieldNotFoundError, getSuccessfulDeletionMessage,
+  documentNotFoundError, getSuccessfulDeletionMessage,
 } from 'helpers/constants';
-import { Types, UpdateQuery } from 'mongoose';
+import { userService } from 'services';
+import { RequestWithJWT } from 'types/requests';
 
-const tokenForUser = (user: UserDoc): string => {
-  const timestamp = new Date().getTime();
-  return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
-};
-
-const decodeToken = (token: string, noVerify = false): any => {
-  try {
-    return jwt.decode(token, env.get('AUTH_SECRET').required().asString(), noVerify);
-  } catch (error) {
-    return null;
-  }
-};
-
-const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
-  Users
-    .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
-);
-
+/**
+ * Get all users from request.
+ *
+ * No filter criteria.
+ *
+ * Need to add information protection as it makes all user info public
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
 const getAllUsers: RequestHandler = async (req, res) => {
   try {
-    const users = await Users.find({});
-    const cleanedUsers = await Promise.all(users.map((user) => new Promise((resolve) => {
-      const userJSON = user.toJSON();
-      delete userJSON.password;
-      resolve(user);
-    })));
-    return res.status(200).json(cleanedUsers);
+    const users = await userService.getUsers({});
+
+    return users
+      ? res.status(200).json(users)
+      : res.status(500).json({ message: 'Error getting users' });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
-const createNewUser: RequestHandler = async (req, res) => {
+/**
+ * Get user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    const user = new Users();
-
-    const {
-      email, password, first_name: firstName, last_name: lastName,
-    } = req.body;
-
-    if (!email) return res.status(400).json({ message: getFieldNotFoundError('email') });
-    if (!password) return res.status(400).json({ message: getFieldNotFoundError('password') });
-
-    user.email = email;
-    user.password = password;
-    user.first_name = firstName || '';
-    user.last_name = lastName || '';
-
-    const savedUser = await user.save();
-    const json = savedUser.toJSON();
-    delete json.password;
-    return res.status(201).json(json);
+    const user = await userService.getUser(req.user._id);
+    return user
+      ? res.status(200).json(user)
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
     return res.status(500).json({ message: error.message });
   }
 };
 
-const getUser: RequestHandler = async (req, res) => {
-  try {
-    const user = await Users.findById(req.params.id);
-    const json = user?.toJSON();
-    delete json.password;
-    return res.status(200).json(json);
-  } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
-    return res.status(500).json({ message: error.message });
-  }
-};
-
-const updateUser: RequestHandler = async (req, res) => {
+/**
+ * Update user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const updateUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
     // this makes sure the user isn't updating something illegal like their balance
     const allowedChanges = ['first_name', 'last_name', 'email', 'password'];
-    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => {
-      if (allowedChanges.includes(key)) return { ...currBody, [key]: req.body[key] };
-      return currBody;
-    }, {});
+    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => (
+      allowedChanges.includes(key)
+        ? { ...currBody, [key]: req.body[key] }
+        : currBody
+    ), {});
 
-    const updatedUser = await Users.findOneAndUpdate({ _id: req.params.id }, whitelistedBody, { new: true });
-    const json = updatedUser?.toJSON();
-
-    delete json.password;
-    return res.status(200).json(json);
+    const updatedUser = await userService.updateUserData(req.user._id, whitelistedBody);
+    return updatedUser
+      ? res.status(200).json(updatedUser)
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
     return res.status(500).json({ message: error.message });
   }
 };
 
-const deleteUser: RequestHandler = async (req, res) => {
+/**
+ * Update user from request.
+ *
+ * Uses `requireAuth` to get userID
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const deleteUser: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    await Users.findOneAndDelete({ _id: req.params.id });
-    return res.json({ message: getSuccessfulDeletionMessage(req.params.id) });
+    const deleteResult = await userService.deleteUser(req.user._id);
+    return deleteResult
+      ? res.json({ message: getSuccessfulDeletionMessage(req.user._id) })
+      : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    if (error.kind === 'ObjectId') {
-      return res.status(404).json({ message: documentNotFoundError });
-    }
     return res.status(500).json({ message: error.message });
   }
 };
 
 const userController = {
-  tokenForUser,
-  decodeToken,
-  updateUserData,
   getAllUsers,
-  createNewUser,
   getUser,
   updateUser,
   deleteUser,

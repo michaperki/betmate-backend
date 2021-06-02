@@ -1,8 +1,7 @@
 /* eslint-disable func-names */
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-
-import { CompareCallback, UserDoc, User } from 'types/models';
+import { CompareCallback, User, UserDoc } from 'types/models/user';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -10,7 +9,6 @@ const UserSchema = new Schema({
   first_name: String,
   last_name: String,
   account: { type: Number, default: 1000 },
-  wager_hist: [{ type: Schema.Types.ObjectId, ref: 'Wager' }],
 }, {
   toObject: {
     virtuals: true,

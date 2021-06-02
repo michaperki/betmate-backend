@@ -2,9 +2,11 @@ import { CHESS_START } from 'helpers/constants';
 import { isGameComplete } from 'helpers/validation/chess';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
-import { ChessDoc, GameStatus, MoveData } from 'types/models';
+import { ChessDoc, GameStatus, MoveData } from 'types/models/chess';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
+
+/* -------- Set up data -------- */
 
 // minimal fields
 const chessDataA: Partial<ChessDoc> = {
@@ -38,6 +40,8 @@ const badChessData = {
 let gameIdA = '';
 let gameIdB = '';
 
+/* -------- Helper function -------- */
+
 const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game._id).toBeDefined();
   expect(game.state).toBe(data.state ?? CHESS_START);
@@ -60,6 +64,8 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game.created_at).toBeInstanceOf(Date);
   expect(game.updated_at).toBeInstanceOf(Date);
 };
+
+/* -------- Tests -------- */
 
 describe('Chess model validation', () => {
   beforeAll(async (done) => {
@@ -88,7 +94,7 @@ describe('Chess model validation', () => {
         // Checks chess has been saved to testing DB
         validateGame(savedGame, chessDataA);
 
-        gameIdA = savedGame._id;
+        gameIdA = validGame._id;
 
         done();
       } catch (error) {
