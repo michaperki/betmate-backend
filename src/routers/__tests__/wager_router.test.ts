@@ -21,12 +21,12 @@ const chessData = {
   player_white: { name: 'playerC', elo: 1200 },
   player_black: { name: 'playerD', elo: 1400 },
   move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove],
-  time_white: 293,
-  time_black: 291,
+  time_white: 93,
+  time_black: 91,
 };
 
 const wagerData = {
-  odds: 2.5,
+  odds: 1 / 0.6193755739210285,
   wdl: true,
   amount: 10,
   data: 'white_win',
