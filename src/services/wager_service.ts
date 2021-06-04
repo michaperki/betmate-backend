@@ -65,11 +65,18 @@ const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery
  */
 const createWager = async (fields: CreateQuery<WagerDoc>): Promise<WagerDoc | null> => {
   await delay(1000);
-  const currentMove = await chessService.getChessGame(fields.game_id).then((doc) => doc?.move_hist.length);
-  const wagerValid = currentMove !== undefined && fields.move_number === currentMove + 1;
+  const game = await chessService.getChessGame(fields.game_id);
+  const currentMove = game?.move_hist.length;
+  const oddsCorrect = Math.abs((1 / (game?.odds[fields.data] ?? 0)) - Number(fields.odds)) < Number.EPSILON; // allows for floating point imprecision
+
+  const wagerValid = (
+    currentMove !== undefined
+    && fields.move_number === currentMove + 1
+    && (!fields.wdl || oddsCorrect)
+  );
 
   return wagerValid
-    ? await new Wager(fields).save()
+    ? new Wager(fields).save()
     : null;
 };
 
