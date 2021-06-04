@@ -50,9 +50,7 @@ Run `yarn test`.
 │   │   ├── utils.ts
 │   ├── models # all models and model tests
 │   ├── routers # all routers and router tests
-│   ├── services
-│   │   ├── game_loop.ts # broadcasts arbitrary games from src/assets
-│   │   ├── microservice.ts # interface with microservice
+│   ├── services # microservice and all database interfacing
 │   ├── types # all type declarations
 │   ├── websockets # all websockets
 │   └── server.ts # server driver file
@@ -79,7 +77,7 @@ To ensure data gets broadcasted to the right end users, [Socket.IO rooms](https:
 
 In implementation, all spectators of a game will be placed in a corresponding "room" for that game, and all updates to the game will be broadcasted to that room. Similarly, each authenticated users will be placed in their own "room", and all wager updates for that user will be broadcasted to their room.
 
-Events that dictate the data flow of websockets currently revolve around `src/services/game_loop.ts`.
+Events that dictate the data flow of websockets currently revolve around `src/websockets/game_loop.ts`.
 
 Overview of socket events found in `src/websockets/events.md`.
 
