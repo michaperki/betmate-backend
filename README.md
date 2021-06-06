@@ -16,9 +16,10 @@ You must have `Node.js` and `Yarn` installed to run this project
 
 1. Clone this repository
 2. In the console, run `yarn`
-3. Add a `.env` file to setup `AUTH_SECRET` and `MONGODB_URI`
+3. Add a `.env` file to setup `AUTH_SECRET`, `MONGODB_URI`, and `MICROSERVICE_API_KEY`
     - `AUTH_SECRET` can be any string
     - `MONGODB_URI` is formatted as "mongodb://localhost:27017/\<dbname>" ([documentation](https://docs.mongodb.com/manual/reference/connection-string/))
+    - `MICROSERVICE_API_KEY` is provided in the handoff doc
 4. Run `yarn dev`
 
 If you also want to run the microservice locally, follow the setup instructions in the [microservice README](https://github.com/dali-lab/betmate-model-microservice) and change line 11 in `src/helpers/constants.ts` accordingly.
@@ -50,9 +51,7 @@ Run `yarn test`.
 │   │   ├── utils.ts
 │   ├── models # all models and model tests
 │   ├── routers # all routers and router tests
-│   ├── services
-│   │   ├── game_loop.ts # broadcasts arbitrary games from src/assets
-│   │   ├── microservice.ts # interface with microservice
+│   ├── services # microservice and all database interfacing
 │   ├── types # all type declarations
 │   ├── websockets # all websockets
 │   └── server.ts # server driver file
@@ -79,7 +78,7 @@ To ensure data gets broadcasted to the right end users, [Socket.IO rooms](https:
 
 In implementation, all spectators of a game will be placed in a corresponding "room" for that game, and all updates to the game will be broadcasted to that room. Similarly, each authenticated users will be placed in their own "room", and all wager updates for that user will be broadcasted to their room.
 
-Events that dictate the data flow of websockets currently revolve around `src/services/game_loop.ts`.
+Events that dictate the data flow of websockets currently revolve around `src/websockets/game_loop.ts`.
 
 Overview of socket events found in `src/websockets/events.md`.
 
