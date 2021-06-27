@@ -50,7 +50,6 @@
     "env-var": "^7.0.0",
     "express": "^4.17.1",
     "express-joi-validation": "^5.0.0",
-    "express-validator": "^6.10.0",
     "joi": "^17.4.0",
     "jwt-simple": "^0.5.6",
     "mongodb": "^3.6.9",
