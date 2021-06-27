@@ -1,6 +1,9 @@
 import { RequestHandler } from 'express';
+import { ValidatedRequest } from 'express-joi-validation';
+
 import { documentNotFoundError } from 'helpers/constants';
 import { chessService } from 'services';
+import { CreateGameRequest, GetManyGamesRequest, UpdateGameRequest } from 'validation/chess';
 
 /**
  * Get game from request.
@@ -23,7 +26,7 @@ const getChessGameRequest: RequestHandler = (req, res) => {
  * - `cannotQueryTimestamps`
  * - `validateRequest`
  */
-const getManyChessGamesRequest: RequestHandler = async (req, res) => {
+const getManyChessGamesRequest: RequestHandler = async (req: ValidatedRequest<GetManyGamesRequest>, res) => {
   const games = await chessService.getManyChessGames(req.query);
   return games
     ? res.status(200).send(games)
@@ -39,7 +42,7 @@ const getManyChessGamesRequest: RequestHandler = async (req, res) => {
  * - `optionalChessFieldsValid`
  * - `validateRequest`
  */
-const updateChessGameRequest: RequestHandler = async (req, res) => {
+const updateChessGameRequest: RequestHandler = async (req: ValidatedRequest<UpdateGameRequest>, res) => {
   chessService.updateChessGame(req.params.id, req.body)
     .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
     .catch((error) => res.status(500).json({ errors: [error] }));
@@ -55,7 +58,7 @@ const updateChessGameRequest: RequestHandler = async (req, res) => {
  * - `optionalChessFieldsValid`
  * - `validateRequest`
  */
-const createChessGameRequest: RequestHandler = async (req, res) => {
+const createChessGameRequest: RequestHandler = async (req: ValidatedRequest<CreateGameRequest>, res) => {
   const chessGame = await chessService.createChessGame(req.body);
   if (!chessGame) { res.status(500).json({ errors: ['Failed to create chess game'] }); return; }
   res.status(200).send(chessGame);

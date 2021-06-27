@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
-import { CreateQuery, UpdateQuery, Types } from 'mongoose';
+import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
@@ -73,7 +73,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessService.createChessGame(gameFields as CreateQuery<ChessDoc>);
+  const gameDoc = await chessService.createChessGame(gameFields as ChessDoc);
   if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
