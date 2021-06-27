@@ -142,11 +142,11 @@ describe('Working wager router', () => {
 
             expect(res.status).toBe(400);
             expect(res.body.errors.length).toBe(5);
-            expect(res.body.errors[0].msg).toBe("'wdl' is required with type boolean");
-            expect(res.body.errors[1].msg).toBe("'data' is required with type string");
-            expect(res.body.errors[2].msg).toBe("'amount' is required with type number");
-            expect(res.body.errors[3].msg).toBe("'odds' is required with type number");
-            expect(res.body.errors[4].msg).toBe("'move_number' is required with type number");
+            expect(res.body.errors).toContain("'wdl' is required");
+            expect(res.body.errors).toContain("'data' is required");
+            expect(res.body.errors).toContain("'amount' is required");
+            expect(res.body.errors).toContain("'odds' is required");
+            expect(res.body.errors).toContain("'move_number' is required");
 
             done();
           } catch (error) {
@@ -163,9 +163,9 @@ describe('Working wager router', () => {
 
             expect(res.status).toBe(400);
             expect(res.body.errors.length).toBe(3);
-            expect(res.body.errors[0].msg).toBe("'amount' must be at least 0.01");
-            expect(res.body.errors[1].msg).toBe("'odds' must be at least 1");
-            expect(res.body.errors[2].msg).toBe("'move_number' must be at least 0");
+            expect(res.body.errors).toContain("'amount' must be greater than or equal to 0.01");
+            expect(res.body.errors).toContain("'odds' must be greater than or equal to 1");
+            expect(res.body.errors).toContain("'move_number' must be greater than or equal to 0");
             done();
           } catch (error) {
             done(error);
@@ -273,18 +273,18 @@ describe('Working wager router', () => {
 
           expect(res.status).toBe(400);
           expect(res.body.errors.length).toBe(12);
-          expect(res.body.errors[0].msg).toBe("'resolved' must be type boolean");
-          expect(res.body.errors[1].msg).toBe("'wdl' must be type boolean");
-          expect(res.body.errors[2].msg).toBe("'game_id' is not valid");
-          expect(res.body.errors[3].msg).toBe("The values 'waiting' are not wager statuses");
-          expect(res.body.errors[4].msg).toBe("Cannot search by '_id'");
-          expect(res.body.errors[5].msg).toBe("Cannot search by 'better_id'");
-          expect(res.body.errors[6].msg).toBe("Cannot search by 'odds'");
-          expect(res.body.errors[7].msg).toBe("Cannot search by 'amount'");
-          expect(res.body.errors[8].msg).toBe("Cannot search by 'move_number'");
-          expect(res.body.errors[9].msg).toBe("Cannot search by '__v'");
-          expect(res.body.errors[10].msg).toBe("Cannot search by 'created_at'");
-          expect(res.body.errors[11].msg).toBe("Cannot search by 'updated_at'");
+          expect(res.body.errors).toContain("'resolved' must be a boolean");
+          expect(res.body.errors).toContain("'wdl' must be a boolean");
+          expect(res.body.errors).toContain("'game_id' is not valid");
+          expect(res.body.errors).toContain("The values 'waiting' are not wager statuses");
+          expect(res.body.errors).toContain("'_id' is not allowed");
+          expect(res.body.errors).toContain("'better_id' is not allowed");
+          expect(res.body.errors).toContain("'odds' is not allowed");
+          expect(res.body.errors).toContain("'amount' is not allowed");
+          expect(res.body.errors).toContain("'move_number' is not allowed");
+          expect(res.body.errors).toContain("'created_at' is not allowed");
+          expect(res.body.errors).toContain("'updated_at' is not allowed");
+          expect(res.body.errors).toContain("'__v' is not allowed");
 
           done();
         } catch (error) {

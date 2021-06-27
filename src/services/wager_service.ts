@@ -3,6 +3,7 @@ import { Wager } from 'models';
 import {
   FilterQuery, Query, Types, UpdateQuery,
 } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { WagerDoc } from 'types/models/wager';
 import chessService from './chess_service';
 
@@ -63,7 +64,7 @@ const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery
  *
  * Process will wait 1 second to account for input lag. After wait, will check if wager is still valid
  */
-const createWager = async (fields: WagerDoc): Promise<WagerDoc | null> => {
+const createWager = async (fields: PartialWithRequired<WagerDoc, 'game_id' | 'better_id' | 'wdl' | 'amount' | 'odds' | 'data' | 'move_number'>): Promise<WagerDoc | null> => {
   await delay(1000);
   const game = await chessService.getChessGame(fields.game_id);
   const currentMove = game?.move_hist.length;

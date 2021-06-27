@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
+
 import { documentNotFoundError } from 'helpers/constants';
-import { RequestWithJWT } from 'types/requests';
+import { RequestWithJWT, ValidatedRequestWithJWT } from 'types/requests';
 import { chessService, userService, wagerService } from 'services';
+import { CreateWagerRequest, GetWagersRequest } from 'validation/wager';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -26,7 +28,7 @@ type WagerRequestBody = {
  * - User does not have enough money in account to create wager
  * - After accounting for input lag (1 second), game state has changed
  */
-const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
+const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<CreateWagerRequest>, res) => {
   const { amount } : WagerRequestBody = req.body;
 
   const better_id = req.user._id;
@@ -73,7 +75,7 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  * - `cannotQueryTimestamps`
  * - `validateRequest`
  */
-const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
+const getUserWagersRequest: RequestHandler = async (req: ValidatedRequestWithJWT<GetWagersRequest>, res) => {
   const fields = { better_id: req.user._id, ...req.query };
   const wagers = await wagerService.getWagers(fields);
   if (!wagers) res.status(500).send({ error: 'An issue occured' });

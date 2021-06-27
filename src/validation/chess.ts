@@ -2,6 +2,7 @@ import joi from 'joi';
 import { ValidatedRequestSchema, ContainerTypes } from 'express-joi-validation';
 import { Chess } from 'chess.js';
 import { Types } from 'mongoose';
+import { Condition } from 'mongodb';
 
 import { GameStatus } from 'types/models/chess';
 
@@ -88,7 +89,7 @@ export interface CreateGameRequest extends ValidatedRequestSchema {
 
 export interface GetManyGamesRequest extends ValidatedRequestSchema {
   [ContainerTypes.Query]: {
-    // game_status?: GameStatus[],
+    game_status?: Condition<GameStatus>,
     complete?: boolean
   }
 }

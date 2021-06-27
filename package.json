@@ -53,6 +53,7 @@
     "express-validator": "^6.10.0",
     "joi": "^17.4.0",
     "jwt-simple": "^0.5.6",
+    "mongodb": "^3.6.9",
     "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
     "passport": "^0.4.1",
