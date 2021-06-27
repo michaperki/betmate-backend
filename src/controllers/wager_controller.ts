@@ -19,7 +19,7 @@ type WagerRequestBody = {
  *
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
- * - `createWagerFieldsValid`
+ * - `validator.body(CreateWagerSchema)`
  * - `validateRequest`
  *
  * Creating a wager can fail for the following reasons
@@ -71,8 +71,7 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  *
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
- * - `wagerFilterParams`
- * - `cannotQueryTimestamps`
+ * - `validator.query(GetWagersSchema)`
  * - `validateRequest`
  */
 const getUserWagersRequest: RequestHandler = async (req: ValidatedRequestWithJWT<GetWagersRequest>, res) => {

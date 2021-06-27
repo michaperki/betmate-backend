@@ -13,7 +13,7 @@ import { SignUpUserRequest } from 'validation/auth';
  * - Return both to caller
  *
  * Request must be prefixed with appropriate validation middleware
- * - `userFieldsValid`
+ * - `validator.body(SignUpUserSchema)`
  * - `validateRequest`
  */
 const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUserRequest>, res) => {

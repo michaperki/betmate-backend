@@ -1,6 +1,6 @@
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { isWagerResolved, isWagerStatus } from 'helpers/validation/wagers';
+import { isWagerResolved, isWagerStatus } from 'validation/wager';
 import mongoose, { Document, Schema } from 'mongoose';
 import { Wager as WagerType, WagerDoc, WagerStatus } from 'types/models/wager';
 

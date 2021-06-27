@@ -4,10 +4,8 @@ import { createValidator } from 'express-joi-validation';
 
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
-// import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation/wagers';
-// import { cannotQueryTimestamps, validateRequest } from 'helpers/validation';
 import { CreateWagerSchema, GetWagersSchema } from 'validation/wager';
-import { checkErrors } from 'validation';
+import { validateRequest } from 'validation';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -24,17 +22,14 @@ router.use(requireAuth);
 // get all wagers
 router.route('/')
   .get(
-    // ...wagerFilterParams,
-    // ...cannotQueryTimestamps,
-    // validateRequest,
     validator.query(GetWagersSchema),
-    checkErrors,
+    validateRequest,
     wagerController.getUserWagersRequest,
   );
 
 // create or get a wager for a user
 router.route('/:id')
   .get(wagerController.getWagerRequest)
-  .post(validator.body(CreateWagerSchema), checkErrors, wagerController.createWagerRequest);
+  .post(validator.body(CreateWagerSchema), validateRequest, wagerController.createWagerRequest);
 
 export default router;

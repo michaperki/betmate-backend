@@ -2,11 +2,9 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
-// import { chessFilterParams, containsPlayers, optionalChessFieldsValid } from 'helpers/validation/chess';
 import { chessController } from 'controllers';
-// import { cannotQueryTimestamps, validateRequest } from 'helpers/validation';
 import { CreateGameSchema, GetManyGamesSchema, UpdateGameSchema } from 'validation/chess';
-import { checkErrors } from 'validation';
+import { validateRequest } from 'validation';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -21,25 +19,19 @@ if (process.env.NODE_ENV === 'test') {
 router
   .route('/')
   .get(
-    // ...chessFilterParams,
-    // ...cannotQueryTimestamps,
-    // validateRequest,
     validator.query(GetManyGamesSchema),
-    checkErrors,
+    validateRequest,
     chessController.getManyChessGamesRequest,
   )
   .post(
     // requireAuth,
-    // ...containsPlayers,
-    // ...optionalChessFieldsValid,
-    // validateRequest,
     validator.body(CreateGameSchema),
-    checkErrors,
+    validateRequest,
     chessController.createChessGameRequest,
   );
 
 router.route('/:id')
   .get(chessController.getChessGameRequest)
-  .put(validator.body(UpdateGameSchema), checkErrors, chessController.updateChessGameRequest);
+  .put(validator.body(UpdateGameSchema), validateRequest, chessController.updateChessGameRequest);
 
 export default router;

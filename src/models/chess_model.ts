@@ -1,7 +1,7 @@
 /* eslint-disable func-names */
 import mongoose, { Document, Schema } from 'mongoose';
 import { CHESS_START } from 'helpers/constants';
-import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
+import { isGameComplete, isGameStatus } from 'validation/chess';
 import microservice from 'services/microservice';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';

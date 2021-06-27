@@ -1,5 +1,5 @@
 import { CHESS_START } from 'helpers/constants';
-import { isGameComplete } from 'helpers/validation/chess';
+import { isGameComplete } from 'validation/chess';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
 import { ChessDoc, GameStatus, MoveData } from 'types/models/chess';

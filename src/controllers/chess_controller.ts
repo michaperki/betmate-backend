@@ -22,8 +22,7 @@ const getChessGameRequest: RequestHandler = (req, res) => {
  * Uses query as criteria
  *
  * Request must be prefixed with appropriate validation middleware
- * - `chessFilterParams`
- * - `cannotQueryTimestamps`
+ * - `validator.query(GetManyGamesSchema)`
  * - `validateRequest`
  */
 const getManyChessGamesRequest: RequestHandler = async (req: ValidatedRequest<GetManyGamesRequest>, res) => {
@@ -39,7 +38,7 @@ const getManyChessGamesRequest: RequestHandler = async (req: ValidatedRequest<Ge
  * Uses request param as ID and body as update query
  *
  * Request must be prefixed with appropriate validation middleware
- * - `optionalChessFieldsValid`
+ * - `validator.body(UpdateGameSchema)`
  * - `validateRequest`
  */
 const updateChessGameRequest: RequestHandler = async (req: ValidatedRequest<UpdateGameRequest>, res) => {
@@ -54,8 +53,7 @@ const updateChessGameRequest: RequestHandler = async (req: ValidatedRequest<Upda
  * Uses request body as game fields.
  *
  * Request must be prefixed with appropriate validation middleware
- * - `containsPlayers`
- * - `optionalChessFieldsValid`
+ * - `validator.body(CreateGameSchema)`
  * - `validateRequest`
  */
 const createChessGameRequest: RequestHandler = async (req: ValidatedRequest<CreateGameRequest>, res) => {
