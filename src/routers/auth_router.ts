@@ -1,14 +1,18 @@
 /* eslint-disable consistent-return */
 import bodyParser from 'body-parser';
 import express from 'express';
+import { createValidator } from 'express-joi-validation';
 
 import { requireSignin, requireAuth } from 'authentication';
 
 import { authController } from 'controllers';
-import { userFieldsValid } from 'helpers/validation/auth';
-import { validateRequest } from 'helpers/validation';
+// import { userFieldsValid } from 'helpers/validation/auth';
+// import { validateRequest } from 'helpers/validation';
+import { SignUpUserSchema } from 'validation/auth';
+import { checkErrors } from 'validation';
 
 const router = express();
+const validator = createValidator({ passError: true });
 
 // TODO: Move middleware attachment to test file
 if (process.env.NODE_ENV === 'test') {
@@ -18,7 +22,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router.route('/signup')
-  .post(...userFieldsValid, validateRequest, authController.signUpUserRequest);
+  .post(validator.body(SignUpUserSchema), checkErrors, authController.signUpUserRequest);
 
 // Send user object and server will send back authToken and user object
 router.route('/signin')
