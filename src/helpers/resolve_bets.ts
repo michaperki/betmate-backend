@@ -5,7 +5,6 @@ import { UserDoc } from 'types/models/user';
 import {
   ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
 } from 'types/models/wager';
-import HttpError from './errors';
 
 import { delay } from './utils';
 
@@ -170,7 +169,7 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
  * @param topMoves Array of provided options to wager on, alongside `other` option
  * @returns JSON mapping user IDs to their wagers
  */
-export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance, topMoves: string[]): Promise<UserWagers | HttpError> => {
+export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance, topMoves: string[]): Promise<UserWagers> => {
   const moveNum = chessGame.history().length;
   const [lastMove] = chessGame.history().slice(-1);
   const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
@@ -184,9 +183,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
     resolved: false,
   });
 
-  return wagers instanceof HttpError
-    ? wagers
-    : resolveWagers(wagers, correctMove, processCriticalMoveWagers);
+  return resolveWagers(wagers, correctMove, processCriticalMoveWagers);
 };
 
 /**
@@ -195,7 +192,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessGame: Chess
  * @param gameStatus outcome of game
  * @returns JSON mapping user IDs to their wagers
  */
-export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers | HttpError> => {
+export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers> => {
   await delay(500); // ensures all wagers are present in database
 
   const wagers = await wagerService.getWagers({
@@ -204,9 +201,7 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
     resolved: false,
   });
 
-  return wagers instanceof HttpError
-    ? wagers
-    : resolveWagers(wagers, gameStatus, processWDLWagers);
+  return resolveWagers(wagers, gameStatus, processWDLWagers);
 };
 
 /**
@@ -215,7 +210,7 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
  * @param chessGame chess from which outcome will be derived
  * @returns JSON mapping user IDs to their wagers
  */
-export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers | HttpError> => {
+export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers> => {
   const moveNum = chessGame.history().length;
 
   await delay(500); // ensures all wagers are present in database
@@ -227,7 +222,5 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessI
     resolved: false,
   });
 
-  return wagers instanceof HttpError
-    ? wagers
-    : resolveWagers(wagers, 'no data', processCriticalMoveWagers);
+  return resolveWagers(wagers, 'no data', processCriticalMoveWagers);
 };

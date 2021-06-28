@@ -5,7 +5,6 @@ import { RequestWithJWT } from 'types/requests';
 import { userService } from 'services';
 import { tokenForUser } from 'helpers/utils';
 import { SignUpUserRequest } from 'validation/auth';
-import HttpError from 'helpers/errors';
 import { handleFailure } from './utils';
 
 /**
@@ -29,9 +28,7 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
 
     // Save the user then transmit to frontend
     const user = await userService.createUser(email, password, firstName, lastName);
-    return user instanceof HttpError
-      ? res.status(user.code).json({ errors: user.messages })
-      : res.status(201).json({ token: tokenForUser(user), user });
+    return res.status(201).json({ token: tokenForUser(user), user });
   } catch (error) {
     return handleFailure(res)(error);
   }
