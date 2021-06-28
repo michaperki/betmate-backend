@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-this-alias */
 import { isWagerResolved, isWagerStatus } from 'validation/wager';
-import mongoose, { Document, Schema } from 'mongoose';
-import { Wager as WagerType, WagerDoc, WagerStatus } from 'types/models/wager';
+import mongoose, { Schema } from 'mongoose';
+import { WagerDoc, WagerStatus } from 'types/models/wager';
 
 const WagerSchema = new Schema({
   game_id: {
@@ -56,7 +56,7 @@ const WagerSchema = new Schema({
 
 WagerSchema.pre('save', function (next) {
   try {
-    const doc: Partial<WagerType> & Document = this;
+    const doc = this as WagerDoc;
     doc.resolved = isWagerResolved(doc.status ?? WagerStatus.PENDING);
     next();
   } catch (error) {
@@ -65,7 +65,7 @@ WagerSchema.pre('save', function (next) {
 });
 
 WagerSchema.virtual('winnings').get(function () {
-  const doc: WagerType & Document = this;
+  const doc = this as WagerDoc;
   switch (doc.status) {
     case WagerStatus.WON:
       return doc.wdl

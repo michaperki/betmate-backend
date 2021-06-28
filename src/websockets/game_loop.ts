@@ -150,10 +150,10 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // Get new odds from microservice
       const oddsPromise = microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
-        .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+        .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
       const topMovesPromise = microservice
         .getTopMoves(chessGame.fen(), 3)
-        .then((res) => res ?? []);
+        .catch(() => []);
 
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
