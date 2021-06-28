@@ -14,6 +14,7 @@ import { delay } from 'helpers/utils';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models/chess';
+import HttpError from 'helpers/errors';
 
 const PREGAME_TIME = 90;
 
@@ -74,7 +75,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   };
   // create game and put into pregame
   const gameDoc = await chessService.createChessGame(gameFields as ChessDoc);
-  if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
+  if (gameDoc instanceof HttpError) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
 
@@ -83,7 +84,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
   // Start game
   const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
-  if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
+  if (updatedGame instanceof HttpError) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
   // Play game
@@ -139,8 +140,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
         : cancelCriticalMoveWagers(gameId, chessGame))
         .then((wagerResults) => {
-          if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-          else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
+          if (!(wagerResults instanceof HttpError)) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
+          else socket.to(gameId).emit('game_error', { gameId, message: wagerResults.message });
         });
 
       // reset top moves
@@ -185,8 +186,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     // Resolve win/draw/loss wagers
     resolveWdlWagers(gameId, game.outcome)
       .then((wagerResults) => {
-        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-        else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
+        if (!(wagerResults instanceof HttpError)) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
+        else socket.to(gameId).emit('game_error', { gameId, message: wagerResults.message });
       });
   } catch (error) {
     console.log('Error:', error.message);

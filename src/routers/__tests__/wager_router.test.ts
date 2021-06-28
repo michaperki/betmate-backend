@@ -1,7 +1,7 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
 
-import { Chess, Wager } from 'models';
+import { Chess, Wager, Users } from 'models';
 import { wagerRouter } from 'routers';
 
 import { documentNotFoundError } from 'helpers/constants';
@@ -77,6 +77,8 @@ describe('Working wager router', () => {
 
   beforeAll(async (done) => {
     try {
+      await new Users(mockUser).save();
+
       const chessGame = await new Chess(chessData).save();
       chessGameID = chessGame._id;
 
@@ -125,7 +127,8 @@ describe('Working wager router', () => {
             .send(wagerData);
 
           expect(res.status).toBe(404);
-          expect(res.body.error).toBe(documentNotFoundError);
+          expect(res.body.errors.length).toBe(1);
+          expect(res.body.errors).toContain(documentNotFoundError);
           done();
         } catch (error) {
           done(error);
@@ -181,6 +184,7 @@ describe('Working wager router', () => {
             .send(wagerData);
 
           expect(res.status).toBe(200);
+          validateBody(res.body);
 
           done();
         } catch (error) {
@@ -211,7 +215,8 @@ describe('Working wager router', () => {
             .set('Authorization', 'Bearer dummy_token');
 
           expect(res.status).toBe(404);
-          expect(res.body.error).toBe(documentNotFoundError);
+          expect(res.body.errors.length).toBe(1);
+          expect(res.body.errors).toContain(documentNotFoundError);
           done();
         } catch (error) {
           done(error);

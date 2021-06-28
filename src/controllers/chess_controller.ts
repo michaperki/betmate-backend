@@ -1,20 +1,21 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
-import { documentNotFoundError } from 'helpers/constants';
 import { chessService } from 'services';
 import { CreateGameRequest, GetManyGamesRequest, UpdateGameRequest } from 'validation/chess';
+import { handleSuccess, handleFailure } from './utils';
 
 /**
  * Get game from request.
  *
  * Uses request param as id
  */
-const getChessGameRequest: RequestHandler = (req, res) => {
-  chessService.getChessGame(req.params.id)
-    .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
-    .catch((error) => res.status(500).json({ errors: [error] }));
-};
+const getChessGameRequest: RequestHandler = (req, res) => (
+  chessService
+    .getChessGame(req.params.id)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 /**
  * Get many games from request.
@@ -25,12 +26,12 @@ const getChessGameRequest: RequestHandler = (req, res) => {
  * - `validator.query(GetManyGamesSchema)`
  * - `validateRequest`
  */
-const getManyChessGamesRequest: RequestHandler = async (req: ValidatedRequest<GetManyGamesRequest>, res) => {
-  const games = await chessService.getManyChessGames(req.query);
-  return games
-    ? res.status(200).send(games)
-    : res.status(404).json({ errors: [documentNotFoundError] });
-};
+const getManyChessGamesRequest: RequestHandler = (req: ValidatedRequest<GetManyGamesRequest>, res) => (
+  chessService
+    .getManyChessGames(req.query)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 /**
  * Update game from request.
@@ -41,11 +42,12 @@ const getManyChessGamesRequest: RequestHandler = async (req: ValidatedRequest<Ge
  * - `validator.body(UpdateGameSchema)`
  * - `validateRequest`
  */
-const updateChessGameRequest: RequestHandler = async (req: ValidatedRequest<UpdateGameRequest>, res) => {
-  chessService.updateChessGame(req.params.id, req.body)
-    .then((result) => (result ? res.status(200).send(result) : res.status(404).json({ errors: [documentNotFoundError] })))
-    .catch((error) => res.status(500).json({ errors: [error] }));
-};
+const updateChessGameRequest: RequestHandler = (req: ValidatedRequest<UpdateGameRequest>, res) => (
+  chessService
+    .updateChessGame(req.params.id, req.body)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 /**
  * Create game from request.
@@ -56,12 +58,12 @@ const updateChessGameRequest: RequestHandler = async (req: ValidatedRequest<Upda
  * - `validator.body(CreateGameSchema)`
  * - `validateRequest`
  */
-const createChessGameRequest: RequestHandler = async (req: ValidatedRequest<CreateGameRequest>, res) => {
-  const chessGame = await chessService.createChessGame(req.body);
-  if (!chessGame) { res.status(500).json({ errors: ['Failed to create chess game'] }); return; }
-  res.status(200).send(chessGame);
-};
-
+const createChessGameRequest: RequestHandler = (req: ValidatedRequest<CreateGameRequest>, res) => (
+  chessService
+    .createChessGame(req.body)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 const chessController = {
   createChessGameRequest,
   getChessGameRequest,

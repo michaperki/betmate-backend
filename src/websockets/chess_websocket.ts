@@ -10,6 +10,7 @@ import { decodeToken } from 'helpers/utils';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models/chess';
+import HttpError from 'helpers/errors';
 
 /**
  * Websocket event handler
@@ -25,7 +26,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    */
   socket.on('join_game', async (gameId: string) => {
     const chessDoc = await chessService.getChessGame(gameId);
-    if (!chessDoc) return socket.emit('game_error', { gameId, message: 'Could not find game' });
+    if (chessDoc instanceof HttpError) return socket.emit('game_error', { gameId, message: 'Could not find game' });
 
     socket.join(gameId);
     return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
@@ -108,7 +109,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
 
     // Retreive game from database
     const chessDoc = await chessService.getChessGame(move.gameId);
-    if (!chessDoc) return socket.emit('game_error', { gameId: move.gameId, message: 'Could not find game' });
+    if (chessDoc instanceof HttpError) return socket.emit('game_error', { gameId: move.gameId, message: 'Could not find game' });
 
     // Update game with move data
     const chessGame = new ChessGame(chessDoc.state);
