@@ -1,21 +1,24 @@
+import HttpError from 'helpers/errors';
 import { delay } from 'helpers/utils';
 import { Wager } from 'models';
 import {
-  CreateQuery, FilterQuery, Query, Types, UpdateQuery,
+  FilterQuery, Query, Types, UpdateQuery,
 } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { WagerDoc } from 'types/models/wager';
 import chessService from './chess_service';
+import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
  * Retreives wager from database based on ID
  * @param id of wager
  * @returns Promise of wager, or null if not found or error occurs
  */
-const getWager = (id: string | Types.ObjectId): Promise<WagerDoc | null> => (
+const getWager = (id: string | Types.ObjectId): Promise<WagerDoc> => (
   Wager
     .findById(id)
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -23,11 +26,10 @@ const getWager = (id: string | Types.ObjectId): Promise<WagerDoc | null> => (
    * @param fields criterea for games to return
    * @returns Promise of wager array, or null if error occurs
    */
-const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> => (
+const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[]> => (
   Wager
     .find(fields)
-    .then((docs) => docs)
-    .catch(() => null)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -36,11 +38,11 @@ const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[] | null> =>
    * @param fields to update for wager
    * @returns Promise of updated wager, or null if wager not found or error occurs
    */
-const updateWager = async (id: string | Types.ObjectId, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc | null> => (
+const updateWager = async (id: string | Types.ObjectId, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc> => (
   Wager
     .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -49,11 +51,10 @@ const updateWager = async (id: string | Types.ObjectId, fields: UpdateQuery<Wage
    * @param fields to update for wager
    * @returns Promise of query result (not the updated wagers), or null if error occurs
    */
-const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>): Promise<Query<WagerDoc>[] | null> => (
+const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>): Promise<Query<WagerDoc>[]> => (
   Wager
     .updateMany(conditions, fields)
-    .then((res) => res)
-    .catch(() => null)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -63,21 +64,20 @@ const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery
  *
  * Process will wait 1 second to account for input lag. After wait, will check if wager is still valid
  */
-const createWager = async (fields: CreateQuery<WagerDoc>): Promise<WagerDoc | null> => {
+const createWager = async (fields: PartialWithRequired<WagerDoc, 'game_id' | 'better_id' | 'wdl' | 'amount' | 'odds' | 'data' | 'move_number'>): Promise<WagerDoc> => {
   await delay(1000);
   const game = await chessService.getChessGame(fields.game_id);
-  const currentMove = game?.move_hist.length;
+  const currentMove = game.move_hist.length;
   const oddsCorrect = Math.abs((1 / (game?.odds[fields.data] ?? 0)) - Number(fields.odds)) < Number.EPSILON; // allows for floating point imprecision
 
   const wagerValid = (
-    currentMove !== undefined
-    && fields.move_number === currentMove + 1
+    fields.move_number === currentMove + 1
     && (!fields.wdl || oddsCorrect)
   );
 
-  return wagerValid
-    ? new Wager(fields).save()
-    : null;
+  if (!wagerValid) throw new HttpError(400, ['Wager not valid']);
+
+  return new Wager(fields).save();
 };
 
 const wagerService = {

@@ -1,9 +1,16 @@
+/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable no-unused-vars */
 import supertest from 'supertest';
 
 import { authRouter } from 'routers';
 import { mockUser, connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);
+
+const baseUser = {
+  email: 'test@test.com',
+  password: 'password',
+};
 
 /* -------- Tests -------- */
 
@@ -29,8 +36,9 @@ describe('Working auth router', () => {
       try {
         const res = await request.post('/signup').send({});
         expect(res.status).toBe(400);
-        expect(res.body.errors[0].msg).toBe("'email' is required with type string");
-        expect(res.body.errors[1].msg).toBe("'password' is required with type string");
+        expect(res.body.errors.length).toBe(2);
+        expect(res.body.errors).toContain("'email' is required");
+        expect(res.body.errors).toContain("'password' is required");
         done();
       } catch (error) {
         done(error);
@@ -41,7 +49,9 @@ describe('Working auth router', () => {
       try {
         const res = await request.post('/signup').send({ email: 'this is an invalid email' });
         expect(res.status).toBe(400);
-        expect(res.body.errors[0].msg).toBe("'this is an invalid email' is not a valid email");
+        expect(res.body.errors.length).toBe(2);
+        expect(res.body.errors).toContain("'email' must be a valid email");
+        expect(res.body.errors).toContain("'password' is required");
         done();
       } catch (error) {
         done(error);
@@ -52,7 +62,8 @@ describe('Working auth router', () => {
       try {
         const res = await request.post('/signup').send({ email: mockUser.email });
         expect(res.status).toBe(400);
-        expect(res.body.errors[0].msg).toBe("'password' is required with type string");
+        expect(res.body.errors.length).toBe(1);
+        expect(res.body.errors).toContain("'password' is required");
         done();
       } catch (error) {
         done(error);
@@ -61,7 +72,7 @@ describe('Working auth router', () => {
 
     it('creates and returns a new user JSON object', async (done) => {
       try {
-        const res = await request.post('/signup').send(mockUser);
+        const res = await request.post('/signup').send(baseUser);
         expect(res.status).toBe(201);
         expect(res.body.token).toBeDefined();
         expect(res.body.user).toBeDefined();
@@ -74,9 +85,10 @@ describe('Working auth router', () => {
 
     it('rejects requests with a non-unique email address', async (done) => {
       try {
-        const res = await request.post('/signup').send(mockUser);
-        expect(res.status).toBe(400);
-        expect(res.body.errors[0].msg).toBe('Email address already associated to a user');
+        const res = await request.post('/signup').send(baseUser);
+        expect(res.status).toBe(409);
+        expect(res.body.errors.length).toBe(1);
+        expect(res.body.errors).toContain('Email address already associated to a user');
         done();
       } catch (error) {
         done(error);

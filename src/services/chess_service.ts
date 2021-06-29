@@ -1,19 +1,21 @@
 import { Chess } from 'models';
 import {
-  CreateQuery, FilterQuery, Types, UpdateQuery,
+  FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { ChessDoc } from 'types/models/chess';
+import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
  * Retreives game from database by ID
  * @param gameId ID of game
  * @returns Promise of game, or null if game not found or error occurs
  */
-const getChessGame = (gameId: string | Types.ObjectId): Promise<ChessDoc | null> => (
+const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> => (
   Chess
     .findById(gameId)
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -21,11 +23,10 @@ const getChessGame = (gameId: string | Types.ObjectId): Promise<ChessDoc | null>
  * @param fields criteria for games to return
  * @returns Promise of games, or null if error occurs
  */
-const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[] | null> => (
+const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[]> => (
   Chess
     .find(fields)
-    .then((result) => result)
-    .catch(() => null)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -34,11 +35,11 @@ const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[] | 
  * @param fields to update for game
  * @returns Promise of updated game, or null if game not found or error occurs
  */
-const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc | null> => (
+const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise<ChessDoc> => (
   Chess
     .findByIdAndUpdate(gameId, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -46,11 +47,10 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
  * @param fields to create game
  * @returns Promise of created game, or null if error occurs
  */
-const createChessGame = async (fields: CreateQuery<ChessDoc>): Promise<ChessDoc | null> => (
+const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>): Promise<ChessDoc> => (
   new Chess(fields)
     .save()
-    .then((doc) => doc)
-    .catch(() => null)
+    .catch(dbErrorHandler)
 );
 
 /**

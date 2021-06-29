@@ -1,12 +1,14 @@
 import bodyParser from 'body-parser';
 import express from 'express';
+import { createValidator } from 'express-joi-validation';
 
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
-import { createWagerFieldsValid, wagerFilterParams } from 'helpers/validation/wagers';
-import { cannotQueryTimestamps, validateRequest } from 'helpers/validation';
+import { CreateWagerSchema, GetWagersSchema } from 'validation/wager';
+import { validateRequest } from 'validation';
 
 const router = express();
+const validator = createValidator({ passError: true });
 
 // TODO: Move middleware attachment to test file
 if (process.env.NODE_ENV === 'test') {
@@ -20,8 +22,7 @@ router.use(requireAuth);
 // get all wagers
 router.route('/')
   .get(
-    ...wagerFilterParams,
-    ...cannotQueryTimestamps,
+    validator.query(GetWagersSchema),
     validateRequest,
     wagerController.getUserWagersRequest,
   );
@@ -29,6 +30,6 @@ router.route('/')
 // create or get a wager for a user
 router.route('/:id')
   .get(wagerController.getWagerRequest)
-  .post(...createWagerFieldsValid, validateRequest, wagerController.createWagerRequest);
+  .post(validator.body(CreateWagerSchema), validateRequest, wagerController.createWagerRequest);
 
 export default router;

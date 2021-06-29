@@ -89,10 +89,9 @@ describe('Working chess router', () => {
               .send({});
 
             expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe("'player_white.name' is required with type string");
-            expect(res.body.errors[1].msg).toBe("'player_white.elo' is required with type number");
-            expect(res.body.errors[2].msg).toBe("'player_black.name' is required with type string");
-            expect(res.body.errors[3].msg).toBe("'player_black.elo' is required with type number");
+            expect(res.body.errors.length).toBe(2);
+            expect(res.body.errors).toContain("'player_white' is required");
+            expect(res.body.errors).toContain("'player_black' is required");
 
             done();
           } catch (error) {
@@ -114,10 +113,12 @@ describe('Working chess router', () => {
               });
 
             expect(res.status).toBe(400);
-            expect(res.body.errors[0].msg).toBe("'time_white' must be at least 0");
-            expect(res.body.errors[1].msg).toBe("'time_black' must be at least 0");
-            expect(res.body.errors[2].msg).toBe("Value 'winning' is not a game status");
-            expect(res.body.errors[3].msg).toBe('FEN string must contain six space-delimited fields.');
+            expect(res.body.errors.length).toBe(5);
+            expect(res.body.errors).toContain("'time_white' must be greater than or equal to 0");
+            expect(res.body.errors).toContain("'time_black' must be greater than or equal to 0");
+            expect(res.body.errors).toContain("Value 'winning' is not a game status");
+            expect(res.body.errors).toContain('FEN string must contain six space-delimited fields.');
+            expect(res.body.errors).toContain("'__v' is not allowed");
             done();
           } catch (error) {
             done(error);
@@ -257,19 +258,19 @@ describe('Working chess router', () => {
 
           expect(res.status).toBe(400);
           expect(res.body.errors.length).toBe(13);
-          expect(res.body.errors[0].msg).toBe("The values 'started' are not game statuses");
-          expect(res.body.errors[1].msg).toBe("'complete' must be type boolean");
-          expect(res.body.errors[2].msg).toBe("Cannot search by 'player_white'");
-          expect(res.body.errors[3].msg).toBe("Cannot search by 'player_black'");
-          expect(res.body.errors[4].msg).toBe("Cannot search by 'state'");
-          expect(res.body.errors[5].msg).toBe("Cannot search by 'move_hist'");
-          expect(res.body.errors[6].msg).toBe("Cannot search by 'wagers'");
-          expect(res.body.errors[7].msg).toBe("Cannot search by 'time_white'");
-          expect(res.body.errors[8].msg).toBe("Cannot search by 'time_black'");
-          expect(res.body.errors[9].msg).toBe("Cannot search by '_id'");
-          expect(res.body.errors[10].msg).toBe("Cannot search by '__v'");
-          expect(res.body.errors[11].msg).toBe("Cannot search by 'created_at'");
-          expect(res.body.errors[12].msg).toBe("Cannot search by 'updated_at'");
+          expect(res.body.errors).toContain("The values 'started' are not game statuses");
+          expect(res.body.errors).toContain("'complete' must be a boolean");
+          expect(res.body.errors).toContain("'player_white' is not allowed");
+          expect(res.body.errors).toContain("'player_black' is not allowed");
+          expect(res.body.errors).toContain("'state' is not allowed");
+          expect(res.body.errors).toContain("'move_hist' is not allowed");
+          expect(res.body.errors).toContain("'wagers' is not allowed");
+          expect(res.body.errors).toContain("'time_white' is not allowed");
+          expect(res.body.errors).toContain("'time_black' is not allowed");
+          expect(res.body.errors).toContain("'_id' is not allowed");
+          expect(res.body.errors).toContain("'created_at' is not allowed");
+          expect(res.body.errors).toContain("'updated_at' is not allowed");
+          expect(res.body.errors).toContain("'__v' is not allowed");
 
           done();
         } catch (error) {

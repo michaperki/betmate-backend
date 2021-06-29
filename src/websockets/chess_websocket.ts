@@ -24,11 +24,13 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    * Otherwise, provide error message to client
    */
   socket.on('join_game', async (gameId: string) => {
-    const chessDoc = await chessService.getChessGame(gameId);
-    if (!chessDoc) return socket.emit('game_error', { gameId, message: 'Could not find game' });
-
-    socket.join(gameId);
-    return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
+    try {
+      const chessDoc = await chessService.getChessGame(gameId);
+      socket.join(gameId);
+      return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
+    } catch (error) {
+      return socket.emit('game_error', { gameId, message: 'Could not find game' });
+    }
   });
 
   /**
@@ -86,9 +88,12 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    * If update unsuccessful, provide error message to client
    */
   socket.on('pool_wager', async (wager) => {
-    const newGame = await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
-    if (newGame) return socket.to(wager.gameId).emit('pool_wager', wager);
-    return socket.emit('socket_error', { message: 'issue updating' });
+    try {
+      await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
+      return socket.to(wager.gameId).emit('pool_wager', wager);
+    } catch (error) {
+      return socket.emit('socket_error', { message: 'issue updating' });
+    }
   });
 
   /**
@@ -105,87 +110,92 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    */
   socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
     // need to add protection for who can move.
+    try {
+      const chessDoc = await chessService.getChessGame(move.gameId);
 
-    // Retreive game from database
-    const chessDoc = await chessService.getChessGame(move.gameId);
-    if (!chessDoc) return socket.emit('game_error', { gameId: move.gameId, message: 'Could not find game' });
+      // Update game with move data
+      const chessGame = new ChessGame(chessDoc.state);
 
-    // Update game with move data
-    const chessGame = new ChessGame(chessDoc.state);
+      const moveResult = chessGame.move(move.data.san);
+      if (!moveResult) return socket.emit('game_error', { gameId: move.gameId, message: 'Invalid move' });
 
-    const moveResult = chessGame.move(move.data.san);
-    if (!moveResult) return socket.emit('game_error', { gameId: move.gameId, message: 'Invalid move' });
+      const timeWhite = move.data.is_white ? move.data.time : chessDoc.time_white;
+      const timeBlack = !move.data.is_white ? move.data.time : chessDoc.time_black;
 
-    const timeWhite = move.data.is_white ? move.data.time : chessDoc.time_white;
-    const timeBlack = !move.data.is_white ? move.data.time : chessDoc.time_black;
-
-    const updateMessage = {
-      state: chessGame.fen(),
-      move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
-      time_white: timeWhite,
-      time_black: timeBlack,
-      pool_wagers: {
-        move: {
-          wagers: [] as unknown as Types.Array<AnonMoveWager>,
-          options: [] as unknown as Types.Array<string>,
-        },
-      },
-    };
-
-    // Broadcast updated game and save to database
-    socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
-    chessService.updateChessGame(move.gameId, updateMessage);
-
-    // resolve wagers on the move just played, broadcast results to users
-    resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options).then((wagerResults) => {
-      if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));
-      else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
-    });
-
-    // get new odds from microservice
-    const oddsPromise = microservice
-      .getWDL(chessGame.fen(), timeWhite, timeBlack)
-      .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
-    const topMovesPromise = microservice
-      .getTopMoves(chessGame.fen(), 3)
-      .then((res) => res ?? []);
-
-    Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
-      const oddsUpdate = {
-        odds,
+      const updateMessage = {
+        state: chessGame.fen(),
+        move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
+        time_white: timeWhite,
+        time_black: timeBlack,
         pool_wagers: {
           move: {
             wagers: [] as unknown as Types.Array<AnonMoveWager>,
-            options: topMoves as Types.Array<string>,
+            options: [] as unknown as Types.Array<string>,
           },
         },
       };
 
-      // broadcast new odds and save to database
-      socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, ...oddsUpdate });
-      chessService
-        .updateChessGame(move.gameId, oddsUpdate)
-        .then((res) => res || socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error saving' }));
-    });
+      // Broadcast updated game and save to database
+      socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
+      chessService.updateChessGame(move.gameId, updateMessage);
 
-    // Check if game is complete
-    const gameStatus = getChessStatus(chessGame);
-    const complete = gameStatus !== GameStatus.IN_PROGRESS;
+      // resolve wagers on the move just played, broadcast results to users
+      resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options)
+        .then((wagerResults) => (
+          Object
+            .entries(wagerResults)
+            .forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }))
+        ));
 
-    // resolve win/draw/loss wagers, broadcast results to users
-    if (complete) {
-      const completeFields: UpdateQuery<ChessDoc> = {
-        complete: true,
-        game_status: gameStatus,
-      };
-      socket.to(move.gameId).emit('game_over', { gameId: move.gameId, ...completeFields });
-      await chessService.updateChessGame(move.gameId, completeFields);
+      // get new odds from microservice
+      const oddsPromise = microservice
+        .getWDL(chessGame.fen(), Math.floor((timeWhite / 300) * 180), Math.floor((timeBlack / 300) * 180))
+        .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
+      const topMovesPromise = microservice
+        .getTopMoves(chessGame.fen(), 3)
+        .catch(() => []);
 
-      resolveWdlWagers(move.gameId, gameStatus).then((wagerResults) => {
-        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }));
-        else socket.to(move.gameId).emit('game_error', { gameId: move.gameId, message: 'There was an error updating critical move wagers' });
+      Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
+        const oddsUpdate = {
+          odds,
+          pool_wagers: {
+            move: {
+              wagers: [] as unknown as Types.Array<AnonMoveWager>,
+              options: topMoves as Types.Array<string>,
+            },
+          },
+        };
+
+        // broadcast new odds and save to database
+        socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, ...oddsUpdate });
+        chessService.updateChessGame(move.gameId, oddsUpdate);
       });
+
+      // Check if game is complete
+      const gameStatus = getChessStatus(chessGame);
+      const complete = gameStatus !== GameStatus.IN_PROGRESS;
+
+      // resolve win/draw/loss wagers, broadcast results to users
+      if (complete) {
+        const completeFields: UpdateQuery<ChessDoc> = {
+          complete: true,
+          game_status: gameStatus,
+        };
+        socket.to(move.gameId).emit('game_over', { gameId: move.gameId, ...completeFields });
+        await chessService.updateChessGame(move.gameId, completeFields);
+
+        resolveWdlWagers(move.gameId, gameStatus)
+          .then((wagerResults) => (
+            Object
+              .entries(wagerResults)
+              .forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }))
+          ));
+      }
+    } catch (error) {
+      socket.emit('game_error', { gameId: move.gameId, message: error.message });
+      return false;
     }
+    // Retreive game from database
     return true;
   });
 };

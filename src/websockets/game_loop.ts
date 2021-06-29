@@ -1,7 +1,7 @@
 /* eslint-disable no-await-in-loop */
 /* eslint-disable no-restricted-syntax */
 import { Namespace } from 'socket.io';
-import { CreateQuery, UpdateQuery, Types } from 'mongoose';
+import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
 import { ReplaySchema, GameData } from 'types/game_loop';
@@ -73,8 +73,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessService.createChessGame(gameFields as CreateQuery<ChessDoc>);
-  if (!gameDoc) return socket.emit('socket_error', { message: 'There was an issue creating a new game' });
+  const gameDoc = await chessService.createChessGame(gameFields as ChessDoc);
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
 
@@ -83,7 +82,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
   // Start game
   const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
-  if (!updatedGame) return socket.emit('game_error', { gameId, message: 'There was an issue starting the game' });
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
   // Play game
@@ -138,10 +136,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       (validTopMoves
         ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
         : cancelCriticalMoveWagers(gameId, chessGame))
-        .then((wagerResults) => {
-          if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-          else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
-        });
+        .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
 
       // reset top moves
       liveTopMoves = [];
@@ -149,10 +144,10 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // Get new odds from microservice
       const oddsPromise = microservice
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
-        .then((res) => res ?? { white_win: 0.0, draw: 0.0, black_win: 0.0 });
+        .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
       const topMovesPromise = microservice
         .getTopMoves(chessGame.fen(), 3)
-        .then((res) => res ?? []);
+        .catch(() => []);
 
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
@@ -184,10 +179,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
     // Resolve win/draw/loss wagers
     resolveWdlWagers(gameId, game.outcome)
-      .then((wagerResults) => {
-        if (wagerResults) Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers }));
-        else socket.to(gameId).emit('game_error', { gameId, message: 'There was an error updating critical move wagers' });
-      });
+      .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
   } catch (error) {
     console.log('Error:', error.message);
     socket.emit('game_error', { gameId, message: error.message });

@@ -1,6 +1,7 @@
 import { Users } from 'models';
 import { FilterQuery, Types, UpdateQuery } from 'mongoose';
 import { UserDoc } from 'types/models/user';
+import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
  * Create user in database with provided fields
@@ -16,7 +17,9 @@ const createUser = (email: string, password: string, firstName?: string, lastNam
     password,
     first_name: firstName ?? '',
     last_name: lastName ?? '',
-  }).save()
+  })
+    .save()
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -36,11 +39,11 @@ const emailAvailable = (email: string): Promise<boolean> => (
  * @param id ID of user
  * @returns Promise of user, or null if user not found or error occurs
  */
-const getUser = (id: string | Types.ObjectId): Promise<UserDoc | null> => (
+const getUser = (id: string | Types.ObjectId): Promise<UserDoc> => (
   Users
     .findById(id)
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -48,11 +51,10 @@ const getUser = (id: string | Types.ObjectId): Promise<UserDoc | null> => (
  * @param fields criteria for users to return
  * @returns Promise of users, or null if error occurs
  */
-const getUsers = (fields: FilterQuery<UserDoc>): Promise<UserDoc[] | null> => (
+const getUsers = (fields: FilterQuery<UserDoc>): Promise<UserDoc[]> => (
   Users
     .find(fields)
-    .then((docs) => docs)
-    .catch(() => null)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -61,11 +63,11 @@ const getUsers = (fields: FilterQuery<UserDoc>): Promise<UserDoc[] | null> => (
  * @param fields to update for user
  * @returns Promise of updated user, or null if user not found or error occurs
  */
-const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc | null> => (
+const updateUserData = (id: string | Types.ObjectId, fields: UpdateQuery<UserDoc>): Promise<UserDoc> => (
   Users
     .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
-    .then((doc) => doc)
-    .catch(() => null)
+    .then(dbNullDocHandler)
+    .catch(dbErrorHandler)
 );
 
 /**
@@ -77,7 +79,7 @@ const deleteUser = (id: string | Types.ObjectId): Promise<boolean> => (
   Users
     .findByIdAndDelete(id)
     .then((doc) => !!doc)
-    .catch(() => false)
+    .catch(dbErrorHandler)
 );
 
 const userService = {

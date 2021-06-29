@@ -28,20 +28,20 @@ export interface AnonMoveWager {
 }
 
 export interface PoolWagerState {
-  options: string[]
-  wagers: AnonMoveWager[]
+  options: Types.Array<string>
+  wagers: Types.Array<AnonMoveWager>
 }
 
 /* -------- Main Types -------- */
 
-export interface Chess {
+export interface ChessDoc extends Document {
   state: string,
   time_format: string,
   complete: boolean,
   game_status: GameStatus,
   player_white: Player,
   player_black: Player,
-  move_hist: MoveData[],
+  move_hist: Types.Array<MoveData>,
   time_white: number,
   time_black: number,
   odds: WDLData,
@@ -50,14 +50,4 @@ export interface Chess {
   },
   created_at: Date,
   updated_at: Date,
-}
-
-export interface ChessDoc extends Chess, Document {
-  move_hist: Types.Array<MoveData>,
-  pool_wagers: {
-    move: {
-      options: Types.Array<string>
-      wagers: Types.Array<AnonMoveWager>
-    }
-  }
 }

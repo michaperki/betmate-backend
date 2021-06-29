@@ -1,7 +1,11 @@
 import { RequestHandler } from 'express';
+import { ValidatedRequest } from 'express-joi-validation';
+
 import { RequestWithJWT } from 'types/requests';
 import { userService } from 'services';
 import { tokenForUser } from 'helpers/utils';
+import { SignUpUserRequest } from 'validation/auth';
+import { handleFailure } from './utils';
 
 /**
  * Sign up user from request
@@ -10,20 +14,23 @@ import { tokenForUser } from 'helpers/utils';
  * - Return both to caller
  *
  * Request must be prefixed with appropriate validation middleware
- * - `userFieldsValid`
+ * - `validator.body(SignUpUserSchema)`
  * - `validateRequest`
  */
-const signUpUserRequest: RequestHandler = async (req, res) => {
+const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUserRequest>, res) => {
   try {
     const {
       email, password, firstName, lastName,
     } = req.body;
 
+    const isEmailAvailable = await userService.emailAvailable(email);
+    if (!isEmailAvailable) return res.status(409).json({ message: 'Request error', errors: ['Email address already associated to a user'] });
+
     // Save the user then transmit to frontend
     const user = await userService.createUser(email, password, firstName, lastName);
     return res.status(201).json({ token: tokenForUser(user), user });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return handleFailure(res)(error);
   }
 };
 

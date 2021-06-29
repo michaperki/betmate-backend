@@ -4,6 +4,7 @@ import {
 } from 'helpers/constants';
 import { userService } from 'services';
 import { RequestWithJWT } from 'types/requests';
+import { handleFailure, handleSuccess } from './utils';
 
 /**
  * Get all users from request.
@@ -15,17 +16,12 @@ import { RequestWithJWT } from 'types/requests';
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
  */
-const getAllUsers: RequestHandler = async (req, res) => {
-  try {
-    const users = await userService.getUsers({});
-
-    return users
-      ? res.status(200).json(users)
-      : res.status(500).json({ message: 'Error getting users' });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
+const getAllUsers: RequestHandler = async (req, res) => (
+  userService
+    .getUsers({})
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 /**
  * Get user from request.
@@ -35,16 +31,12 @@ const getAllUsers: RequestHandler = async (req, res) => {
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
  */
-const getUser: RequestHandler = async (req: RequestWithJWT, res) => {
-  try {
-    const user = await userService.getUser(req.user._id);
-    return user
-      ? res.status(200).json(user)
-      : res.status(404).json({ message: documentNotFoundError });
-  } catch (error) {
-    return res.status(500).json({ message: error.message });
-  }
-};
+const getUser: RequestHandler = async (req: RequestWithJWT, res) => (
+  userService
+    .getUser(req.user._id)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 /**
  * Update user from request.
@@ -55,21 +47,19 @@ const getUser: RequestHandler = async (req: RequestWithJWT, res) => {
  * - `requireAuth`
  */
 const updateUser: RequestHandler = async (req: RequestWithJWT, res) => {
-  try {
-    // this makes sure the user isn't updating something illegal like their balance
-    const allowedChanges = ['first_name', 'last_name', 'email', 'password'];
-    const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => (
-      allowedChanges.includes(key)
-        ? { ...currBody, [key]: req.body[key] }
-        : currBody
-    ), {});
+  // this makes sure the user isn't updating something illegal like their balance
+  const allowedChanges = ['first_name', 'last_name', 'email', 'password'];
+  const whitelistedBody = Object.keys(req.body).reduce((currBody, key) => (
+    allowedChanges.includes(key)
+      ? { ...currBody, [key]: req.body[key] }
+      : currBody
+  ), {});
 
+  try {
     const updatedUser = await userService.updateUserData(req.user._id, whitelistedBody);
-    return updatedUser
-      ? res.status(200).json(updatedUser)
-      : res.status(404).json({ message: documentNotFoundError });
+    return handleSuccess(res)(updatedUser);
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return handleFailure(res)(error);
   }
 };
 
@@ -88,7 +78,7 @@ const deleteUser: RequestHandler = async (req: RequestWithJWT, res) => {
       ? res.json({ message: getSuccessfulDeletionMessage(req.user._id) })
       : res.status(404).json({ message: documentNotFoundError });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    return handleFailure(res)(error);
   }
 };
 

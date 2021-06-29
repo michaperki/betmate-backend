@@ -1,11 +1,11 @@
 /* eslint-disable func-names */
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose, { Schema, Types } from 'mongoose';
 import { CHESS_START } from 'helpers/constants';
-import { isGameComplete, isGameStatus } from 'helpers/validation/chess';
+import { isGameComplete, isGameStatus } from 'validation/chess';
 import microservice from 'services/microservice';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
-import { Chess as ChessType, ChessDoc, GameStatus } from 'types/models/chess';
+import { ChessDoc, GameStatus } from 'types/models/chess';
 import {
   MovesSchema, OddsSchema, PlayerSchema, PoolWagerSchema,
 } from './helper_schemas';
@@ -62,14 +62,18 @@ const ChessSchema = new Schema({
 ChessSchema.pre('save', async function (next) {
   try {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
-    const doc: Partial<ChessType> & Document = this;
+    const doc = this as ChessDoc;
     if (this.isNew) {
-      const dataPromise = microservice.getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180);
-      const moveOptionsPromise = microservice.getTopMoves(doc.state ?? CHESS_START, 3);
+      const dataPromise = microservice
+        .getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180)
+        .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
+      const moveOptionsPromise = microservice
+        .getTopMoves(doc.state ?? CHESS_START, 3)
+        .catch(() => []);
       const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);
 
       doc.odds = data ?? doc.odds;
-      if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions ?? [];
+      if (doc.pool_wagers) doc.pool_wagers.move.options = moveOptions as Types.Array<string>;
     }
     doc.complete = isGameComplete(doc.game_status ?? GameStatus.NOT_STARTED);
 

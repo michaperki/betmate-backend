@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
-import { documentNotFoundError } from 'helpers/constants';
-import { RequestWithJWT } from 'types/requests';
+
+import { RequestWithJWT, ValidatedRequestWithJWT } from 'types/requests';
 import { chessService, userService, wagerService } from 'services';
+import { CreateWagerRequest, GetWagersRequest } from 'validation/wager';
+import { handleFailure, handleSuccess } from './utils';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -17,7 +19,7 @@ type WagerRequestBody = {
  *
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
- * - `createWagerFieldsValid`
+ * - `validator.body(CreateWagerSchema)`
  * - `validateRequest`
  *
  * Creating a wager can fail for the following reasons
@@ -26,27 +28,27 @@ type WagerRequestBody = {
  * - User does not have enough money in account to create wager
  * - After accounting for input lag (1 second), game state has changed
  */
-const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const { amount } : WagerRequestBody = req.body;
+const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<CreateWagerRequest>, res) => {
+  try {
+    const { amount } : WagerRequestBody = req.body;
 
-  const better_id = req.user._id;
-  const game_id = req.params.id;
+    const better_id = req.user._id;
+    const game_id = req.params.id;
 
-  // check game exists and hasn't ended
-  const game = await chessService.getChessGame(game_id);
-  if (!game) return res.status(404).send({ error: documentNotFoundError });
-  if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
+    // check game exists and hasn't ended
+    const game = await chessService.getChessGame(game_id);
+    if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
 
-  // check user has enough money to place bet
-  if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
+    // check user has enough money to place bet
+    if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
 
-  const doc = await wagerService.createWager({ game_id, better_id, ...req.body });
+    const doc = await wagerService.createWager({ game_id, better_id, ...req.body });
 
-  if (doc) {
     await userService.updateUserData(req.user._id, { $inc: { account: -amount } });
     return res.status(200).json(doc);
+  } catch (error) {
+    return handleFailure(res)(error);
   }
-  return res.status(401).send({ error: 'Outdated bet' });
 };
 
 /**
@@ -58,10 +60,13 @@ const createWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  * - `requireAuth`
  */
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const wager = await wagerService.getWager(req.params.id);
-  if (!wager) return res.status(404).send({ error: documentNotFoundError });
-  if (!wager.better_id.equals(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
-  return res.status(200).send(wager);
+  try {
+    const wager = await wagerService.getWager(req.params.id);
+    if (!wager.better_id.equals(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
+    return res.status(200).send(wager);
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
 };
 
 /**
@@ -69,16 +74,15 @@ const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
  *
  * Request must be prefixed with appropriate validation middleware
  * - `requireAuth`
- * - `wagerFilterParams`
- * - `cannotQueryTimestamps`
+ * - `validator.query(GetWagersSchema)`
  * - `validateRequest`
  */
-const getUserWagersRequest: RequestHandler = async (req: RequestWithJWT, res) => {
-  const fields = { better_id: req.user._id, ...req.query };
-  const wagers = await wagerService.getWagers(fields);
-  if (!wagers) res.status(500).send({ error: 'An issue occured' });
-  else res.status(200).send(wagers);
-};
+const getUserWagersRequest: RequestHandler = (req: ValidatedRequestWithJWT<GetWagersRequest>, res) => (
+  wagerService
+    .getWagers({ better_id: req.user._id, ...req.query })
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
 
 const wagerController = {
   createWagerRequest,
