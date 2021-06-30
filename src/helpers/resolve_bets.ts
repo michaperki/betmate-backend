@@ -53,8 +53,10 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
     .filter((w) => w.data === correctMove)
     .reduce((sum, w) => sum + w.amount, 0);
 
-  const winningPoolShare = totalPool / winningPool;
   const returnBets = winningPool === 0;
+  const winningPoolShare = returnBets
+    ? Number.MAX_SAFE_INTEGER
+    : totalPool / winningPool;
 
   return {
     processedWagers: wagers.map(processWager(correctMove, winningPoolShare, returnBets)),
