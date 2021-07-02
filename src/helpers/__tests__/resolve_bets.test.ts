@@ -373,7 +373,7 @@ describe('Bet resolution logic', () => {
         ];
 
         processedWagers.forEach((pw, i) => expect(pw).toEqual(expectedWagers[i]));
-        expect(winningPoolShare).toBe(Number('Infinity'));
+        expect(winningPoolShare).toBe(Number.MAX_SAFE_INTEGER);
       });
     });
 
@@ -393,7 +393,7 @@ describe('Bet resolution logic', () => {
         expect(processedWagers).toEqual([{
           ...getWagerIDs(moveWager0), outcome: WagerStatus.CANCELLED, winnings: 50,
         }]);
-        expect(winningPoolShare).toBe(Number('Infinity'));
+        expect(winningPoolShare).toBe(Number.MAX_SAFE_INTEGER);
       });
     });
 
