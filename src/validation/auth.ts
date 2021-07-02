@@ -1,7 +1,14 @@
 import joi from 'joi';
 import { ContainerTypes, ValidatedRequestSchema } from 'express-joi-validation';
 
-export const SignUpUserSchema = joi.object({
+interface SignUpUserBody {
+  email: string
+  password: string
+  firstName?: string
+  lastName?: string
+}
+
+export const SignUpUserSchema = joi.object<SignUpUserBody>({
   email: joi.string().email().required(),
   password: joi.string().required(),
   firstName: joi.string(),
@@ -9,10 +16,5 @@ export const SignUpUserSchema = joi.object({
 });
 
 export interface SignUpUserRequest extends ValidatedRequestSchema {
-  [ContainerTypes.Body]: {
-    email: string
-    password: string
-    firstName?: string
-    lastName?: string
-  }
+  [ContainerTypes.Body]: SignUpUserBody
 }
