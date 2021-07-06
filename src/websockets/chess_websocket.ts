@@ -10,6 +10,10 @@ import { decodeToken } from 'helpers/utils';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models/chess';
+import {
+  JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
+} from 'validation/websocket';
+import { validate } from 'validation';
 
 /**
  * Websocket event handler
@@ -25,11 +29,12 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    */
   socket.on('join_game', async (gameId: string) => {
     try {
+      validate(JoinGameSchema)(gameId);
       const chessDoc = await chessService.getChessGame(gameId);
       socket.join(gameId);
       return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
     } catch (error) {
-      return socket.emit('game_error', { gameId, message: 'Could not find game' });
+      return socket.emit('game_error', { gameId, message: error.message });
     }
   });
 
@@ -40,8 +45,13 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    * Provide success message to user
    */
   socket.on('leave_game', (gameId: string) => {
-    socket.leave(gameId);
-    return socket.emit('leave_game', { gameId, message: 'Left room' });
+    try {
+      validate(LeaveGameSchema)(gameId);
+      socket.leave(gameId);
+      return socket.emit('leave_game', { gameId, message: 'Left room' });
+    } catch (error) {
+      return socket.emit('game_error', { gameId, message: error.message });
+    }
   });
 
   /**
@@ -52,16 +62,19 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    * If unsucessful, remove socket from room of <userID> and provide error message
    */
   socket.on('join_auth', async (token: string) => {
-    const payload = decodeToken(token);
-    if (payload?.sub) {
-      if (socket.rooms.has(payload.sub)) return true;
+    try {
+      validate(JoinAuthSchema)(token);
+      const payload = decodeToken(token);
+      if (payload?.sub) {
+        if (socket.rooms.has(payload.sub)) return true;
 
-      socket.join(payload.sub);
-      return socket.emit('join_auth', { message: 'Successfully joined' });
+        socket.join(payload.sub);
+        return socket.emit('join_auth', { message: 'Successfully joined' });
+      }
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    } catch (error) {
+      return socket.emit('socket_error', { message: error.message });
     }
-    const unverifiedPayload = decodeToken(token, true);
-    if (unverifiedPayload?.sub) socket.leave(unverifiedPayload.sub);
-    return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
   /**
@@ -72,12 +85,17 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    * If unsucessful, provide error message
    */
   socket.on('leave_auth', (token: string) => {
-    const payload = decodeToken(token, true);
-    if (payload?.sub) {
-      socket.leave(payload.sub);
-      return socket.emit('leave_auth', { message: 'Successfully left' });
+    try {
+      validate(LeaveAuthSchema)(token);
+      const payload = decodeToken(token, true);
+      if (payload?.sub) {
+        socket.leave(payload.sub);
+        return socket.emit('leave_auth', { message: 'Successfully left' });
+      }
+      return socket.emit('socket_error', { message: 'Error parsing token' });
+    } catch (error) {
+      return socket.emit('socket_error', { message: error.message });
     }
-    return socket.emit('socket_error', { message: 'Error parsing token' });
   });
 
   /**
@@ -89,10 +107,11 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
    */
   socket.on('pool_wager', async (wager) => {
     try {
+      validate(PoolWagerSchema)(wager);
       await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
       return socket.to(wager.gameId).emit('pool_wager', wager);
     } catch (error) {
-      return socket.emit('socket_error', { message: 'issue updating' });
+      return socket.emit('socket_error', { message: error.message });
     }
   });
 

@@ -1,10 +1,12 @@
 import joi from 'joi';
 import { ValidatedRequestSchema, ContainerTypes } from 'express-joi-validation';
 import { Chess } from 'chess.js';
-import { Types } from 'mongoose';
 import { Condition } from 'mongodb';
 
-import { GameStatus } from 'types/models/chess';
+import {
+  ChessDoc, GameStatus, MoveData, Player,
+} from 'types/models/chess';
+import { PartialWithRequired } from 'types';
 
 export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
 
@@ -30,18 +32,27 @@ const gameStatusQueryValidator = (value: any, helpers: joi.CustomHelpers) => {
     : helpers.message({ custom: `The values '${sanitizedValue.filter((v) => !isGameStatus(v))}' are not game statuses` });
 };
 
-const PlayerSchema = joi.object({
+export type CreateGameBody = PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>;
+
+export interface GetManyGamesQuery {
+  game_status: Condition<GameStatus>
+  complete: boolean
+}
+
+export type UpdateGameBody = Partial<Pick<ChessDoc, 'complete' | 'move_hist' | 'time_black' | 'time_white' | 'game_status' | 'state'>>;
+
+const PlayerSchema = joi.object<Player>({
   name: joi.string().required(),
   elo: joi.number().required(),
 });
 
-const MoveSchema = joi.object({
+const MoveSchema = joi.object<MoveData>({
   san: joi.string().required(),
   time: joi.number().min(0).required(),
   is_white: joi.boolean().required(),
 });
 
-export const CreateGameSchema = joi.object({
+export const CreateGameSchema = joi.object<CreateGameBody>({
   player_white: PlayerSchema.required(),
   player_black: PlayerSchema.required(),
   time_format: joi.string(),
@@ -53,12 +64,12 @@ export const CreateGameSchema = joi.object({
   state: joi.string().custom(chessValidator),
 });
 
-export const GetManyGamesSchema = joi.object({
+export const GetManyGamesSchema = joi.object<GetManyGamesQuery>({
   game_status: joi.custom(gameStatusQueryValidator),
   complete: joi.boolean(),
 });
 
-export const UpdateGameSchema = joi.object({
+export const UpdateGameSchema = joi.object<UpdateGameBody>({
   complete: joi.boolean(),
   move_hist: joi.array().items(MoveSchema),
   time_white: joi.number().min(0),
@@ -68,39 +79,13 @@ export const UpdateGameSchema = joi.object({
 });
 
 export interface CreateGameRequest extends ValidatedRequestSchema {
-  [ContainerTypes.Body]: {
-    player_white: {
-      name: string
-      elo: number
-    }
-    player_black: {
-      name: string
-      elo: number
-    }
-    time_format?: string
-    complete?: boolean
-    move_hist?: Types.Array<{ san: string, time: number, is_white: boolean }>
-    time_white?: number
-    time_black?: number
-    game_status?: GameStatus
-    state?: string
-  }
+  [ContainerTypes.Body]: CreateGameBody
 }
 
 export interface GetManyGamesRequest extends ValidatedRequestSchema {
-  [ContainerTypes.Query]: {
-    game_status?: Condition<GameStatus>,
-    complete?: boolean
-  }
+  [ContainerTypes.Query]: GetManyGamesQuery
 }
 
 export interface UpdateGameRequest extends ValidatedRequestSchema {
-  [ContainerTypes.Body]: {
-    complete?: boolean
-    move_hist?: Types.Array<{ san: string, time: number, is_white: boolean }>
-    time_white?: number
-    time_black?: number
-    game_status?: GameStatus
-    state?: string
-  }
+  [ContainerTypes.Body]: UpdateGameBody
 }

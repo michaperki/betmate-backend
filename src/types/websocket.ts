@@ -3,7 +3,7 @@ import { ChessDoc, MoveData } from './models/chess';
 import { WagerDoc } from './models/wager';
 
 /* -------- Helper Types -------- */
-interface PoolBetMessage {
+export interface PoolBetMessage {
   gameId: string
   type: 'move'
   data: string
