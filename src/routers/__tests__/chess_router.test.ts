@@ -10,7 +10,9 @@ const request = supertest(chessRouter);
 
 /* -------- Set up data -------- */
 
-const fillerMove: MoveData = { san: 'd4', time: 10, is_white: true };
+const fillerMove: MoveData = {
+  san: 'd4', from: 'd2', to: 'd4', time: 10, is_white: true,
+};
 // minimal fields
 const chessDataA = {
   player_white: { name: 'playerA', elo: 200 },

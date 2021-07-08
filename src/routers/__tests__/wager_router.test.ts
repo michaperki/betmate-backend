@@ -12,7 +12,9 @@ const request = supertest(wagerRouter);
 
 /* -------- Set up data -------- */
 
-const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
+const fillerMove: MoveData = {
+  san: 'd4', from: 'd2', to: 'd4', time: 0, is_white: true,
+};
 
 const chessData = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
