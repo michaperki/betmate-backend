@@ -15,7 +15,7 @@ import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models/chess';
 
-const PREGAME_TIME = 9;
+const PREGAME_TIME = 90;
 
 /**
  * Fetch random game from static data
