@@ -17,8 +17,10 @@ export interface Player {
 }
 
 export interface MoveData {
-  san: string,
-  time: number,
+  san: string
+  to: string
+  from: string
+  time: number
   is_white: boolean
 }
 

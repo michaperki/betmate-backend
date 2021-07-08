@@ -32,6 +32,8 @@ export const OddsSchema = new Schema<WDLData>({
 
 export const MovesSchema = new Schema<MoveData>({
   san: { type: String, required: true },
+  to: { type: String, required: true },
+  from: { type: String, required: true },
   time: { type: Number, required: true, min: 0 },
   is_white: { type: Boolean, required: true },
 }, { _id: false });

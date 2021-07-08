@@ -48,6 +48,8 @@ const PlayerSchema = joi.object<Player>({
 
 const MoveSchema = joi.object<MoveData>({
   san: joi.string().required(),
+  to: joi.string().required(),
+  from: joi.string().required(),
   time: joi.number().min(0).required(),
   is_white: joi.boolean().required(),
 });

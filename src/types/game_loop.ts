@@ -5,7 +5,7 @@ import { GameStatus, MoveData, Player } from './models/chess';
 export interface ReplaySchema {
   white: Player,
   black: Player,
-  moves: MoveData[],
+  moves: Exclude<MoveData, 'to' | 'from'>[],
   outcome: Exclude<GameStatus, GameStatus.NOT_STARTED | GameStatus.IN_PROGRESS>,
 }
 
