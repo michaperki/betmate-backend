@@ -107,8 +107,9 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       // check if impossible move was made, likely caused by bad delay timing
       const moveResult = chessGame.move(move.san);
       if (!moveResult) throw Error('There was an issue in the game loop');
+      const { to, from } = moveResult;
 
-      moveHist.push(move);
+      moveHist.push({ ...move, to, from });
 
       const updateMessage = {
         state: chessGame.fen(),

@@ -14,7 +14,9 @@ const chessDataA: Partial<ChessDoc> = {
   player_black: { name: 'playerB', elo: 400 },
 };
 
-const fillerMove: MoveData = { san: 'd4', time: 0, is_white: true };
+const fillerMove: MoveData = {
+  san: 'd4', from: 'd2', to: 'd4', time: 0, is_white: true,
+};
 // all fields
 const chessDataB: Partial<ChessDoc> = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
@@ -52,7 +54,9 @@ const validateGame = (game: ChessDoc, data: Partial<ChessDoc>) => {
   expect(game.player_white.elo).toBe(data.player_white?.elo);
   expect(game.player_black.name).toBe(data.player_black?.name);
   expect(game.player_black.elo).toBe(data.player_black?.elo);
-  game.move_hist.forEach((move, i) => expect({ san: move.san, time: move.time, is_white: move.is_white }).toEqual(data.move_hist?.[i]));
+  game.move_hist.forEach((move, i) => expect({
+    san: move.san, from: move.from, to: move.to, time: move.time, is_white: move.is_white,
+  }).toEqual(data.move_hist?.[i]));
   expect(game.time_white).toBe(data.time_white ?? 600);
   expect(game.time_black).toBe(data.time_black ?? 600);
   expect(game.odds.white_win).toBeDefined();
