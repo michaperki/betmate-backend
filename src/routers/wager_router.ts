@@ -27,6 +27,9 @@ router.route('/')
     wagerController.getUserWagersRequest,
   );
 
+router.route('/leaderboard')
+  .get(wagerController.getLeaderboard);
+
 // create or get a wager for a user
 router.route('/:id')
   .get(wagerController.getWagerRequest)
