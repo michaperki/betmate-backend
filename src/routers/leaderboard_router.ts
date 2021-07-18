@@ -3,8 +3,8 @@ import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
 import { requireAuth } from 'authentication';
-import { wagerController } from 'controllers';
-import { CreateWagerSchema, GetWagersSchema } from 'validation/wager';
+import leaderboardController from 'controllers/leaderboard_controller';
+import { GetLeaderboardSchema } from 'validation/leaderboard';
 import { validateRequest } from 'validation';
 
 const router = express();
@@ -17,19 +17,20 @@ if (process.env.NODE_ENV === 'test') {
   router.use(bodyParser.json());
 }
 
-router.use(requireAuth);
-
-// get all wagers
 router.route('/')
   .get(
-    validator.query(GetWagersSchema),
+    validator.query(GetLeaderboardSchema),
     validateRequest,
-    wagerController.getUserWagersRequest,
+    leaderboardController.getLeaderboardRequest,
   );
 
-// create or get a wager for a user
-router.route('/:id')
-  .get(wagerController.getWagerRequest)
-  .post(validator.body(CreateWagerSchema), validateRequest, wagerController.createWagerRequest);
+router.route('/userrank')
+  .get(
+    requireAuth,
+    leaderboardController.getUserRankingRequest,
+  );
+
+router.route('/create-leaderboard')
+  .get(leaderboardController.createLeaderboard);
 
 export default router;

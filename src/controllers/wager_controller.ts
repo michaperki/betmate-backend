@@ -84,64 +84,10 @@ const getUserWagersRequest: RequestHandler = (req: ValidatedRequestWithJWT<GetWa
     .catch(handleFailure(res))
 );
 
-type UserRank = { userID: string, winnings: number, rank: number };
-type NamedUserRank = { name: string, winnings: number, rank: number };
-
-const getNameFromID = async ({ userID, winnings, rank }: UserRank): Promise<NamedUserRank> => ({
-  name: await userService.getUser(userID).then((u) => u.full_name),
-  winnings,
-  rank,
-});
-
-const getNamedWinningsIndices = async (uw: UserRank[], start: number, end: number): Promise<NamedUserRank[]> => {
-  const namedWinningsPromise = uw.slice(start, end).map(getNameFromID);
-  return Promise.all(namedWinningsPromise);
-};
-
-const getLeaderboard: RequestHandler = async (req: RequestWithJWT, res) => {
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const wagers = await wagerService.getWagers({ created_at: { $gte: startOfMonth }, resolved: true });
-
-  const winningsByUser = wagers.reduce((acc, w) => {
-    const userID = String(w.better_id);
-    return {
-      ...acc,
-      [userID]: (acc[userID] ?? 0) + w.winnings - w.amount,
-    };
-  }, {} as Record<string, number>);
-
-  const sortedWinnings: UserRank[] = (
-    Object
-      .entries(winningsByUser)
-      .sort((a, b) => b[1] - a[1])
-      .map(([userID, winnings], i) => ({
-        userID,
-        winnings,
-        rank: i,
-      }))
-  );
-
-  const userRank = sortedWinnings.findIndex((w) => w.userID === String(req.user._id));
-  const isUserTopFiveOrMissing = userRank <= 4;
-
-  if (isUserTopFiveOrMissing) {
-    const topRankings = await getNamedWinningsIndices(sortedWinnings, 0, 5);
-
-    res.send({ topRankings, localRankings: [] });
-  } else {
-    const topRankings = await getNamedWinningsIndices(sortedWinnings, 0, 3);
-    const localRankings = await getNamedWinningsIndices(sortedWinnings, userRank - 1, userRank + 2);
-
-    res.send({ topRankings, localRankings });
-  }
-};
-
 const wagerController = {
   createWagerRequest,
   getWagerRequest,
   getUserWagersRequest,
-  getLeaderboard,
 };
 
 export default wagerController;

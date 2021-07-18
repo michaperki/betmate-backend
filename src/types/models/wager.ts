@@ -1,5 +1,6 @@
 import { Document, Types } from 'mongoose';
-import { GameStatus } from './chess';
+import { ChessDoc, GameStatus } from './chess';
+import { UserDoc } from './user';
 
 /* -------- Helper Types -------- */
 
@@ -30,6 +31,11 @@ export interface WagerDoc extends Document {
   winnings: number,
   created_at: Date,
   updated_at: Date,
+}
+
+export interface PopulatedWagerDoc extends Omit<WagerDoc, 'better_id' | 'game_id'> {
+  game_id: ChessDoc
+  better_id: UserDoc
 }
 
 /* -------- Wager Processing Types -------- */

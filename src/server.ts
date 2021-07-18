@@ -10,8 +10,9 @@ import { Server } from 'socket.io';
 
 import { run300Loop, run900Loop } from 'websockets/game_loop';
 import { chessService } from 'services';
+import leaderboardService from 'services/leaderboard_service';
 import {
-  authRouter, userRouter, chessRouter, wagerRouter,
+  authRouter, userRouter, chessRouter, wagerRouter, leaderboardRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -39,6 +40,7 @@ app.use('/auth', authRouter);
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
+app.use('/leaderboard', leaderboardRouter);
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -53,6 +55,8 @@ chessService.purgeStaleGames().then(() => {
   setTimeout(() => run300Loop(chessWebsocket), 300000);
   setTimeout(() => run900Loop(chessWebsocket), 900000);
 });
+
+setInterval(() => leaderboardService.generateLeaderboard(), 900000);
 
 // default index route
 app.get('/', (req, res) => {

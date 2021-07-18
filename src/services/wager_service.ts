@@ -5,7 +5,7 @@ import {
   FilterQuery, Query, Types, UpdateQuery,
 } from 'mongoose';
 import { PartialWithRequired } from 'types';
-import { WagerDoc } from 'types/models/wager';
+import { PopulatedWagerDoc, WagerDoc } from 'types/models/wager';
 import chessService from './chess_service';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
@@ -38,7 +38,7 @@ const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[]> => (
    * @param fields to update for wager
    * @returns Promise of updated wager, or null if wager not found or error occurs
    */
-const updateWager = async (id: string | Types.ObjectId, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc> => (
+const updateWager = (id: string | Types.ObjectId, fields: UpdateQuery<WagerDoc>): Promise<WagerDoc> => (
   Wager
     .findByIdAndUpdate(id, fields, { new: true, runValidators: true })
     .then(dbNullDocHandler)
@@ -80,12 +80,20 @@ const createWager = async (fields: PartialWithRequired<WagerDoc, 'game_id' | 'be
   return new Wager(fields).save();
 };
 
+const getPopulatedWagers = (fields: FilterQuery<WagerDoc>, populateBy: string): Promise<PopulatedWagerDoc[]> => (
+  Wager
+    .find(fields)
+    .populate(populateBy)
+    .catch(dbErrorHandler)
+);
+
 const wagerService = {
   getWager,
   getWagers,
   updateWager,
   updateManyWagers,
   createWager,
+  getPopulatedWagers,
 };
 
 export default wagerService;
