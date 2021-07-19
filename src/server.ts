@@ -11,6 +11,7 @@ import { Server } from 'socket.io';
 import { run300Loop, run900Loop } from 'websockets/game_loop';
 import { chessService } from 'services';
 import leaderboardService from 'services/leaderboard_service';
+import { handleValidationError } from 'validation';
 import {
   authRouter, userRouter, chessRouter, wagerRouter, leaderboardRouter,
 } from './routers';
@@ -89,6 +90,8 @@ mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).
 app.use((req, res) => {
   res.status(404).json({ message: 'The route you\'ve requested doesn\'t exist' });
 });
+
+app.use(handleValidationError);
 
 // Set mongoose promise to JS promise
 mongoose.Promise = global.Promise;

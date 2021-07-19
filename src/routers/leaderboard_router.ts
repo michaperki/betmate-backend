@@ -5,7 +5,7 @@ import { createValidator } from 'express-joi-validation';
 import { requireAuth } from 'authentication';
 import leaderboardController from 'controllers/leaderboard_controller';
 import { GetLeaderboardSchema, GetUserRankSchema } from 'validation/leaderboard';
-import { validateRequest } from 'validation';
+import { handleValidationError } from 'validation';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -20,7 +20,6 @@ if (process.env.NODE_ENV === 'test') {
 router.route('/')
   .get(
     validator.query(GetLeaderboardSchema),
-    validateRequest,
     leaderboardController.getLeaderboardRequest,
   );
 
@@ -28,8 +27,11 @@ router.route('/userrank')
   .get(
     requireAuth,
     validator.query(GetUserRankSchema),
-    validateRequest,
     leaderboardController.getUserRankingRequest,
   );
+
+if (process.env.NODE_ENV === 'test') {
+  router.use(handleValidationError);
+}
 
 export default router;
