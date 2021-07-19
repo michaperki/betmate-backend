@@ -56,6 +56,7 @@ chessService.purgeStaleGames().then(() => {
   setTimeout(() => run900Loop(chessWebsocket), 900000);
 });
 
+// generate leaderboard every 15 minutes
 setInterval(() => leaderboardService.generateLeaderboard(), 900000);
 
 // default index route

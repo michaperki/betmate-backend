@@ -1,7 +1,7 @@
 import HttpError from 'helpers/errors';
 import { Leaderboard } from 'models';
 import { Types } from 'mongoose';
-import { LeaderboardDoc, Rank } from 'types/models/leaderboard';
+import { LeaderboardDoc, LeaderboardSection, Rank } from 'types/models/leaderboard';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import wagerService from './wager_service';
 
@@ -19,24 +19,14 @@ const getLeaderboard = (id?: Types.ObjectId | string): Promise<LeaderboardDoc> =
     .catch(dbErrorHandler)
 );
 
-type Ret = { rankings: Rank[], _id: Types.ObjectId };
-
-const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId | string): Promise<Ret> => (
+const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId | string): Promise<LeaderboardSection> => (
   getLeaderboard(id)
     .then((doc) => ({
       rankings: doc.rankings.slice(start, end),
-      _id: doc._id,
+      id: doc._id,
+      rankings_size: doc.rankings.length,
     }))
 );
-
-// const getLatestLeaderboardSection = (start: number, end: number): Promise<Rank[]> => (
-//   Leaderboard
-//     .findOne()
-//     .sort({ created_at: -1 })
-//     .then(dbNullDocHandler)
-//     .then((doc) => doc.rankings.slice(start, end))
-//     .catch(dbErrorHandler)
-// );
 
 const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | string): Promise<Rank> => (
   getLeaderboard(id)
@@ -86,7 +76,6 @@ const leaderboardService = {
   getLeaderboard,
   getLeaderboardSection,
   getUserRanking,
-  //   getLatestLeaderboardSection,
   generateLeaderboard,
 };
 

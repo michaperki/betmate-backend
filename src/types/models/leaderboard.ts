@@ -12,3 +12,9 @@ export interface LeaderboardDoc extends Document {
   created_at: Date
   updated_at: Date
 }
+
+export interface LeaderboardSection {
+  id: Types.ObjectId
+  rankings: Rank[]
+  rankings_size: number
+}

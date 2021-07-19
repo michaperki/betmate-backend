@@ -16,3 +16,11 @@ export interface GetLeaderboardQuery {
 export interface GetLeaderboardRequest extends ValidatedRequestSchema {
   [ContainerTypes.Query]: GetLeaderboardQuery
 }
+
+export const GetUserRankSchema = joi.object({
+  id: joi.string(),
+});
+
+export interface GetUserRankRequest extends ValidatedRequestSchema {
+  [ContainerTypes.Query]: { id?: string }
+}
