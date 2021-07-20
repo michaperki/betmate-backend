@@ -39,8 +39,8 @@ const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | s
 
 const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
   try {
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // const now = new Date();
+    const startOfMonth = new Date(2021, 4, 1); // new Date(now.getFullYear(), now.getMonth(), 1);
     const wagers = await wagerService.getPopulatedWagers({ created_at: { $gte: startOfMonth }, resolved: true }, 'better_id');
 
     const winningsByUser = wagers.reduce((acc, w) => {

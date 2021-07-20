@@ -78,11 +78,9 @@ const mongooseOptions = {
 mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
     console.info('Connected to Database');
   }
 }).catch((err) => {
-  // eslint-disable-next-line no-console
   console.error('Not Connected to Database - ERROR! ', err);
 });
 
@@ -91,6 +89,7 @@ app.use((req, res) => {
   res.status(404).json({ message: 'The route you\'ve requested doesn\'t exist' });
 });
 
+// Handle errors raised from validation middleware
 app.use(handleValidationError);
 
 // Set mongoose promise to JS promise
@@ -99,6 +98,5 @@ mongoose.Promise = global.Promise;
 // START THE SERVER
 // =============================================================================
 const server = httpServer.listen(constants.PORT);
-// eslint-disable-next-line no-console
 if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
 export default server;
