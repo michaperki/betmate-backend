@@ -10,8 +10,10 @@ import { Server } from 'socket.io';
 
 import { run300Loop, run900Loop } from 'websockets/game_loop';
 import { chessService } from 'services';
+import leaderboardService from 'services/leaderboard_service';
+import { handleValidationError } from 'validation';
 import {
-  authRouter, userRouter, chessRouter, wagerRouter,
+  authRouter, userRouter, chessRouter, wagerRouter, leaderboardRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -39,6 +41,7 @@ app.use('/auth', authRouter);
 app.use('/users', userRouter); // NOTE: Completely secured to users
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
+app.use('/leaderboard', leaderboardRouter);
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -53,6 +56,9 @@ chessService.purgeStaleGames().then(() => {
   setTimeout(() => run300Loop(chessWebsocket), 300000);
   setTimeout(() => run900Loop(chessWebsocket), 900000);
 });
+
+// generate leaderboard every 15 minutes
+setInterval(() => leaderboardService.generateLeaderboard(), 900000);
 
 // default index route
 app.get('/', (req, res) => {
@@ -72,11 +78,9 @@ const mongooseOptions = {
 mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') {
-    // eslint-disable-next-line no-console
     console.info('Connected to Database');
   }
 }).catch((err) => {
-  // eslint-disable-next-line no-console
   console.error('Not Connected to Database - ERROR! ', err);
 });
 
@@ -85,12 +89,14 @@ app.use((req, res) => {
   res.status(404).json({ message: 'The route you\'ve requested doesn\'t exist' });
 });
 
+// Handle errors raised from validation middleware
+app.use(handleValidationError);
+
 // Set mongoose promise to JS promise
 mongoose.Promise = global.Promise;
 
 // START THE SERVER
 // =============================================================================
 const server = httpServer.listen(constants.PORT);
-// eslint-disable-next-line no-console
 if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
 export default server;

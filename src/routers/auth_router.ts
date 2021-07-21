@@ -7,7 +7,7 @@ import { requireSignin, requireAuth } from 'authentication';
 
 import { authController } from 'controllers';
 import { SignUpUserSchema } from 'validation/auth';
-import { validateRequest } from 'validation';
+import { handleValidationError } from 'validation';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -20,7 +20,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router.route('/signup')
-  .post(validator.body(SignUpUserSchema), validateRequest, authController.signUpUserRequest);
+  .post(validator.body(SignUpUserSchema), authController.signUpUserRequest);
 
 // Send user object and server will send back authToken and user object
 router.route('/signin')
@@ -28,5 +28,9 @@ router.route('/signin')
 
 router.route('/jwt-signin')
   .get(requireAuth, authController.jwtSignIn);
+
+if (process.env.NODE_ENV === 'test') {
+  router.use(handleValidationError);
+}
 
 export default router;

@@ -5,7 +5,7 @@ import { createValidator } from 'express-joi-validation';
 import { requireAuth } from 'authentication';
 import { wagerController } from 'controllers';
 import { CreateWagerSchema, GetWagersSchema } from 'validation/wager';
-import { validateRequest } from 'validation';
+import { handleValidationError } from 'validation';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -23,13 +23,19 @@ router.use(requireAuth);
 router.route('/')
   .get(
     validator.query(GetWagersSchema),
-    validateRequest,
     wagerController.getUserWagersRequest,
   );
 
 // create or get a wager for a user
 router.route('/:id')
   .get(wagerController.getWagerRequest)
-  .post(validator.body(CreateWagerSchema), validateRequest, wagerController.createWagerRequest);
+  .post(
+    validator.body(CreateWagerSchema),
+    wagerController.createWagerRequest,
+  );
+
+if (process.env.NODE_ENV === 'test') {
+  router.use(handleValidationError);
+}
 
 export default router;

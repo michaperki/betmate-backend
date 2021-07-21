@@ -2,8 +2,9 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
-import { chessController } from 'controllers';
-import { CreateGameSchema, GetManyGamesSchema, UpdateGameSchema } from 'validation/chess';
+import { requireAuth } from 'authentication';
+import leaderboardController from 'controllers/leaderboard_controller';
+import { GetLeaderboardSchema, GetUserRankSchema } from 'validation/leaderboard';
 import { handleValidationError } from 'validation';
 
 const router = express();
@@ -16,23 +17,17 @@ if (process.env.NODE_ENV === 'test') {
   router.use(bodyParser.json());
 }
 
-router
-  .route('/')
+router.route('/')
   .get(
-    validator.query(GetManyGamesSchema),
-    chessController.getManyChessGamesRequest,
-  )
-  .post(
-    // requireAuth,
-    validator.body(CreateGameSchema),
-    chessController.createChessGameRequest,
+    validator.query(GetLeaderboardSchema),
+    leaderboardController.getLeaderboardRequest,
   );
 
-router.route('/:id')
-  .get(chessController.getChessGameRequest)
-  .put(
-    validator.body(UpdateGameSchema),
-    chessController.updateChessGameRequest,
+router.route('/userrank')
+  .get(
+    requireAuth,
+    validator.query(GetUserRankSchema),
+    leaderboardController.getUserRankingRequest,
   );
 
 if (process.env.NODE_ENV === 'test') {
