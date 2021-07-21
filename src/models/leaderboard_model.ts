@@ -9,7 +9,9 @@ const RankSchema = new Schema({
 }, { _id: false });
 
 const LeaderboardSchema = new Schema({
-  rankings: { type: [RankSchema], default: [] },
+  rankings: { type: [RankSchema], required: true },
+  user_ranks: { type: Map, of: RankSchema, required: true },
+  rankings_size: { type: Number, required: true },
 }, {
   toJSON: {
     transform: (doc, { __v, ...board }) => board,

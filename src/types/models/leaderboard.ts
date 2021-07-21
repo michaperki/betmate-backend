@@ -9,12 +9,14 @@ export interface Rank {
 
 export interface LeaderboardDoc extends Document {
   rankings: Types.Array<Rank>
+  user_ranks: Types.Map<Rank>
+  rankings_size: number
   created_at: Date
   updated_at: Date
 }
 
 export interface LeaderboardSection {
-  id: Types.ObjectId
+  _id: Types.ObjectId
   rankings: Rank[]
   rankings_size: number
 }

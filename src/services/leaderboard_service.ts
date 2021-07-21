@@ -5,36 +5,38 @@ import { LeaderboardDoc, LeaderboardSection, Rank } from 'types/models/leaderboa
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import wagerService from './wager_service';
 
-const createLeaderboard = async (ranks: Rank[]): Promise<LeaderboardDoc> => (
-  new Leaderboard({ rankings: ranks })
+const createLeaderboard = async (ranks: Rank[], userRanks: Record<string, Rank>): Promise<LeaderboardDoc> => (
+  new Leaderboard({
+    rankings: ranks,
+    user_ranks: userRanks,
+    rankings_size: ranks.length,
+  })
     .save()
     .catch(dbErrorHandler)
 );
 
-const getLeaderboard = (id?: Types.ObjectId | string): Promise<LeaderboardDoc> => (
+const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId | string): Promise<LeaderboardSection> => (
   Leaderboard
     .findOne(id ? { _id: id } : undefined)
     .sort({ created_at: -1 })
+    .select(['rankings', 'rankings_size'])
+    .slice('rankings', [start, end - start])
     .then(dbNullDocHandler)
     .catch(dbErrorHandler)
 );
 
-const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId | string): Promise<LeaderboardSection> => (
-  getLeaderboard(id)
-    .then((doc) => ({
-      rankings: doc.rankings.slice(start, end),
-      id: doc._id,
-      rankings_size: doc.rankings.length,
-    }))
-);
-
 const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | string): Promise<Rank> => (
-  getLeaderboard(id)
-    .then((doc) => doc.rankings.find((r) => r.user_id.equals(userID)))
-    .then((rank) => {
+  Leaderboard
+    .findOne(id ? { _id: id } : undefined)
+    .sort({ created_at: -1 })
+    .select(`user_ranks.${userID}`)
+    .then(dbNullDocHandler)
+    .then((doc) => {
+      const rank = doc.user_ranks.get(String(userID));
       if (!rank) throw new HttpError(400, ['User not found in rankings']);
       return rank;
     })
+    .catch(dbErrorHandler)
 );
 
 const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
@@ -65,7 +67,15 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
         }))
     );
 
-    return createLeaderboard(sortedWinnings);
+    const userRanks = (
+      sortedWinnings
+        .reduce((acc, w) => ({
+          ...acc,
+          [String(w.user_id)]: w,
+        }), {} as Record<string, Rank>)
+    );
+
+    return createLeaderboard(sortedWinnings, userRanks);
   } catch (error) {
     return null;
   }
@@ -73,7 +83,6 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
 
 const leaderboardService = {
   createLeaderboard,
-  getLeaderboard,
   getLeaderboardSection,
   getUserRanking,
   generateLeaderboard,
