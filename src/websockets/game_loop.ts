@@ -73,7 +73,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessService.createChessGame(gameFields as ChessDoc);
+  const gameDoc = await chessService.createChessGame(gameFields);
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
 
@@ -135,8 +135,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // Resolve move bets if options valid, otherwise cancel bets
       (validTopMoves
-        ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
-        : cancelCriticalMoveWagers(gameId, chessGame))
+        ? resolveCriticalMoveWagers(gameId, chessGame.history(), liveTopMoves)
+        : cancelCriticalMoveWagers(gameId, chessGame.history()))
         .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
 
       // reset top moves

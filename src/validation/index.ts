@@ -12,8 +12,13 @@ export const handleValidationError: ErrorRequestHandler = (err: ExpressJoiError,
   }
 };
 
-export const validate = (schema: joi.Schema) => (d: unknown): any => {
+export const validate = <D>(schema: joi.Schema<D>) => (d: unknown): D => {
   const { value, error } = schema.validate(d);
   if (error) throw new HttpError(500, ['Schema validation failed']);
   return value;
+};
+
+export const matchesSchema = <D>(schema: joi.Schema<D>, d: unknown): d is D => {
+  const { error } = schema.validate(d);
+  return !error;
 };

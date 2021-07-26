@@ -55,6 +55,7 @@
     "mongodb": "^3.6.9",
     "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
+    "ndjson": "^2.0.0",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
@@ -64,6 +65,7 @@
     "typescript": "^4.2.3"
   },
   "devDependencies": {
+    "@types/ndjson": "^2.0.1",
     "@types/passport-jwt": "^3.0.5",
     "debug": "^4.2.0",
     "eslint": "^7.9.0",

@@ -38,7 +38,7 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
   axios
     .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
-    .then(validate(TopMoveSchema))
+    .then(validate<TopMoveData>(TopMoveSchema))
     .catch((error) => {
       console.log('Microservice error:', error);
       throw error;
