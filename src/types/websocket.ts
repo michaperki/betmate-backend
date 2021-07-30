@@ -1,5 +1,5 @@
 import { UpdateQuery } from 'mongoose';
-import { ChessDoc, MoveData } from './models/chess';
+import { ChessDoc } from './models/chess';
 import { WagerDoc } from './models/wager';
 
 /* -------- Helper Types -------- */
@@ -10,13 +10,16 @@ export interface PoolBetMessage {
   amount: number
 }
 
-interface MoveMessage {
-  gameId: string
-  data: MoveData
-}
-
 interface GameUpdateMessage extends UpdateQuery<ChessDoc> {
   gameId: string
+}
+
+export interface GameChatMessage {
+  gameId: string
+  userId: string
+  userName: string
+  chat: string
+  time: string
 }
 
 type Emitter<T> = (message: T) => void;
@@ -29,7 +32,7 @@ export interface ChessListenEvents {
   'join_auth': (token: string) => Promise<boolean>
   'leave_auth': (gameId: string) => boolean
   'pool_wager': (wager: PoolBetMessage) => Promise<boolean>
-  'new_move': (move: MoveMessage) => Promise<boolean>
+  'game_chat': (message: GameChatMessage) => boolean
 }
 
 export interface ChessEmitEvents {
@@ -41,6 +44,7 @@ export interface ChessEmitEvents {
   'game_error': Emitter<{ gameId: string, message: string }>
   'new_odds': Emitter<GameUpdateMessage>
   'pool_wager': Emitter<PoolBetMessage>
+  'game_chat': Emitter<GameChatMessage>
   'wager_result': Emitter<{ gameId: string, wagers: WagerDoc[] }>
   'leave_game': Emitter<{ gameId: string, message: string }>,
   'join_auth': Emitter<{ message: string }>,

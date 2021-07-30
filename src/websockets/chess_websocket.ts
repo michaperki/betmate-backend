@@ -4,6 +4,7 @@ import { chessService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { decodeToken } from 'helpers/utils';
 import {
+  GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from 'validation/websocket';
 import { validate } from 'validation';
@@ -103,6 +104,15 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       validate(PoolWagerSchema)(wager);
       await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
       return socket.to(wager.gameId).emit('pool_wager', wager);
+    } catch (error) {
+      return socket.emit('socket_error', { message: error.message });
+    }
+  });
+
+  socket.on('game_chat', (msg) => {
+    try {
+      validate(GameChatSchema)(msg);
+      return socket.to(msg.gameId).emit('game_chat', msg);
     } catch (error) {
       return socket.emit('socket_error', { message: error.message });
     }
