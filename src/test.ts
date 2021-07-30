@@ -65,6 +65,20 @@ const getStream = async (id: string, startData: PartialWithRequired<ChessDoc, 'p
 
         console.log(move);
 
+        const update = {
+          state: d.fen,
+          move_hist: [...moveHist] as Types.Array<MoveData>,
+          time_white: d.wc,
+          time_black: d.bc,
+          pool_wagers: {
+            move: {
+              wagers: [] as unknown as Types.Array<AnonMoveWager>,
+              options: [] as unknown as Types.Array<string>,
+            },
+          },
+        };
+        console.log('update with', update.state);
+
         // (liveTopMoves.length > 0
         //   ? resolveCriticalMoveWagers('', game.history(), liveTopMoves)
         //   : cancelCriticalMoveWagers('', game.history()))
@@ -100,20 +114,6 @@ const getStream = async (id: string, startData: PartialWithRequired<ChessDoc, 'p
         } else {
           turnsToIgnore -= 1;
         }
-
-        const update = {
-          state: d.fen,
-          move_hist: [...moveHist] as Types.Array<MoveData>,
-          time_white: d.wc,
-          time_black: d.bc,
-          pool_wagers: {
-            move: {
-              wagers: [] as unknown as Types.Array<AnonMoveWager>,
-              options: [] as unknown as Types.Array<string>,
-            },
-          },
-        };
-        console.log('update with', update.state);
       } else if (matchesSchema(StreamEndSchema, d)) {
         console.log('is end');
         // const completeFields = {
@@ -134,9 +134,9 @@ const findStream = async () => {
   try {
     const { data } = await axios({
       method: 'GET',
-      url: `${LICHESS_ROOT}/tv/bullet`,
+      url: `${LICHESS_ROOT}/tv/rapid`,
       headers: { Accept: 'application/x-ndjson' },
-      params: { nb: 100 },
+      params: { nb: 30 },
     });
 
     const games: LichessGame[] = data
@@ -148,21 +148,21 @@ const findStream = async () => {
 
     console.log(selectedGame);
 
-    const gameFields = {
-      player_white: {
-        name: selectedGame.players.white.user.name,
-        elo: selectedGame.players.white.rating,
-      },
-      player_black: {
-        name: selectedGame.players.black.user.name,
-        elo: selectedGame.players.black.rating,
-      },
-      time_format: `${selectedGame.clock.totalTime}+${selectedGame.clock.increment}`,
-      time_white: selectedGame.clock.initial,
-      time_black: selectedGame.clock.initial,
-    };
+    // const gameFields = {
+    //   player_white: {
+    //     name: selectedGame.players.white.user.name,
+    //     elo: selectedGame.players.white.rating,
+    //   },
+    //   player_black: {
+    //     name: selectedGame.players.black.user.name,
+    //     elo: selectedGame.players.black.rating,
+    //   },
+    //   time_format: `${selectedGame.clock.totalTime}+${selectedGame.clock.increment}`,
+    //   time_white: selectedGame.clock.initial,
+    //   time_black: selectedGame.clock.initial,
+    // };
 
-    getStream(selectedGame.id, gameFields);
+    // getStream(selectedGame.id, gameFields);
   } catch (error) {
     console.log(error);
   }
