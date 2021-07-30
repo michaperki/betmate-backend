@@ -13,7 +13,7 @@ import { chessService } from 'services';
 import leaderboardService from 'services/leaderboard_service';
 import { handleValidationError } from 'validation';
 import {
-  authRouter, userRouter, chessRouter, wagerRouter, leaderboardRouter,
+  authRouter, chessRouter, wagerRouter, leaderboardRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -38,7 +38,7 @@ app.use(bodyParser.json());
 
 // declare routers
 app.use('/auth', authRouter);
-app.use('/users', userRouter); // NOTE: Completely secured to users
+// app.use('/users', userRouter);
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
