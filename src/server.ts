@@ -38,7 +38,6 @@ app.use(bodyParser.json());
 
 // declare routers
 app.use('/auth', authRouter);
-// app.use('/users', userRouter);
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
