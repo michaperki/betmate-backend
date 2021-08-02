@@ -3,7 +3,7 @@ import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
 import { chessController } from 'controllers';
-import { CreateGameSchema, GetManyGamesSchema, UpdateGameSchema } from 'validation/chess';
+import { GetManyGamesSchema } from 'validation/chess';
 import { handleValidationError } from 'validation';
 
 const router = express();
@@ -21,19 +21,10 @@ router
   .get(
     validator.query(GetManyGamesSchema),
     chessController.getManyChessGamesRequest,
-  )
-  .post(
-    // requireAuth,
-    validator.body(CreateGameSchema),
-    chessController.createChessGameRequest,
   );
 
 router.route('/:id')
-  .get(chessController.getChessGameRequest)
-  .put(
-    validator.body(UpdateGameSchema),
-    chessController.updateChessGameRequest,
-  );
+  .get(chessController.getChessGameRequest);
 
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
