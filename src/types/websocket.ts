@@ -45,6 +45,7 @@ export interface ChessEmitEvents {
   'new_odds': Emitter<GameUpdateMessage>
   'pool_wager': Emitter<PoolBetMessage>
   'game_chat': Emitter<GameChatMessage>
+  'chat_swear': Emitter<{ message: string }>
   'wager_result': Emitter<{ gameId: string, wagers: WagerDoc[] }>
   'leave_game': Emitter<{ gameId: string, message: string }>,
   'join_auth': Emitter<{ message: string }>,

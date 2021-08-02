@@ -1,5 +1,6 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
+import Filter from 'bad-words';
 import { chessService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { decodeToken } from 'helpers/utils';
@@ -8,6 +9,8 @@ import {
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from 'validation/websocket';
 import { validate } from 'validation';
+
+const filter = new Filter();
 
 /**
  * Websocket event handler
@@ -112,6 +115,8 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
   socket.on('game_chat', (msg) => {
     try {
       validate(GameChatSchema)(msg);
+      const rej = filter.isProfane(msg.chat);
+      if (rej) return socket.emit('chat_swear', { message: 'You cannot use profanity' });
       return socket.to(msg.gameId).emit('game_chat', msg);
     } catch (error) {
       return socket.emit('socket_error', { message: error.message });
