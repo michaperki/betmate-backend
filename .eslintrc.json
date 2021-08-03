@@ -1,0 +1,55 @@
+{
+  "extends": [
+    "airbnb-typescript/base",
+    "plugin:@typescript-eslint/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "project": "./tsconfig.json"
+  },
+  "env": {
+    "browser": false,
+    "node": true,
+    "es6": true,
+    "jest": true
+  },
+  "rules": {
+    "no-console": "off",
+    "comma-dangle": "off",
+    "linebreak-style": "off",
+    "react/destructuring-assignment": "off",
+    "no-underscore-dangle": "off",
+    "max-len": ["error", { "code": 200 }],
+    "jsx-a11y/anchor-is-valid": "off",
+    "indent": ["error", 2, { "SwitchCase": 1 }],
+
+    "import/extensions": "off",
+    "import/prefer-default-export": "off",
+
+    // Bugfix https://stackoverflow.com/questions/63961803/eslint-says-all-enums-in-typescript-app-are-already-declared-in-the-upper-scope
+    "no-shadow": "off",
+    "@typescript-eslint/no-shadow": ["error"],
+    "@typescript-eslint/no-empty-interface": "off",
+    "no-unused-vars": ["error", { "vars": "all", "args": "none" }],
+
+    "@typescript-eslint/explicit-function-return-type": "off",
+    "@typescript-eslint/interface-name-prefix": "off",
+    "@typescript-eslint/no-explicit-any": "off",
+    "@typescript-eslint/ban-ts-ignore": "off"
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "moduleDirectory": [
+          "node_modules",
+          "src/"
+        ],
+        "extensions": [".js", ".ts"]
+      } // this loads <rootdir>/tsconfig.json to eslint
+    }
+  },
+  "plugins": [
+    "@typescript-eslint",
+    "import"
+  ]
+}
