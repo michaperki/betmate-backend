@@ -8,12 +8,11 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
-// import { run300Loop, run900Loop } from 'websockets/game_loop';
-// import { chessService } from 'services';
+import { run300Loop, run900Loop } from 'websockets/game_loop';
+import { chessService } from 'services';
 import leaderboardService from 'services/leaderboard_service';
 import { handleValidationError } from 'validation';
-import { findStream } from 'websockets/lichess_stream';
-import { chessService } from 'services';
+import { streamLoop } from 'websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
 } from './routers';
@@ -51,19 +50,18 @@ chessWebsocket.on('connection', chessWS);
 app.use('/lichess', lichessRouter(chessWebsocket));
 
 // purge stale games before running game loops
-// chessService.purgeStaleGames().then(() => {
-//   run300Loop(chessWebsocket);
-//   run900Loop(chessWebsocket);
+chessService.purgeStaleGames().then(() => {
+  run300Loop(chessWebsocket);
+  run900Loop(chessWebsocket);
 
-//   // secondary loops
-//   setTimeout(() => run300Loop(chessWebsocket), 300000);
-//   setTimeout(() => run900Loop(chessWebsocket), 900000);
-// });
+  // secondary loops
+  setTimeout(() => run300Loop(chessWebsocket), 300000);
+  setTimeout(() => run900Loop(chessWebsocket), 900000);
+  streamLoop(chessWebsocket);
+});
 
-// generate leaderboard every 15 minutes
-chessService.purgeStaleGames();
-// chessService.purgeStaleGames().then(() => findStream(chessWebsocket));
-setInterval(() => leaderboardService.generateLeaderboard(), 900000);
+// generate leaderboard every minute
+setInterval(() => leaderboardService.generateLeaderboard(), 60000);
 
 // default index route
 app.get('/', (req, res) => {

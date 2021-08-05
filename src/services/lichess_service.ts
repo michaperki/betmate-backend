@@ -1,7 +1,10 @@
 import axios, { AxiosResponse } from 'axios';
 import { LICHESS_URL } from 'helpers/constants';
 import { Readable } from 'stream';
+import { PartialWithRequired } from 'types';
 import { LichessGame } from 'types/lichess';
+import { ChessDoc } from 'types/models/chess';
+import { numMoves, takeLess } from './utils';
 
 const getGame = (id: string): Promise<LichessGame> => (
   axios({
@@ -20,9 +23,19 @@ const getStream = (id: string): Promise<Readable> => (
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 
-const numMoves = (g: LichessGame) => g.moves.split(' ').length;
-
-const takeLess = <D>(fn: (d: D) => number) => (a: D, b: D): D => (fn(a) > fn(b) ? b : a);
+const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc, 'player_white' | 'player_black'> => ({
+  player_white: {
+    name: game.players.white.user.name,
+    elo: game.players.white.rating,
+  },
+  player_black: {
+    name: game.players.black.user.name,
+    elo: game.players.black.rating,
+  },
+  time_format: `${game.clock.totalTime}+${game.clock.increment}`,
+  time_white: game.clock.initial,
+  time_black: game.clock.initial,
+});
 
 const getTopGame = (): Promise<LichessGame> => (
   axios({
@@ -43,6 +56,7 @@ const lichessService = {
   getGame,
   getStream,
   getTopGame,
+  createChessModelFields,
 };
 
 export default lichessService;

@@ -1,7 +1,6 @@
-import axios from 'axios';
 import ndjson from 'ndjson';
 import { PartialWithRequired } from 'types';
-import { LichessGame, StreamData } from 'types/lichess';
+import { StreamData } from 'types/lichess';
 import {
   AnonMoveWager, ChessDoc, GameStatus, MoveData,
 } from 'types/models/chess';
@@ -14,20 +13,7 @@ import { chessService, microservice } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
-// import { resolveCriticalMoveWagers } from 'helpers/resolve_bets';
-
-const LICHESS_ROOT = 'https://lichess.org/api';
-
-const numMoves = (g: LichessGame) => g.moves.split(' ').length;
-
-const takeLess = <D>(fn: (d: D) => number) => (a: D, b: D): D => (fn(a) > fn(b) ? b : a);
-
-const getOutcome = (o: string): GameStatus => (
-  // eslint-disable-next-line no-nested-ternary
-  o === 'white' ? GameStatus.WHITE_WIN
-    : o === 'black' ? GameStatus.BLACK_WIN
-      : GameStatus.DRAW
-);
+import { getLichessOutcome } from 'helpers/chess_logic';
 
 const logError = (e: Error) => console.log('Error', e.message);
 
@@ -35,8 +21,8 @@ export const getStream = async (
   id: string,
   startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>,
   socket: Namespace<ChessListenEvents, ChessEmitEvents>,
+  onGameComplete = () => {},
 ): Promise<string> => {
-  console.log('creating game with', startData);
   const chessDoc = await chessService.createChessGame(startData);
   socket.emit('new_game', chessDoc.toJSON());
   const gameId = String(chessDoc._id);
@@ -125,7 +111,7 @@ export const getStream = async (
           chessService.updateChessGame(gameId, oddsUpdate).catch(logError);
           socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
         } else if (matchesSchema(StreamEndSchema, d)) {
-          const outcome = getOutcome((d as any).winner);
+          const outcome = getLichessOutcome((d as any).winner);
           const completeFields = {
             game_status: outcome,
             complete: true,
@@ -148,44 +134,19 @@ export const getStream = async (
     })
     .on('end', () => {
       console.log(id, 'ended');
+      setTimeout(onGameComplete, 1000);
     });
 
   return gameId;
 };
 
-export const findStream = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
+export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
-    const { data } = await axios({
-      method: 'GET',
-      url: `${LICHESS_ROOT}/tv/rapid`,
-      headers: { Accept: 'application/x-ndjson' },
-      params: { nb: 30 },
-    });
+    const selectedGame = await lichessService.getTopGame();
 
-    const games: LichessGame[] = data
-      .split('\n')
-      .filter((s: string) => s.length > 0)
-      .map(JSON.parse);
+    const gameFields = lichessService.createChessModelFields(selectedGame);
 
-    const selectedGame = games.reduce(takeLess(numMoves));
-
-    console.log(selectedGame);
-
-    const gameFields = {
-      player_white: {
-        name: selectedGame.players.white.user.name,
-        elo: selectedGame.players.white.rating,
-      },
-      player_black: {
-        name: selectedGame.players.black.user.name,
-        elo: selectedGame.players.black.rating,
-      },
-      time_format: `${selectedGame.clock.totalTime}+${selectedGame.clock.increment}`,
-      time_white: selectedGame.clock.initial,
-      time_black: selectedGame.clock.initial,
-    };
-
-    getStream(selectedGame.id, gameFields, socket);
+    getStream(selectedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
     console.log(error);
   }

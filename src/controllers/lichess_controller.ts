@@ -15,24 +15,12 @@ export const convertUrlToId: RequestHandler = (req: ValidatedRequest<CreateGameU
 export const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): RequestHandler => (
   async (req: ValidatedRequest<CreateGameIDRequest>, res) => {
     const game = await lichessService.getGame(req.body.id);
-    // res.send(game);
 
-    const gameFields = {
-      player_white: {
-        name: game.players.white.user.name,
-        elo: game.players.white.rating,
-      },
-      player_black: {
-        name: game.players.black.user.name,
-        elo: game.players.black.rating,
-      },
-      time_format: `${game.clock.totalTime}+${game.clock.increment}`,
-      time_white: game.clock.initial,
-      time_black: game.clock.initial,
-    };
+    const gameFields = lichessService.createChessModelFields(game);
 
     const gameId = await getStream(game.id, gameFields, socket);
-    res.send({ gameId });
+
+    res.status(200).send({ gameId });
   }
 );
 
