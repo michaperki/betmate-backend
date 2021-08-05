@@ -82,6 +82,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
   // Start game
   const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
+  if (!updatedGame) return false;
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
   // Play game

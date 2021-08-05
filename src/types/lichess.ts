@@ -54,6 +54,7 @@ export interface LichessStreamStart {
   createdAt: number
   lastMove?: string
   tournamentId?: string
+  swissId?: string
 }
 
 export interface LichessStreamEnd extends LichessStreamStart {
