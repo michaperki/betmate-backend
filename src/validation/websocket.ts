@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { PoolBetMessage } from 'types/websocket';
+import { GameChatMessage, PoolBetMessage } from 'types/websocket';
 
 export const JoinGameSchema = joi.string();
 export const LeaveGameSchema = joi.string();
@@ -11,4 +11,12 @@ export const PoolWagerSchema = joi.object<PoolBetMessage>({
   type: joi.string().required(),
   data: joi.string().required(),
   amount: joi.number().min(0).required(),
+});
+
+export const GameChatSchema = joi.object<GameChatMessage>({
+  gameId: joi.string().required(),
+  userId: joi.string().required(),
+  userName: joi.string().required(),
+  chat: joi.string().required(),
+  time: joi.string().required(),
 });

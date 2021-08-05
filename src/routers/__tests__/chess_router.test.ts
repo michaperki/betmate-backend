@@ -1,9 +1,9 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
-import { documentNotFoundError } from 'helpers/constants';
 import { chessRouter } from 'routers';
 
 import { GameStatus, MoveData } from 'types/models/chess';
+import { Chess } from 'models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(chessRouter);
@@ -73,6 +73,17 @@ describe('Working chess router', () => {
     }
   });
 
+  beforeAll(async (done) => {
+    try {
+      const game = await new Chess(chessDataA).save();
+      validID = game._id;
+      await new Chess(chessDataB).save();
+      done();
+    } catch (error) {
+      done(error);
+    }
+  });
+
   afterAll(async (done) => {
     try {
       dropDB(done);
@@ -82,89 +93,6 @@ describe('Working chess router', () => {
   });
 
   describe('single game modification', () => {
-    describe('create one', () => {
-      describe('blocks creation of chess game with invalid fields', () => {
-        it('blocks chess game creation without player fields', async (done) => {
-          try {
-            const res = await request
-              .post('/')
-              .send({});
-
-            expect(res.status).toBe(400);
-            expect(res.body.errors.length).toBe(2);
-            expect(res.body.errors).toContain("'player_white' is required");
-            expect(res.body.errors).toContain("'player_black' is required");
-
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-
-        it('blocks resource creation when chess state in invalid fields', async (done) => {
-          try {
-            const res = await request
-              .post('/')
-              .send({
-                ...chessDataA,
-                state: 'badFEN',
-                game_status: 'winning',
-                time_white: -10,
-                time_black: -20,
-                __v: 1, // not allowed
-              });
-
-            expect(res.status).toBe(400);
-            expect(res.body.errors.length).toBe(5);
-            expect(res.body.errors).toContain("'time_white' must be greater than or equal to 0");
-            expect(res.body.errors).toContain("'time_black' must be greater than or equal to 0");
-            expect(res.body.errors).toContain("Value 'winning' is not a game status");
-            expect(res.body.errors).toContain('FEN string must contain six space-delimited fields.');
-            expect(res.body.errors).toContain("'__v' is not allowed");
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-      });
-
-      describe('successfully creates chess game', () => {
-        it('succeeds with minimal fields', async (done) => {
-          try {
-            const res = await request
-              .post('/')
-              .send(chessDataA);
-
-            expect(res.status).toBe(200);
-
-            validateBody(res.body);
-
-            validID = res.body._id;
-
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-
-        it('succeeds with all fields', async (done) => {
-          try {
-            const res = await request
-              .post('/')
-              .send(chessDataB);
-
-            expect(res.status).toBe(200);
-
-            validateBody(res.body);
-
-            done();
-          } catch (error) {
-            done(error);
-          }
-        });
-      });
-    });
-
     describe('fetch one', () => {
       it("catches resource doesn't exist", async (done) => {
         try {
@@ -184,50 +112,6 @@ describe('Working chess router', () => {
 
           expect(res.status).toBe(200);
           validateBody(res.body);
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-    });
-
-    describe('update one', () => {
-      // * NOTE: Can require multiple checks depending on number of required fields
-      // it('requires valid data', async (done) => {
-
-      // });
-
-      // * NOTE: Can require multiple checks depending on number of non-unique fields
-      // it('blocks creation of resource with non-unique field', async (done) => {
-
-      // });
-
-      it("catches resource doesn't exist", async (done) => {
-        try {
-          const res = await request
-            .put(`/${invalidID}`)
-            .send({ time_black: 40 });
-
-          expect(res.status).toBe(404);
-          expect(res.body.errors[0]).toBe(documentNotFoundError);
-
-          done();
-        } catch (error) {
-          done(error);
-        }
-      });
-
-      it('succeeds', async (done) => {
-        try {
-          const res = await request
-            .put(`/${validID}`)
-            .send({ time_black: 40 });
-
-          expect(res.status).toBe(200);
-          expect(res.body.time_black).toBe(40);
-
-          validateBody(res.body);
-
           done();
         } catch (error) {
           done(error);

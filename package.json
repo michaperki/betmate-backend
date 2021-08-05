@@ -41,6 +41,7 @@
     "babel-cli": "^6.26.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-env": "^1.7.0",
+    "bad-words": "^3.0.4",
     "bcrypt": "^5.0.1",
     "body-parser": "^1.19.0",
     "chess.js": "^0.11.0",
@@ -66,6 +67,7 @@
   },
   "devDependencies": {
     "@types/ndjson": "^2.0.1",
+    "@types/bad-words": "^3.0.1",
     "@types/passport-jwt": "^3.0.5",
     "debug": "^4.2.0",
     "eslint": "^7.9.0",
