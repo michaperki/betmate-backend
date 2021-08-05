@@ -13,6 +13,7 @@ import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers }
 import { chessService, microservice } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
+import lichessService from 'services/lichess_service';
 // import { resolveCriticalMoveWagers } from 'helpers/resolve_bets';
 
 const LICHESS_ROOT = 'https://lichess.org/api';
@@ -30,34 +31,27 @@ const getOutcome = (o: string): GameStatus => (
 
 const logError = (e: Error) => console.log('Error', e.message);
 
-const getStream = async (
+export const getStream = async (
   id: string,
   startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>,
   socket: Namespace<ChessListenEvents, ChessEmitEvents>,
-) => {
+): Promise<string> => {
   console.log('creating game with', startData);
   const chessDoc = await chessService.createChessGame(startData);
   socket.emit('new_game', chessDoc.toJSON());
   const gameId = String(chessDoc._id);
 
-  const { data } = await axios({
-    method: 'GET',
-    url: `${LICHESS_ROOT}/stream/game/${id}`,
-    responseType: 'stream',
-  });
+  const stream = await lichessService.getStream(id);
 
   const moveHist: MoveData[] = [];
   const gameTime = 600;
   let liveTopMoves: string[] = chessDoc.pool_wagers.move.options.map(String);
   const game = new Chess();
-  let turnsToIgnore = 0;
 
-  data.pipe(ndjson.parse())
+  stream.pipe(ndjson.parse())
     .on('data', async (d: StreamData) => {
       try {
         if (matchesSchema(StreamStartSchema, d)) {
-          turnsToIgnore = d.turns - 1;
-
           chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS }).catch(logError);
           socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
         } else if (matchesSchema(StreamMoveSchema, d)) {
@@ -68,14 +62,16 @@ const getStream = async (
             return;
           }
 
-          const { color, from, to } = move;
+          const {
+            color, from, to, san,
+          } = move;
 
           const isWhite = color === 'w';
 
           moveHist.push({
             from,
             to,
-            san: d.lm,
+            san,
             is_white: isWhite,
             time: isWhite ? d.wc : d.bc,
           });
@@ -93,42 +89,41 @@ const getStream = async (
             },
           };
 
+          const history = moveHist.map((m) => m.san);
+
           chessService.updateChessGame(gameId, update).catch(logError);
           socket.to(gameId).emit('new_move', { gameId, ...update });
 
           (liveTopMoves.length > 0
-            ? resolveCriticalMoveWagers(gameId, game.history(), liveTopMoves)
-            : cancelCriticalMoveWagers(gameId, game.history()))
+            ? resolveCriticalMoveWagers(gameId, history, liveTopMoves)
+            : cancelCriticalMoveWagers(gameId, history))
             .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
             .catch((e) => console.log('Error:', e.message));
 
           liveTopMoves = [];
 
-          if (turnsToIgnore === 0) {
-            const oddsPromise = microservice
-              .getWDL(game.fen(), Math.floor((d.wc / gameTime) * 180), Math.floor((d.bc / gameTime) * 180))
-              .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-            const topMovesPromise = microservice
-              .getTopMoves(game.fen(), 3)
-              .catch(() => []);
+          const oddsPromise = microservice
+            .getWDL(game.fen(), Math.floor((d.wc / gameTime) * 180), Math.floor((d.bc / gameTime) * 180))
+            .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
+          const topMovesPromise = microservice
+            .getTopMoves(game.fen(), 3)
+            .catch(() => []);
 
-            const [odds, topMoves] = await Promise.all([oddsPromise, topMovesPromise]);
-            liveTopMoves = topMoves;
-            const oddsUpdate = {
-              odds,
-              pool_wagers: {
-                move: {
-                  wagers: [] as unknown as Types.Array<AnonMoveWager>,
-                  options: topMoves as Types.Array<string>,
-                },
+          const [odds, topMoves] = await Promise.all([oddsPromise, topMovesPromise]);
+          liveTopMoves = topMoves;
+
+          const oddsUpdate = {
+            odds,
+            pool_wagers: {
+              move: {
+                wagers: [] as unknown as Types.Array<AnonMoveWager>,
+                options: topMoves as Types.Array<string>,
               },
-            };
+            },
+          };
 
-            chessService.updateChessGame(gameId, oddsUpdate).catch(logError);
-            socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
-          } else {
-            turnsToIgnore -= 1;
-          }
+          chessService.updateChessGame(gameId, oddsUpdate).catch(logError);
+          socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
         } else if (matchesSchema(StreamEndSchema, d)) {
           const outcome = getOutcome((d as any).winner);
           const completeFields = {
@@ -154,6 +149,8 @@ const getStream = async (
     .on('end', () => {
       console.log(id, 'ended');
     });
+
+  return gameId;
 };
 
 export const findStream = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {

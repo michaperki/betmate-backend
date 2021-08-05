@@ -1,11 +1,15 @@
 import express, { Express } from 'express';
 import bodyParser from 'body-parser';
 import { Namespace } from 'socket.io';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { handleValidationError } from 'validation';
+import { createValidator } from 'express-joi-validation';
+import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { CreateGameIDSchema, CreateGameURLSchema } from 'validation/lichess';
+import { lichessController } from 'controllers';
 
 const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Express => {
   const router = express();
+  const validator = createValidator({ passError: true });
 
   if (process.env.NODE_ENV === 'test') {
   // enable json message body for posting data to router
@@ -14,8 +18,20 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
   }
 
   router
-    .route('/')
-    .get((req, res) => res.send('This works'));
+    .route('/url')
+    .post(
+      validator.body(CreateGameURLSchema), // https://lichess.org/WkdsEXN2C7BX
+      lichessController.convertUrlToId,
+      validator.body(CreateGameIDSchema), // WkdsEXN2C7BX
+      lichessController.createLichessStream(socket),
+    );
+
+  router
+    .route('/id')
+    .post(
+      validator.body(CreateGameIDSchema), // WkdsEXN2C7BX
+      lichessController.createLichessStream(socket),
+    );
 
   if (process.env.NODE_ENV === 'test') {
     router.use(handleValidationError);

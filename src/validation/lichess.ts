@@ -1,3 +1,4 @@
+import { ContainerTypes, ValidatedRequestSchema } from 'express-joi-validation';
 import joi from 'joi';
 import {
   LichessStreamEnd,
@@ -63,3 +64,26 @@ export const StreamMoveSchema = joi.object<LichessStreamMove>({
   wc: joi.number().required(),
   bc: joi.number().required(),
 });
+
+const urlRegex = new RegExp('^(https?:\\/\\/)?' // protocol
++ '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' // domain name
++ '((\\d{1,3}\\.){3}\\d{1,3}))' // OR ip (v4) address
++ '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
++ '(\\?[;&a-z\\d%_.~+=-]*)?' // query string
++ '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+
+export const CreateGameURLSchema = joi.object({
+  url: joi.string().pattern(urlRegex).required(),
+});
+
+export const CreateGameIDSchema = joi.object({
+  id: joi.string().alphanum().length(8).required(),
+});
+
+export interface CreateGameURLRequest extends ValidatedRequestSchema {
+  [ContainerTypes.Body]: { url: string }
+}
+
+export interface CreateGameIDRequest extends ValidatedRequestSchema {
+  [ContainerTypes.Body]: { id: string }
+}
