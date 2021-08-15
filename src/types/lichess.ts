@@ -53,6 +53,7 @@ export interface LichessStreamStart {
   status: Status
   createdAt: number
   lastMove?: string
+  drawOffers?: number[]
   tournamentId?: string
   swissId?: string
 }

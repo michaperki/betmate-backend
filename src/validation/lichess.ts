@@ -27,6 +27,7 @@ export const StreamStartSchema = joi.object<LichessStreamStart>({
   }),
   createdAt: joi.number().required(),
   lastMove: joi.string(),
+  drawOffers: joi.array().items(joi.string()),
   tournamentId: joi.string(),
   swissId: joi.string(),
 });
@@ -53,6 +54,7 @@ export const StreamEndSchema = joi.object<LichessStreamEnd>({
   }),
   createdAt: joi.number().required(),
   lastMove: joi.string(),
+  drawOffers: joi.array().items(joi.string()),
   winner: joi.string().required(),
   check: joi.string(),
   tournamentId: joi.string(),
