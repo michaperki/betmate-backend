@@ -11,6 +11,11 @@ export enum GameStatus {
   IN_PROGRESS = 'in_progress',
 }
 
+export enum GameSource {
+  STATIC = 'static',
+  LICHESS = 'lichess',
+}
+
 export interface Player {
   name: string,
   elo: number
@@ -40,6 +45,7 @@ export interface ChessDoc extends Document {
   state: string,
   time_format: string,
   complete: boolean,
+  source: GameSource,
   game_status: GameStatus,
   player_white: Player,
   player_black: Player,

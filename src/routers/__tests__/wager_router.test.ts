@@ -5,7 +5,7 @@ import { Chess, Wager, Users } from 'models';
 import { wagerRouter } from 'routers';
 
 import { documentNotFoundError } from 'helpers/constants';
-import { GameStatus, MoveData } from 'types/models/chess';
+import { GameSource, GameStatus, MoveData } from 'types/models/chess';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);
@@ -20,6 +20,7 @@ const chessData = {
   state: 'r2qkbnr/pppbp1pp/2n2p2/1B1p4/3P1B2/4P3/PPP2PPP/RN1QK1NR w KQkq - 0 1',
   complete: false,
   game_status: GameStatus.IN_PROGRESS,
+  source: GameSource.STATIC,
   player_white: { name: 'playerC', elo: 1200 },
   player_black: { name: 'playerD', elo: 1400 },
   move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove],

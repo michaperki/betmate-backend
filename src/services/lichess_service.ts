@@ -1,9 +1,10 @@
 import axios, { AxiosResponse } from 'axios';
+import env from 'env-var';
 import { LICHESS_URL } from 'helpers/constants';
 import { Readable } from 'stream';
 import { PartialWithRequired } from 'types';
 import { LichessGame } from 'types/lichess';
-import { ChessDoc } from 'types/models/chess';
+import { ChessDoc, GameSource } from 'types/models/chess';
 import { numMoves, takeLess } from './utils';
 
 const getGame = (id: string): Promise<LichessGame> => (
@@ -20,6 +21,7 @@ const getStream = (id: string): Promise<Readable> => (
     method: 'GET',
     url: `${LICHESS_URL}/api/stream/game/${id}`,
     responseType: 'stream',
+    params: { key: env.get('STREAM_KEY').required().asString() },
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 
@@ -32,6 +34,7 @@ const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc
     name: game.players.black.user.name,
     elo: game.players.black.rating,
   },
+  source: GameSource.LICHESS,
   time_format: `${game.clock.totalTime}+${game.clock.increment}`,
   time_white: game.clock.initial,
   time_black: game.clock.initial,

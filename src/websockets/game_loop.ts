@@ -12,7 +12,7 @@ import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { delay } from 'helpers/utils';
 import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+  AnonMoveWager, ChessDoc, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 
 const PREGAME_TIME = 90;
@@ -68,6 +68,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   const gameFields = {
     player_white: game.white,
     player_black: game.black,
+    source: GameSource.STATIC,
     time_format: `${gameTime}+${increment}`,
     time_white: gameTime,
     time_black: gameTime,
