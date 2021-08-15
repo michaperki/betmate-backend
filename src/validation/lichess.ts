@@ -70,7 +70,10 @@ export const StreamMoveSchema = joi.object<LichessStreamMove>({
 const lichessRegex = new RegExp('^(https?:\\/\\/)?(www.)?lichess\\.org(\\/[a-zA-Z\\d]{8})$', 'i');
 
 export const CreateGameURLSchema = joi.object({
-  url: joi.string().pattern(lichessRegex).required(),
+  url: joi.string().pattern(lichessRegex).required().messages({
+    'object.regex': "'url' is not valid",
+    'string.pattern.base': "'url' is not valid",
+  }),
 });
 
 export const CreateGameIDSchema = joi.object({
