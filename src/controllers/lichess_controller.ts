@@ -1,10 +1,12 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
+import HttpError from 'helpers/errors';
 import lichessService from 'services/lichess_service';
 import { Namespace } from 'socket.io';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { CreateGameIDRequest, CreateGameURLRequest } from 'validation/lichess';
 import { getStream } from 'websockets/lichess_stream';
+import { handleFailure, handleSuccess } from './utils';
 
 export const convertUrlToId: RequestHandler = (req: ValidatedRequest<CreateGameURLRequest>, _res, next) => {
   const [id] = req.body.url.split('/').slice(-1);
@@ -14,13 +16,20 @@ export const convertUrlToId: RequestHandler = (req: ValidatedRequest<CreateGameU
 
 export const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): RequestHandler => (
   async (req: ValidatedRequest<CreateGameIDRequest>, res) => {
-    const game = await lichessService.getGame(req.body.id);
+    try {
+      const numStreams = await lichessService.getActiveStreams();
+      if (numStreams >= 8) throw new HttpError(400, ['Stream quota filled']);
 
-    const gameFields = lichessService.createChessModelFields(game);
+      const game = await lichessService.getGame(req.body.id);
 
-    const gameId = await getStream(game.id, gameFields, socket);
+      const gameFields = lichessService.createChessModelFields(game);
 
-    res.status(200).send({ gameId });
+      const gameId = await getStream(game.id, gameFields, socket);
+
+      handleSuccess(res)({ gameId });
+    } catch (error) {
+      handleFailure(res)(error);
+    }
   }
 );
 

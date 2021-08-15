@@ -57,6 +57,8 @@ chessService.purgeStaleGames().then(() => {
   // secondary loops
   setTimeout(() => run300Loop(chessWebsocket), 300000);
   setTimeout(() => run900Loop(chessWebsocket), 900000);
+
+  // lichess loop
   streamLoop(chessWebsocket);
 });
 

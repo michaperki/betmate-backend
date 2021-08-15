@@ -4,7 +4,8 @@ import { LICHESS_URL } from 'helpers/constants';
 import { Readable } from 'stream';
 import { PartialWithRequired } from 'types';
 import { LichessGame } from 'types/lichess';
-import { ChessDoc, GameSource } from 'types/models/chess';
+import { ChessDoc, GameSource, GameStatus } from 'types/models/chess';
+import chessService from './chess_service';
 import { numMoves, takeLess } from './utils';
 
 const getGame = (id: string): Promise<LichessGame> => (
@@ -55,11 +56,19 @@ const getTopGame = (): Promise<LichessGame> => (
   ))
 );
 
+const getActiveStreams = (): Promise<number> => (
+  chessService.getManyChessGames({
+    game_status: GameStatus.IN_PROGRESS,
+    source: GameSource.LICHESS,
+  }).then((games) => games.length)
+);
+
 const lichessService = {
   getGame,
   getStream,
   getTopGame,
   createChessModelFields,
+  getActiveStreams,
 };
 
 export default lichessService;
