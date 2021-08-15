@@ -133,7 +133,6 @@ export const getStream = async (
       }
     })
     .on('end', () => {
-      console.log(id, 'ended');
       setTimeout(onGameComplete, 1000);
     });
 

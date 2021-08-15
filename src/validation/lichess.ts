@@ -65,15 +65,10 @@ export const StreamMoveSchema = joi.object<LichessStreamMove>({
   bc: joi.number().required(),
 });
 
-const urlRegex = new RegExp('^(https?:\\/\\/)?' // protocol
-+ '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' // domain name
-+ '((\\d{1,3}\\.){3}\\d{1,3}))' // OR ip (v4) address
-+ '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' // port and path
-+ '(\\?[;&a-z\\d%_.~+=-]*)?' // query string
-+ '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+const lichessRegex = new RegExp('^(https?:\\/\\/)?(www.)?lichess\\.org(\\/[a-zA-Z\\d]{8})$', 'i');
 
 export const CreateGameURLSchema = joi.object({
-  url: joi.string().pattern(urlRegex).required(),
+  url: joi.string().pattern(lichessRegex).required(),
 });
 
 export const CreateGameIDSchema = joi.object({

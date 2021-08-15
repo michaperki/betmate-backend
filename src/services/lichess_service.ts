@@ -26,7 +26,7 @@ const getStream = (id: string): Promise<Readable> => (
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 
-const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc, 'player_white' | 'player_black'> => ({
+const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'> => ({
   player_white: {
     name: game.players.white.user.name,
     elo: game.players.white.rating,

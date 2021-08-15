@@ -20,16 +20,16 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
   router
     .route('/url')
     .post(
-      validator.body(CreateGameURLSchema), // https://lichess.org/WkdsEXN2C7BX
+      validator.body(CreateGameURLSchema),
       lichessController.convertUrlToId,
-      validator.body(CreateGameIDSchema), // WkdsEXN2C7BX
+      validator.body(CreateGameIDSchema),
       lichessController.createLichessStream(socket),
     );
 
   router
     .route('/id')
     .post(
-      validator.body(CreateGameIDSchema), // WkdsEXN2C7BX
+      validator.body(CreateGameIDSchema),
       lichessController.createLichessStream(socket),
     );
 
