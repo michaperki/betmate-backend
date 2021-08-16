@@ -3,9 +3,11 @@ export interface Player {
     name: string
     id: string
     patron?: boolean
+    title?: string
   }
   rating: number
   provisional?: boolean
+  ratingDiff?: number
 }
 
 export interface LichessGame {
@@ -22,6 +24,7 @@ export interface LichessGame {
     black: Player
   }
   moves: string
+  pgn: string
   clock: {
     initial: number
     increment: number
@@ -58,6 +61,8 @@ export interface LichessStreamStart {
   status: Status
   createdAt: number
   lastMove?: string
+  threefold?: boolean
+  check?: string
   drawOffers?: number[]
   tournamentId?: string
   swissId?: string

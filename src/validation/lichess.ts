@@ -11,9 +11,11 @@ const PlayerSchema = joi.object<Player>({
     name: joi.string().required(),
     id: joi.string().required(),
     patron: joi.boolean(),
+    title: joi.string(),
   }).required(),
   rating: joi.number().required(),
   provisional: joi.boolean(),
+  ratingDiff: joi.number(),
 });
 
 export const LichessGameSchema = joi.object<LichessGame>({
@@ -29,7 +31,8 @@ export const LichessGameSchema = joi.object<LichessGame>({
     white: PlayerSchema,
     black: PlayerSchema,
   }).required(),
-  moves: joi.string().required(),
+  moves: joi.string().allow('').required(),
+  pgn: joi.string(),
   clock: joi.object({
     initial: joi.number().required(),
     increment: joi.number().required(),
@@ -37,7 +40,7 @@ export const LichessGameSchema = joi.object<LichessGame>({
   }).required(),
   tournament: joi.string(),
   swiss: joi.string(),
-  drawOffers: joi.array().items(joi.string()),
+  drawOffers: joi.array().items(joi.number()),
 });
 
 export const StreamStartSchema = joi.object<LichessStreamStart>({
@@ -61,8 +64,10 @@ export const StreamStartSchema = joi.object<LichessStreamStart>({
     name: joi.string().required(),
   }),
   createdAt: joi.number().required(),
+  threefold: joi.boolean(),
   lastMove: joi.string(),
-  drawOffers: joi.array().items(joi.string()),
+  check: joi.string(),
+  drawOffers: joi.array().items(joi.number()),
   tournamentId: joi.string(),
   swissId: joi.string(),
 });
@@ -89,7 +94,7 @@ export const StreamEndSchema = joi.object<LichessStreamEnd>({
   }),
   createdAt: joi.number().required(),
   lastMove: joi.string(),
-  drawOffers: joi.array().items(joi.string()),
+  drawOffers: joi.array().items(joi.number()),
   winner: joi.string().required(),
   check: joi.string(),
   tournamentId: joi.string(),
