@@ -23,7 +23,7 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
     .then((res) => res.data.data)
     .then(validate(WDLSchema))
     .catch((error) => {
-      console.log('Microservice error:', error);
+      console.log('Microservice error:', error.message);
       throw error;
     })
 );
@@ -40,7 +40,7 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
     .then((res) => res.data.data)
     .then(validate<TopMoveData>(TopMoveSchema))
     .catch((error) => {
-      console.log('Microservice error:', error);
+      console.log('Microservice error:', error.message);
       throw error;
     })
 );

@@ -1,9 +1,44 @@
 import { ContainerTypes, ValidatedRequestSchema } from 'express-joi-validation';
 import joi from 'joi';
 import {
+  LichessGame,
   LichessStreamEnd,
-  LichessStreamMove, LichessStreamStart, Status, Variant,
+  LichessStreamMove, LichessStreamStart, Player, Status, Variant,
 } from 'types/lichess';
+
+const PlayerSchema = joi.object<Player>({
+  user: joi.object({
+    name: joi.string().required(),
+    id: joi.string().required(),
+    patron: joi.boolean(),
+  }).required(),
+  rating: joi.number().required(),
+  provisional: joi.boolean(),
+});
+
+export const LichessGameSchema = joi.object<LichessGame>({
+  id: joi.string().required(),
+  rated: joi.boolean().required(),
+  variant: joi.string().required(),
+  speed: joi.string().required(),
+  perf: joi.string().required(),
+  createdAt: joi.number().required(),
+  lastMoveAt: joi.number().required(),
+  status: joi.string().required(),
+  players: joi.object({
+    white: PlayerSchema,
+    black: PlayerSchema,
+  }).required(),
+  moves: joi.string().required(),
+  clock: joi.object({
+    initial: joi.number().required(),
+    increment: joi.number().required(),
+    totalTime: joi.number().required(),
+  }).required(),
+  tournament: joi.string(),
+  swiss: joi.string(),
+  drawOffers: joi.array().items(joi.string()),
+});
 
 export const StreamStartSchema = joi.object<LichessStreamStart>({
   id: joi.string().required(),

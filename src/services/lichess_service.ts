@@ -5,6 +5,8 @@ import { Readable } from 'stream';
 import { PartialWithRequired } from 'types';
 import { LichessGame } from 'types/lichess';
 import { ChessDoc, GameSource, GameStatus } from 'types/models/chess';
+import { validate } from 'validation';
+import { LichessGameSchema } from 'validation/lichess';
 import chessService from './chess_service';
 import { numMoves, takeLess } from './utils';
 
@@ -14,7 +16,13 @@ const getGame = (id: string): Promise<LichessGame> => (
     url: `${LICHESS_URL}/game/export/${id}`,
     headers: { Accept: 'application/json' },
     params: { pgnInJson: true },
-  }).then((d: AxiosResponse<LichessGame>) => d.data)
+  })
+    .then((d: AxiosResponse<LichessGame>) => d.data)
+    .then(validate(LichessGameSchema))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
 );
 
 const getStream = (id: string): Promise<Readable> => (
@@ -52,8 +60,13 @@ const getTopGame = (): Promise<LichessGame> => (
       .split('\n')
       .filter((s) => s.length > 0)
       .map((s) => JSON.parse(s))
+      .map(validate(LichessGameSchema))
       .reduce(takeLess(numMoves))
   ))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
 );
 
 const getActiveStreams = (): Promise<number> => (

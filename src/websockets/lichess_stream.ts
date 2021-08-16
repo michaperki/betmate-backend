@@ -133,7 +133,7 @@ export const getStream = async (
       }
     })
     .on('end', () => {
-      setTimeout(onGameComplete, 1000);
+      setTimeout(onGameComplete, 100);
     });
 
   return gameId;
@@ -148,5 +148,6 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
     getStream(selectedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
     console.log(error);
+    setTimeout(() => streamLoop(socket), 100);
   }
 };

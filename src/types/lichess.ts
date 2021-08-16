@@ -1,9 +1,11 @@
-interface Player {
+export interface Player {
   user: {
     name: string
     id: string
+    patron?: boolean
   }
   rating: number
+  provisional?: boolean
 }
 
 export interface LichessGame {
@@ -25,6 +27,9 @@ export interface LichessGame {
     increment: number
     totalTime: number
   }
+  tournament?: string
+  swiss?: string
+  drawOffers?: string[]
 }
 
 export interface Variant {
