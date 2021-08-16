@@ -19,7 +19,7 @@ const logError = (e: Error) => console.log('Error', e.message);
 
 export const getStream = async (
   id: string,
-  startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>,
+  startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'>,
   socket: Namespace<ChessListenEvents, ChessEmitEvents>,
   onGameComplete = () => {},
 ): Promise<string> => {
