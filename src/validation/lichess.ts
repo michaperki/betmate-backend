@@ -31,6 +31,7 @@ export const LichessGameSchema = joi.object<LichessGame>({
     white: PlayerSchema,
     black: PlayerSchema,
   }).required(),
+  winner: joi.string(),
   moves: joi.string().allow('').required(),
   pgn: joi.string(),
   clock: joi.object({
@@ -67,6 +68,7 @@ export const StreamStartSchema = joi.object<LichessStreamStart>({
   threefold: joi.boolean(),
   lastMove: joi.string(),
   check: joi.string(),
+  winner: joi.string(),
   drawOffers: joi.array().items(joi.number()),
   tournamentId: joi.string(),
   swissId: joi.string(),

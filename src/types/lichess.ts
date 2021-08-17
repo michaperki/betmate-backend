@@ -23,6 +23,7 @@ export interface LichessGame {
     white: Player
     black: Player
   }
+  winner?: string
   moves: string
   pgn: string
   clock: {
@@ -63,6 +64,7 @@ export interface LichessStreamStart {
   lastMove?: string
   threefold?: boolean
   check?: string
+  winner?: string
   drawOffers?: number[]
   tournamentId?: string
   swissId?: string
