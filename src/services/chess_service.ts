@@ -26,6 +26,7 @@ const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> 
 const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[]> => (
   Chess
     .find(fields)
+    .limit(1000)
     .catch(dbErrorHandler)
 );
 
