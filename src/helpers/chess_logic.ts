@@ -11,3 +11,9 @@ export const getChessStatus = (chessGame: ChessInstance): GameStatus => (
       : chessGame.turn() === 'b' ? GameStatus.WHITE_WIN
         : GameStatus.BLACK_WIN
 );
+
+export const getLichessOutcome = (o: string): GameStatus => (
+  o === 'white' ? GameStatus.WHITE_WIN
+    : o === 'black' ? GameStatus.BLACK_WIN
+      : GameStatus.DRAW
+);

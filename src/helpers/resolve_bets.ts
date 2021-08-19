@@ -1,4 +1,3 @@
-import { ChessInstance } from 'chess.js';
 import { UpdateQuery } from 'mongoose';
 import { userService, wagerService } from 'services';
 import { UserDoc } from 'types/models/user';
@@ -171,9 +170,9 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
  * @param topMoves Array of provided options to wager on, alongside `other` option
  * @returns JSON mapping user IDs to their wagers
  */
-export const resolveCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance, topMoves: string[]): Promise<UserWagers> => {
-  const moveNum = chessGame.history().length;
-  const [lastMove] = chessGame.history().slice(-1);
+export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: string[], topMoves: string[]): Promise<UserWagers> => {
+  const moveNum = chessHistory.length;
+  const lastMove = chessHistory[chessHistory.length - 1];
   const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
 
   await delay(500); // ensures all wagers are present in database
@@ -212,8 +211,8 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
  * @param chessGame chess from which outcome will be derived
  * @returns JSON mapping user IDs to their wagers
  */
-export const cancelCriticalMoveWagers = async (gameId: string, chessGame: ChessInstance): Promise<UserWagers> => {
-  const moveNum = chessGame.history().length;
+export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: string[]): Promise<UserWagers> => {
+  const moveNum = chessHistory.length;
 
   await delay(500); // ensures all wagers are present in database
 

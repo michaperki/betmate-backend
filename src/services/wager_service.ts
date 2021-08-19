@@ -29,6 +29,7 @@ const getWager = (id: string | Types.ObjectId): Promise<WagerDoc> => (
 const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[]> => (
   Wager
     .find(fields)
+    .limit(1000)
     .catch(dbErrorHandler)
 );
 

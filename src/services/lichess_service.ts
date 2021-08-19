@@ -1,0 +1,87 @@
+import axios, { AxiosResponse } from 'axios';
+import env from 'env-var';
+import { LICHESS_URL } from 'helpers/constants';
+import { Readable } from 'stream';
+import { PartialWithRequired } from 'types';
+import { LichessGame } from 'types/lichess';
+import { ChessDoc, GameSource, GameStatus } from 'types/models/chess';
+import { passiveValidate } from 'validation';
+import { LichessGameSchema } from 'validation/lichess';
+import chessService from './chess_service';
+import { numMoves, takeLess } from './utils';
+
+const getGame = (id: string): Promise<LichessGame> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/game/export/${id}`,
+    headers: { Accept: 'application/json' },
+    params: { pgnInJson: true, opening: false },
+  })
+    .then((d: AxiosResponse<LichessGame>) => d.data)
+    .then(passiveValidate(LichessGameSchema))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
+);
+
+const getStream = (id: string): Promise<Readable> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/api/stream/game/${id}`,
+    responseType: 'stream',
+    params: { key: env.get('STREAM_KEY').required().asString() },
+  }).then((d: AxiosResponse<Readable>) => d.data)
+);
+
+const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'> => ({
+  player_white: {
+    name: game.players.white.user.name,
+    elo: game.players.white.rating,
+  },
+  player_black: {
+    name: game.players.black.user.name,
+    elo: game.players.black.rating,
+  },
+  source: GameSource.LICHESS,
+  time_format: `${game.clock.totalTime}+${game.clock.increment}`,
+  time_white: game.clock.initial,
+  time_black: game.clock.initial,
+});
+
+const getTopGame = (): Promise<LichessGame> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/api/tv/rapid`,
+    headers: { Accept: 'application/x-ndjson' },
+    params: { nb: 30 },
+  }).then((res: AxiosResponse<string>) => (
+    res.data
+      .split('\n')
+      .filter((s) => s.length > 0)
+      .map((s) => JSON.parse(s))
+      .map(passiveValidate(LichessGameSchema))
+      .reduce(takeLess(numMoves))
+  ))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
+);
+
+const getActiveStreams = (): Promise<number> => (
+  chessService.getManyChessGames({
+    game_status: GameStatus.IN_PROGRESS,
+    source: GameSource.LICHESS,
+  }).then((games) => games.length)
+);
+
+const lichessService = {
+  getGame,
+  getStream,
+  getTopGame,
+  createChessModelFields,
+  getActiveStreams,
+};
+
+export default lichessService;

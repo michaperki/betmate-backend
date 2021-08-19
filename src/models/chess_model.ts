@@ -1,7 +1,7 @@
 /* eslint-disable func-names */
 import mongoose, { Schema, Types } from 'mongoose';
 import { CHESS_START } from 'helpers/constants';
-import { isGameComplete, isGameStatus } from 'validation/chess';
+import { isGameComplete, isGameSource, isGameStatus } from 'validation/chess';
 import microservice from 'services/microservice';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
@@ -20,6 +20,14 @@ const ChessSchema = new Schema({
     },
   },
   time_format: { type: String, default: '300+0', immutable: true },
+  source: {
+    type: String,
+    required: true,
+    validate: {
+      validator: isGameSource,
+      message: (props) => `Value "${props.value}" not in enum "GameSource"`,
+    },
+  },
   complete: { type: Boolean, default: false },
   game_status: {
     type: String,

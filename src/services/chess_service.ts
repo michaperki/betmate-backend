@@ -26,6 +26,7 @@ const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> 
 const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[]> => (
   Chess
     .find(fields)
+    .limit(1000)
     .catch(dbErrorHandler)
 );
 
@@ -47,7 +48,7 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
  * @param fields to create game
  * @returns Promise of created game, or null if error occurs
  */
-const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>): Promise<ChessDoc> => (
+const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'>): Promise<ChessDoc> => (
   new Chess(fields)
     .save()
     .catch(dbErrorHandler)

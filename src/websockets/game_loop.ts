@@ -12,7 +12,7 @@ import data900 from 'assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { delay } from 'helpers/utils';
 import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+  AnonMoveWager, ChessDoc, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 
 const PREGAME_TIME = 90;
@@ -68,12 +68,13 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   const gameFields = {
     player_white: game.white,
     player_black: game.black,
+    source: GameSource.STATIC,
     time_format: `${gameTime}+${increment}`,
     time_white: gameTime,
     time_black: gameTime,
   };
   // create game and put into pregame
-  const gameDoc = await chessService.createChessGame(gameFields as ChessDoc);
+  const gameDoc = await chessService.createChessGame(gameFields);
   const gameId = String(gameDoc._id);
   socket.emit('new_game', gameDoc.toJSON());
 
@@ -82,6 +83,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
   // Start game
   const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
+  if (!updatedGame) return false;
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
   // Play game
@@ -135,8 +137,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // Resolve move bets if options valid, otherwise cancel bets
       (validTopMoves
-        ? resolveCriticalMoveWagers(gameId, chessGame, liveTopMoves)
-        : cancelCriticalMoveWagers(gameId, chessGame))
+        ? resolveCriticalMoveWagers(gameId, chessGame.history(), liveTopMoves)
+        : cancelCriticalMoveWagers(gameId, chessGame.history()))
         .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
 
       // reset top moves

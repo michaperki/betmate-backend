@@ -12,8 +12,9 @@ import { run300Loop, run900Loop } from 'websockets/game_loop';
 import { chessService } from 'services';
 import leaderboardService from 'services/leaderboard_service';
 import { handleValidationError } from 'validation';
+import { streamLoop } from 'websockets/lichess_stream';
 import {
-  authRouter, chessRouter, wagerRouter, leaderboardRouter,
+  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -46,6 +47,8 @@ app.use('/leaderboard', leaderboardRouter);
 const chessWebsocket = io.of('/chessws');
 chessWebsocket.on('connection', chessWS);
 
+app.use('/lichess', lichessRouter(chessWebsocket));
+
 // purge stale games before running game loops
 chessService.purgeStaleGames().then(() => {
   run300Loop(chessWebsocket);
@@ -54,10 +57,13 @@ chessService.purgeStaleGames().then(() => {
   // secondary loops
   setTimeout(() => run300Loop(chessWebsocket), 300000);
   setTimeout(() => run900Loop(chessWebsocket), 900000);
+
+  // lichess loop
+  streamLoop(chessWebsocket);
 });
 
-// generate leaderboard every 15 minutes
-setInterval(() => leaderboardService.generateLeaderboard(), 900000);
+// generate leaderboard every minute
+setInterval(() => leaderboardService.generateLeaderboard(), 60000);
 
 // default index route
 app.get('/', (req, res) => {

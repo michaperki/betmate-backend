@@ -23,7 +23,7 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
     .then((res) => res.data.data)
     .then(validate(WDLSchema))
     .catch((error) => {
-      console.log('Microservice error:', error);
+      console.log('Microservice error:', error.message);
       throw error;
     })
 );
@@ -38,9 +38,9 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
   axios
     .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, { headers: { 'x-api-key': apiKey } })
     .then((res) => res.data.data)
-    .then(validate(TopMoveSchema))
+    .then(validate<TopMoveData>(TopMoveSchema))
     .catch((error) => {
-      console.log('Microservice error:', error);
+      console.log('Microservice error:', error.message);
       throw error;
     })
 );
