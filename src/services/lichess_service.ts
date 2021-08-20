@@ -2,12 +2,12 @@ import axios, { AxiosResponse } from 'axios';
 import env from 'env-var';
 import { LICHESS_URL } from 'helpers/constants';
 import { Readable } from 'stream';
-import { LichessGame } from 'types/lichess';
+import { LichessGame, LichessStreamer } from 'types/lichess';
 import {
   ChessDoc, CreateChessQuery, GameSource, GameStatus,
 } from 'types/models/chess';
 import { passiveValidate } from 'validation';
-import { LichessGameSchema } from 'validation/lichess';
+import { LichessGameSchema, StreamerSchema } from 'validation/lichess';
 import chessService from './chess_service';
 import { numMoves, takeLess } from './utils';
 
@@ -26,7 +26,7 @@ const getGame = (id: string): Promise<LichessGame> => (
     })
 );
 
-const getStream = (id: string): Promise<Readable> => (
+const getGameStream = (id: string): Promise<Readable> => (
   axios({
     method: 'GET',
     url: `${LICHESS_URL}/api/stream/game/${id}`,
@@ -70,19 +70,49 @@ const getTopGame = (): Promise<LichessGame> => (
     })
 );
 
-const getActiveStreams = (): Promise<ChessDoc[]> => (
+const getActiveGameStreams = (): Promise<ChessDoc[]> => (
   chessService.getManyChessGames({
     game_status: GameStatus.IN_PROGRESS,
     source: { $in: [GameSource.USER, GameSource.STREAMER] },
   })
 );
 
+const getActiveStreamers = (): Promise<LichessStreamer[]> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/streamer/live`,
+  })
+    .then((d) => d.data)
+    .then((d) => d.map(passiveValidate(StreamerSchema)))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
+);
+
+const getUserGame = (userID: string): Promise<LichessGame> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/api/user/${userID}/current-game`,
+    headers: { Accept: 'application/json' },
+    params: { pgnInJson: true, opening: false },
+  })
+    .then((d) => d.data)
+    .then(passiveValidate(LichessGameSchema))
+    .catch((error) => {
+      console.log('Lichess error:', error.message);
+      throw error;
+    })
+);
+
 const lichessService = {
   getGame,
-  getStream,
+  getGameStream,
   getTopGame,
   createChessModelFields,
-  getActiveStreams,
+  getActiveGameStreams,
+  getActiveStreamers,
+  getUserGame,
 };
 
 export default lichessService;

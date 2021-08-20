@@ -84,3 +84,10 @@ export interface LichessStreamMove {
 }
 
 export type StreamData = LichessStreamStart | LichessStreamMove | LichessStreamEnd;
+
+export interface LichessStreamer {
+  name: string
+  id: string
+  title?: string
+  patron?: boolean
+}

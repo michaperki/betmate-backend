@@ -9,20 +9,20 @@ import { GameSource } from 'types/models/chess';
 import { UserRole } from 'types/models/user';
 import { ValidatedRequestWithJWT } from 'types/requests';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { CreateGameIDRequest, CreateGameURLRequest } from 'validation/lichess';
+import { CreateGameIDRequest, CreateGameURLRequest, CreateStreamerGameRequest } from 'validation/lichess';
 import { getStream } from 'websockets/lichess_stream';
 import { handleFailure, handleSuccess } from './utils';
 
-export const convertUrlToId: RequestHandler = (req: ValidatedRequestWithJWT<CreateGameURLRequest>, _res, next) => {
+const convertUrlToId: RequestHandler = (req: ValidatedRequestWithJWT<CreateGameURLRequest>, _res, next) => {
   const [id] = req.body.url.split('/').slice(-1);
   (req as any as ValidatedRequest<CreateGameIDRequest>).body = { id };
   next();
 };
 
-export const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): RequestHandler => (
+const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): RequestHandler => (
   async (req: ValidatedRequestWithJWT<CreateGameIDRequest>, res) => {
     try {
-      const streams = await lichessService.getActiveStreams();
+      const streams = await lichessService.getActiveGameStreams();
 
       const numUserStreams = streams.filter((g) => g.source === GameSource.USER).length;
       const numStreamerStreams = streams.filter((g) => g.source === GameSource.STREAMER).length;
@@ -50,9 +50,24 @@ export const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEm
   }
 );
 
+const getStreamers: RequestHandler = (_req, res) => (
+  lichessService
+    .getActiveStreamers()
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
+
+const getStreamerGame: RequestHandler = async (req: ValidatedRequestWithJWT<CreateStreamerGameRequest>, _res, next) => {
+  const { id } = await lichessService.getUserGame(req.body.userID);
+  (req as any as ValidatedRequest<CreateGameIDRequest>).body = { id };
+  next();
+};
+
 const lichessController = {
   convertUrlToId,
   createLichessStream,
+  getStreamers,
+  getStreamerGame,
 };
 
 export default lichessController;
