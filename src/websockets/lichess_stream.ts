@@ -1,8 +1,7 @@
 import ndjson from 'ndjson';
-import { PartialWithRequired } from 'types';
 import { StreamData } from 'types/lichess';
 import {
-  AnonMoveWager, ChessDoc, GameSource, GameStatus, MoveData,
+  AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema } from 'validation/lichess';
@@ -20,7 +19,7 @@ const logError = (e: Error) => console.log('Error', e.message);
 
 export const getStream = async (
   id: string,
-  startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'>,
+  startData: CreateChessQuery,
   socket: Namespace<ChessListenEvents, ChessEmitEvents>,
   onGameComplete = () => {},
 ): Promise<string> => {

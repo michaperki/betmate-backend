@@ -2,9 +2,10 @@ import axios, { AxiosResponse } from 'axios';
 import env from 'env-var';
 import { LICHESS_URL } from 'helpers/constants';
 import { Readable } from 'stream';
-import { PartialWithRequired } from 'types';
 import { LichessGame } from 'types/lichess';
-import { ChessDoc, GameSource, GameStatus } from 'types/models/chess';
+import {
+  ChessDoc, CreateChessQuery, GameSource, GameStatus,
+} from 'types/models/chess';
 import { passiveValidate } from 'validation';
 import { LichessGameSchema } from 'validation/lichess';
 import chessService from './chess_service';
@@ -34,7 +35,7 @@ const getStream = (id: string): Promise<Readable> => (
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 
-const createChessModelFields = (game: LichessGame, source: GameSource): PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'> => ({
+const createChessModelFields = (game: LichessGame, source: GameSource): CreateChessQuery => ({
   player_white: {
     name: game.players.white.user.name,
     elo: game.players.white.rating,

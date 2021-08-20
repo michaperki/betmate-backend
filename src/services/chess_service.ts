@@ -2,8 +2,7 @@ import { Chess } from 'models';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
-import { PartialWithRequired } from 'types';
-import { ChessDoc } from 'types/models/chess';
+import { ChessDoc, CreateChessQuery } from 'types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
@@ -48,7 +47,7 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
  * @param fields to create game
  * @returns Promise of created game, or null if error occurs
  */
-const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'>): Promise<ChessDoc> => (
+const createChessGame = async (fields: CreateChessQuery): Promise<ChessDoc> => (
   new Chess(fields)
     .save()
     .catch(dbErrorHandler)

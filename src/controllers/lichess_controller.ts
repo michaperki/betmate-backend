@@ -1,6 +1,7 @@
 /* eslint-disable no-nested-ternary */
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
+import { samePlayers } from 'helpers/chess_logic';
 import HttpError from 'helpers/errors';
 import lichessService from 'services/lichess_service';
 import { Namespace } from 'socket.io';
@@ -36,6 +37,9 @@ export const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEm
       const game = await lichessService.getGame(req.body.id);
 
       const gameFields = lichessService.createChessModelFields(game, source);
+
+      const gameExists = streams.some(samePlayers(gameFields));
+      if (gameExists) throw new HttpError(400, ['Game already exists. Please find another one.']);
 
       const gameId = await getStream(game.id, gameFields, socket);
 

@@ -1,4 +1,5 @@
 import { Document, Types } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { WDLData } from 'types/microservice';
 
 /* -------- Helper Types -------- */
@@ -62,3 +63,5 @@ export interface ChessDoc extends Document {
   created_at: Date,
   updated_at: Date,
 }
+
+export type CreateChessQuery = PartialWithRequired<ChessDoc, 'player_black' | 'player_white' | 'source'>;
