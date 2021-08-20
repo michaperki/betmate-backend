@@ -6,6 +6,7 @@ import { createValidator } from 'express-joi-validation';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { CreateGameIDSchema, CreateGameURLSchema } from 'validation/lichess';
 import { lichessController } from 'controllers';
+import { requireAuth } from 'authentication';
 
 const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Express => {
   const router = express();
@@ -16,6 +17,8 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
     router.use(bodyParser.urlencoded({ extended: true }));
     router.use(bodyParser.json());
   }
+
+  router.use(requireAuth);
 
   router
     .route('/url')
@@ -39,4 +42,5 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
 
   return router;
 };
+
 export default routerWithSocket;

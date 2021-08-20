@@ -34,7 +34,7 @@ const getStream = (id: string): Promise<Readable> => (
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 
-const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'> => ({
+const createChessModelFields = (game: LichessGame, source: GameSource): PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'> => ({
   player_white: {
     name: game.players.white.user.name,
     elo: game.players.white.rating,
@@ -43,7 +43,7 @@ const createChessModelFields = (game: LichessGame): PartialWithRequired<ChessDoc
     name: game.players.black.user.name,
     elo: game.players.black.rating,
   },
-  source: GameSource.LICHESS,
+  source,
   time_format: `${game.clock.totalTime}+${game.clock.increment}`,
   time_white: game.clock.initial,
   time_black: game.clock.initial,
@@ -69,11 +69,11 @@ const getTopGame = (): Promise<LichessGame> => (
     })
 );
 
-const getActiveStreams = (): Promise<number> => (
+const getActiveStreams = (): Promise<ChessDoc[]> => (
   chessService.getManyChessGames({
     game_status: GameStatus.IN_PROGRESS,
-    source: GameSource.LICHESS,
-  }).then((games) => games.length)
+    source: { $in: [GameSource.USER, GameSource.STREAMER] },
+  })
 );
 
 const lichessService = {
