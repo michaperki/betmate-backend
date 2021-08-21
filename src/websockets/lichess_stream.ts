@@ -13,6 +13,7 @@ import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
 import { getLichessOutcome } from 'helpers/chess_logic';
+import { isGameComplete } from 'validation/chess';
 
 const logError = (e: Error) => console.log('Error', e.message);
 
@@ -132,10 +133,15 @@ export const getStream = async (
       }
     })
     .on('end', async () => {
-      const completeFields = { complete: true };
+      const gameDoc = await chessService.getChessGame(gameId);
+      const completeFields = {
+        complete: true,
+        game_status: !isGameComplete(gameDoc.game_status)
+          ? gameDoc.game_status
+          : GameStatus.ABORTED,
+      };
       socket.to(gameId).emit('game_over', { gameId, ...completeFields });
       await chessService.updateChessGame(gameId, completeFields);
-      console.log('complete', chessDoc.player_black.name, chessDoc.player_white.name);
       setTimeout(onGameComplete, 100);
     });
 
