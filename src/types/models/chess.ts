@@ -1,4 +1,5 @@
 import { Document, Types } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { WDLData } from 'types/microservice';
 
 /* -------- Helper Types -------- */
@@ -9,11 +10,14 @@ export enum GameStatus {
   BLACK_WIN = 'black_win',
   WHITE_WIN = 'white_win',
   IN_PROGRESS = 'in_progress',
+  ABORTED = 'aborted',
 }
 
 export enum GameSource {
   STATIC = 'static',
-  LICHESS = 'lichess',
+  LOOP = 'loop',
+  USER = 'user',
+  STREAMER = 'streamer',
 }
 
 export interface Player {
@@ -59,3 +63,5 @@ export interface ChessDoc extends Document {
   created_at: Date,
   updated_at: Date,
 }
+
+export type CreateChessQuery = PartialWithRequired<ChessDoc, 'player_black' | 'player_white' | 'source'>;

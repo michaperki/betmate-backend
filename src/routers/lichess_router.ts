@@ -4,8 +4,9 @@ import { Namespace } from 'socket.io';
 import { handleValidationError } from 'validation';
 import { createValidator } from 'express-joi-validation';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { CreateGameIDSchema, CreateGameURLSchema } from 'validation/lichess';
+import { CreateGameIDSchema, CreateGameURLSchema, CreateStreamerGameSchema } from 'validation/lichess';
 import { lichessController } from 'controllers';
+import { requireAuth } from 'authentication';
 
 const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Express => {
   const router = express();
@@ -20,6 +21,7 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
   router
     .route('/url')
     .post(
+      requireAuth,
       validator.body(CreateGameURLSchema),
       lichessController.convertUrlToId,
       validator.body(CreateGameIDSchema),
@@ -29,6 +31,19 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
   router
     .route('/id')
     .post(
+      requireAuth,
+      validator.body(CreateGameIDSchema),
+      lichessController.createLichessStream(socket),
+    );
+
+  router
+    .route('/streamer')
+    .get(lichessController.getStreamers)
+    .post(
+      requireAuth,
+      (req, res, next) => { console.log(req.body); next(); },
+      validator.body(CreateStreamerGameSchema),
+      lichessController.getStreamerGame,
       validator.body(CreateGameIDSchema),
       lichessController.createLichessStream(socket),
     );
@@ -39,4 +54,5 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
 
   return router;
 };
+
 export default routerWithSocket;

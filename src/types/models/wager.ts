@@ -1,4 +1,5 @@
 import { Document, Types } from 'mongoose';
+import { PartialWithRequired } from 'types';
 import { ChessDoc, GameStatus } from './chess';
 import { UserDoc } from './user';
 
@@ -37,6 +38,8 @@ export interface PopulatedWagerDoc extends Omit<WagerDoc, 'better_id' | 'game_id
   game_id: ChessDoc
   better_id: UserDoc
 }
+
+export type CreateWagerQuery = PartialWithRequired<WagerDoc, 'game_id' | 'better_id' | 'wdl' | 'amount' | 'odds' | 'data' | 'move_number'>;
 
 /* -------- Wager Processing Types -------- */
 

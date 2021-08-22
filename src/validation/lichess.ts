@@ -3,6 +3,7 @@ import joi from 'joi';
 import {
   LichessGame,
   LichessStreamEnd,
+  LichessStreamer,
   LichessStreamMove, LichessStreamStart, Player, Status, Variant,
 } from 'types/lichess';
 
@@ -109,6 +110,13 @@ export const StreamMoveSchema = joi.object<LichessStreamMove>({
   bc: joi.number().required(),
 });
 
+export const StreamerSchema = joi.object<LichessStreamer>({
+  name: joi.string().required(),
+  id: joi.string().required(),
+  title: joi.string(),
+  patron: joi.boolean(),
+});
+
 const lichessRegex = new RegExp('^(https?:\\/\\/)?(www.)?lichess\\.org(\\/[a-zA-Z\\d]{8})$', 'i');
 
 export const CreateGameURLSchema = joi.object({
@@ -122,10 +130,18 @@ export const CreateGameIDSchema = joi.object({
   id: joi.string().alphanum().length(8).required(),
 });
 
+export const CreateStreamerGameSchema = joi.object({
+  userID: joi.string().required(),
+});
+
 export interface CreateGameURLRequest extends ValidatedRequestSchema {
   [ContainerTypes.Body]: { url: string }
 }
 
 export interface CreateGameIDRequest extends ValidatedRequestSchema {
   [ContainerTypes.Body]: { id: string }
+}
+
+export interface CreateStreamerGameRequest extends ValidatedRequestSchema {
+  [ContainerTypes.Body]: { userID: string }
 }

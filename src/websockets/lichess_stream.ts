@@ -1,8 +1,7 @@
 import ndjson from 'ndjson';
-import { PartialWithRequired } from 'types';
 import { StreamData } from 'types/lichess';
 import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
+  AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema } from 'validation/lichess';
@@ -14,12 +13,13 @@ import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
 import { getLichessOutcome } from 'helpers/chess_logic';
+import { isGameComplete } from 'validation/chess';
 
 const logError = (e: Error) => console.log('Error', e.message);
 
 export const getStream = async (
   id: string,
-  startData: PartialWithRequired<ChessDoc, 'player_white' | 'player_black' | 'source'>,
+  startData: CreateChessQuery,
   socket: Namespace<ChessListenEvents, ChessEmitEvents>,
   onGameComplete = () => {},
 ): Promise<string> => {
@@ -27,7 +27,7 @@ export const getStream = async (
   socket.emit('new_game', chessDoc.toJSON());
   const gameId = String(chessDoc._id);
 
-  const stream = await lichessService.getStream(id);
+  const stream = await lichessService.getGameStream(id);
 
   const moveHist: MoveData[] = [];
   const gameTime = 600;
@@ -132,7 +132,16 @@ export const getStream = async (
         socket.emit('game_error', { gameId, message: error.message });
       }
     })
-    .on('end', () => {
+    .on('end', async () => {
+      const gameDoc = await chessService.getChessGame(gameId);
+      const completeFields = {
+        complete: true,
+        game_status: !isGameComplete(gameDoc.game_status)
+          ? gameDoc.game_status
+          : GameStatus.ABORTED,
+      };
+      socket.to(gameId).emit('game_over', { gameId, ...completeFields });
+      await chessService.updateChessGame(gameId, completeFields);
       setTimeout(onGameComplete, 100);
     });
 
@@ -143,7 +152,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
   try {
     const selectedGame = await lichessService.getTopGame();
 
-    const gameFields = lichessService.createChessModelFields(selectedGame);
+    const gameFields = lichessService.createChessModelFields(selectedGame, GameSource.LOOP);
 
     getStream(selectedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
