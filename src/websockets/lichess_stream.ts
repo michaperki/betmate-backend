@@ -136,7 +136,7 @@ export const getStream = async (
       const gameDoc = await chessService.getChessGame(gameId);
       const completeFields = {
         complete: true,
-        game_status: !isGameComplete(gameDoc.game_status)
+        game_status: isGameComplete(gameDoc.game_status)
           ? gameDoc.game_status
           : GameStatus.ABORTED,
       };
