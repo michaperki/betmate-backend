@@ -144,7 +144,8 @@ export const getStream = async (
   setTimeout(async () => {
     try {
       const gameDoc = await chessService.getChessGame(gameId);
-      if (gameDoc.move_hist.length <= 2) {
+      const lastUpdated = (new Date().getTime() - new Date(gameDoc.updated_at).getTime()) / 1000;
+      if (lastUpdated > 110) {
         console.log(`Game ${gameId} stale, terminating stream`);
         stream.destroy();
       }
