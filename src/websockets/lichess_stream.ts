@@ -27,12 +27,18 @@ export const getStream = async (
   const stream = await lichessService.getGameStream(id);
 
   const moveHist: MoveData[] = [];
-  const gameTime = 600;
+  const gameTime = startData.time_white ?? 600;
   let liveTopMoves: string[] = chessDoc.pool_wagers.move.options.map(String);
   const game = new Chess();
 
+  const staleGameTime = setTimeout(async () => {
+    console.log(`Game ${gameId} stale, terminating stream`);
+    stream.destroy();
+  }, 300000);
+
   stream.pipe(ndjson.parse())
     .on('data', async (d: StreamData) => {
+      staleGameTime.refresh();
       try {
         if (matchesSchema(StreamStartSchema, d)) {
           chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
@@ -119,6 +125,8 @@ export const getStream = async (
     })
     .on('end', async () => {
       try {
+        clearTimeout(staleGameTime);
+
         const gameResult = await lichessService.getGame(id);
         const gameStatus = gameResult.status === 'started'
           ? GameStatus.ABORTED
@@ -140,19 +148,6 @@ export const getStream = async (
         console.log('Error:', error.message);
       }
     });
-
-  setTimeout(async () => {
-    try {
-      const gameDoc = await chessService.getChessGame(gameId);
-      const lastUpdated = (new Date().getTime() - new Date(gameDoc.updated_at).getTime()) / 1000;
-      if (lastUpdated > 110) {
-        console.log(`Game ${gameId} stale, terminating stream`);
-        stream.destroy();
-      }
-    } catch (error) {
-      console.log('Error:', error.message);
-    }
-  }, 120000);
 
   return gameId;
 };
