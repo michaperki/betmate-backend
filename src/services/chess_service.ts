@@ -2,7 +2,7 @@ import { Chess } from 'models';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
-import { ChessDoc, CreateChessQuery } from 'types/models/chess';
+import { ChessDoc, CreateChessQuery, GameStatus } from 'types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
@@ -57,7 +57,11 @@ const createChessGame = async (fields: CreateChessQuery): Promise<ChessDoc> => (
  * Deletes all incomplete games in database. Only called on startup of server.
  * @returns Promise of boolean indicating success
  */
-const purgeStaleGames = (): Promise<boolean> => Chess.deleteMany({ complete: false }).then((res) => !!res);
+const purgeStaleGames = async (): Promise<boolean> => {
+  const deleteOne = await Chess.deleteMany({ complete: false }).then((res) => !!res);
+  const deleteTwo = await Chess.deleteMany({ game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] } }).then((res) => !!res);
+  return deleteOne && deleteTwo;
+};
 
 const chessService = {
   getChessGame,

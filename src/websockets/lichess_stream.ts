@@ -13,9 +13,6 @@ import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
 import { getLichessOutcome } from 'helpers/chess_logic';
-import { isGameComplete } from 'validation/chess';
-
-const logError = (e: Error) => console.log('Error', e.message);
 
 export const getStream = async (
   id: string,
@@ -38,7 +35,7 @@ export const getStream = async (
     .on('data', async (d: StreamData) => {
       try {
         if (matchesSchema(StreamStartSchema, d)) {
-          chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS }).catch(logError);
+          chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
           socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
         } else if (matchesSchema(StreamMoveSchema, d)) {
           if (d.lm === undefined) return;
@@ -77,7 +74,7 @@ export const getStream = async (
 
           const history = moveHist.map((m) => m.san);
 
-          chessService.updateChessGame(gameId, update).catch(logError);
+          chessService.updateChessGame(gameId, update);
           socket.to(gameId).emit('new_move', { gameId, ...update });
 
           (liveTopMoves.length > 0
@@ -108,22 +105,10 @@ export const getStream = async (
             },
           };
 
-          chessService.updateChessGame(gameId, oddsUpdate).catch(logError);
+          chessService.updateChessGame(gameId, oddsUpdate);
           socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
         } else if (matchesSchema(StreamEndSchema, d)) {
-          const outcome = getLichessOutcome((d as any).winner);
-          const completeFields = {
-            game_status: outcome,
-            complete: true,
-          };
-
-          socket.to(gameId).emit('game_over', { gameId, ...completeFields });
-          await chessService.updateChessGame(gameId, completeFields);
-
-          // Resolve win/draw/loss wagers
-          resolveWdlWagers(gameId, outcome)
-            .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
-            .catch((e) => console.log('Error:', e.message));
+          // allow .on('end') to handle game ending
         } else {
           console.log('FAIL', d);
         }
@@ -133,17 +118,40 @@ export const getStream = async (
       }
     })
     .on('end', async () => {
-      const gameDoc = await chessService.getChessGame(gameId);
-      const completeFields = {
-        complete: true,
-        game_status: isGameComplete(gameDoc.game_status)
-          ? gameDoc.game_status
-          : GameStatus.ABORTED,
-      };
-      socket.to(gameId).emit('game_over', { gameId, ...completeFields });
-      await chessService.updateChessGame(gameId, completeFields);
-      setTimeout(onGameComplete, 100);
+      try {
+        const gameResult = await lichessService.getGame(id);
+        const gameStatus = gameResult.status === 'started'
+          ? GameStatus.ABORTED
+          : getLichessOutcome(gameResult.winner ?? '');
+
+        const completeFields = {
+          complete: true,
+          game_status: gameStatus,
+        };
+        socket.to(gameId).emit('game_over', { gameId, ...completeFields });
+        await chessService.updateChessGame(gameId, completeFields);
+        setTimeout(onGameComplete, 100);
+
+        // Resolve win/draw/loss wagers
+        resolveWdlWagers(gameId, gameStatus)
+          .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
+          .catch((e) => console.log('Error:', e.message));
+      } catch (error) {
+        console.log('Error:', error.message);
+      }
     });
+
+  setTimeout(async () => {
+    try {
+      const gameDoc = await chessService.getChessGame(gameId);
+      if (gameDoc.move_hist.length <= 2) {
+        console.log(`Game ${gameId} stale, terminating stream`);
+        stream.destroy();
+      }
+    } catch (error) {
+      console.log('Error:', error.message);
+    }
+  }, 120000);
 
   return gameId;
 };

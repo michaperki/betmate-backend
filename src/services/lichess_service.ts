@@ -62,6 +62,7 @@ const getTopGame = (): Promise<LichessGame> => (
       .filter((s) => s.length > 0)
       .map((s) => JSON.parse(s))
       .map(passiveValidate(LichessGameSchema))
+      .filter((g) => numMoves(g) >= 2)
       .reduce(takeLess(numMoves))
   ))
     .catch((error) => {
