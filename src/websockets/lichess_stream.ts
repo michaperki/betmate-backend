@@ -31,6 +31,11 @@ export const getStream = async (
   let liveTopMoves: string[] = chessDoc.pool_wagers.move.options.map(String);
   const game = new Chess();
 
+  // Initial stream messages are to catch up to current game state
+  // So do not contact microservice until game is up to date
+  let canQueryMicroservice = false;
+  let startFen = '';
+
   const staleGameTime = setTimeout(async () => {
     console.log(`Game ${gameId} stale, terminating stream`);
     stream.destroy();
@@ -41,9 +46,12 @@ export const getStream = async (
       staleGameTime.refresh();
       try {
         if (matchesSchema(StreamStartSchema, d)) {
+          startFen = d.fen.split(' ').slice(0, 2).join(' ');
           chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
           socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
         } else if (matchesSchema(StreamMoveSchema, d)) {
+          if (!canQueryMicroservice && startFen === d.fen) canQueryMicroservice = true;
+
           if (d.lm === undefined) return;
           const move = game.move(d.lm, { sloppy: true });
           if (!move) {
@@ -91,28 +99,30 @@ export const getStream = async (
 
           liveTopMoves = [];
 
-          const oddsPromise = microservice
-            .getWDL(game.fen(), Math.floor((d.wc / gameTime) * 180), Math.floor((d.bc / gameTime) * 180))
-            .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-          const topMovesPromise = microservice
-            .getTopMoves(game.fen(), 3)
-            .catch(() => []);
+          if (canQueryMicroservice) {
+            const oddsPromise = microservice
+              .getWDL(game.fen(), Math.floor((d.wc / gameTime) * 180), Math.floor((d.bc / gameTime) * 180))
+              .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
+            const topMovesPromise = microservice
+              .getTopMoves(game.fen(), 3)
+              .catch(() => []);
 
-          const [odds, topMoves] = await Promise.all([oddsPromise, topMovesPromise]);
-          liveTopMoves = topMoves;
+            const [odds, topMoves] = await Promise.all([oddsPromise, topMovesPromise]);
+            liveTopMoves = topMoves;
 
-          const oddsUpdate = {
-            odds,
-            pool_wagers: {
-              move: {
-                wagers: [] as unknown as Types.Array<AnonMoveWager>,
-                options: topMoves as Types.Array<string>,
+            const oddsUpdate = {
+              odds,
+              pool_wagers: {
+                move: {
+                  wagers: [] as unknown as Types.Array<AnonMoveWager>,
+                  options: topMoves as Types.Array<string>,
+                },
               },
-            },
-          };
+            };
 
-          chessService.updateChessGame(gameId, oddsUpdate);
-          socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
+            chessService.updateChessGame(gameId, oddsUpdate);
+            socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
+          }
         } else if (matchesSchema(StreamEndSchema, d)) {
           // allow .on('end') to handle game ending
         } else {
