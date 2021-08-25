@@ -36,6 +36,8 @@ const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvent
 
       const game = await lichessService.getGame(req.body.id);
 
+      if (game.status !== 'started') throw new HttpError(400, ['Game has already ended.']);
+
       const gameFields = lichessService.createChessModelFields(game, source);
 
       const gameExists = streams.some(samePlayers(gameFields));
