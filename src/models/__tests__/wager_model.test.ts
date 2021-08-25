@@ -1,7 +1,7 @@
 import { isWagerResolved } from 'validation/wager';
 import { Chess, Users, Wager } from 'models';
 import { Types, UpdateQuery } from 'mongoose';
-import { GameStatus } from 'types/models/chess';
+import { GameSource, GameStatus } from 'types/models/chess';
 import { WagerDoc, WagerStatus } from 'types/models/wager';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
@@ -11,6 +11,7 @@ import { connectDB, dropDB } from '../../../__jest__/helpers';
 const chessData = {
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
+  source: GameSource.STATIC,
 };
 
 const userData = {

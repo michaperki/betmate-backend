@@ -1,7 +1,8 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-import { CompareCallback, UserDoc } from 'types/models/user';
+import { CompareCallback, UserDoc, UserRole } from 'types/models/user';
+import { isUserRole } from 'validation/auth';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -9,6 +10,14 @@ const UserSchema = new Schema({
   first_name: { type: String, default: '' },
   last_name: { type: String, default: '' },
   account: { type: Number, default: 1000 },
+  role: {
+    type: String,
+    default: UserRole.USER,
+    validate: {
+      validator: isUserRole,
+      message: (props) => `Value "${props.value}" not in enum "UserRole"`,
+    },
+  },
 }, {
   toObject: {
     virtuals: true,

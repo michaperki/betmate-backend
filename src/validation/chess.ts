@@ -2,11 +2,13 @@ import joi from 'joi';
 import { ValidatedRequestSchema, ContainerTypes } from 'express-joi-validation';
 import { Condition } from 'mongodb';
 
-import { GameStatus } from 'types/models/chess';
+import { GameSource, GameStatus } from 'types/models/chess';
 
 export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
 
 export const isGameComplete = (v: string): boolean => [GameStatus.WHITE_WIN, GameStatus.BLACK_WIN, GameStatus.DRAW].includes(v as GameStatus);
+
+export const isGameSource = (v: string): boolean => Object.values(GameSource).includes(v as GameSource);
 
 const gameStatusQueryValidator = (value: any, helpers: joi.CustomHelpers) => {
   const sanitizedValue = (Array.isArray(value) ? value : Array(value)).map(String);

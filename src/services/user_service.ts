@@ -54,6 +54,7 @@ const getUser = (id: string | Types.ObjectId): Promise<UserDoc> => (
 const getUsers = (fields: FilterQuery<UserDoc>): Promise<UserDoc[]> => (
   Users
     .find(fields)
+    .limit(1000)
     .catch(dbErrorHandler)
 );
 

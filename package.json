@@ -1,11 +1,11 @@
 {
   "name": "betmate-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "API for BetMate",
-  "productionURL": "https://your-api-url.here",
-  "productionClientURL": "https://your-app-url.here",
+  "productionURL": "https://betmate-backend-prod.herokuapp.com",
+  "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
-  "repository": "https://github.com/dali-lab/crud-template-backend",
+  "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
   "contributors": [
     "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
@@ -41,6 +41,7 @@
     "babel-cli": "^6.26.0",
     "babel-eslint": "^10.0.1",
     "babel-preset-env": "^1.7.0",
+    "bad-words": "^3.0.4",
     "bcrypt": "^5.0.1",
     "body-parser": "^1.19.0",
     "chess.js": "^0.11.0",
@@ -55,6 +56,7 @@
     "mongodb": "^3.6.9",
     "mongoose": "^5.10.7",
     "morgan": "^1.10.0",
+    "ndjson": "^2.0.0",
     "passport": "^0.4.1",
     "passport-jwt": "^4.0.0",
     "passport-local": "^1.0.0",
@@ -64,6 +66,8 @@
     "typescript": "^4.2.3"
   },
   "devDependencies": {
+    "@types/ndjson": "^2.0.1",
+    "@types/bad-words": "^3.0.1",
     "@types/passport-jwt": "^3.0.5",
     "debug": "^4.2.0",
     "eslint": "^7.9.0",

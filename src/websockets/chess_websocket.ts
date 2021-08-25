@@ -1,19 +1,16 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
-import { Chess as ChessGame } from 'chess.js';
-import { Types, UpdateQuery } from 'mongoose';
-import { resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessService, microservice } from 'services';
-import { getChessStatus } from 'helpers/chess_logic';
+import Filter from 'bad-words';
+import { chessService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { decodeToken } from 'helpers/utils';
 import {
-  AnonMoveWager, ChessDoc, GameStatus, MoveData,
-} from 'types/models/chess';
-import {
+  GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from 'validation/websocket';
 import { validate } from 'validation';
+
+const filter = new Filter();
 
 /**
  * Websocket event handler
@@ -115,107 +112,15 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     }
   });
 
-  /**
-   * Handler for `new_move` event
-   *
-   * Procedure
-   *   - Retreive game <move.gameId> from database
-   *   - Update game with respect to `move.data`
-   *   - Broadcast update
-   *   - Resolve move wagers, broadcast results to each user
-   *   - Get new odds and move options from microservice. With resulting data, update game and broadcast
-   *   - Check if game is complete
-   *   - If so, resolve win/draw/loss wagers, broadcast results to each user
-   */
-  socket.on('new_move', async (move: { gameId: string, data: MoveData }): Promise<boolean> => {
-    // need to add protection for who can move.
+  socket.on('game_chat', (msg) => {
     try {
-      const chessDoc = await chessService.getChessGame(move.gameId);
-
-      // Update game with move data
-      const chessGame = new ChessGame(chessDoc.state);
-
-      const moveResult = chessGame.move(move.data.san);
-      if (!moveResult) return socket.emit('game_error', { gameId: move.gameId, message: 'Invalid move' });
-
-      const timeWhite = move.data.is_white ? move.data.time : chessDoc.time_white;
-      const timeBlack = !move.data.is_white ? move.data.time : chessDoc.time_black;
-
-      const updateMessage = {
-        state: chessGame.fen(),
-        move_hist: [...chessDoc.move_hist, move.data] as Types.Array<MoveData>,
-        time_white: timeWhite,
-        time_black: timeBlack,
-        pool_wagers: {
-          move: {
-            wagers: [] as unknown as Types.Array<AnonMoveWager>,
-            options: [] as unknown as Types.Array<string>,
-          },
-        },
-      };
-
-      // Broadcast updated game and save to database
-      socket.to(move.gameId).emit('new_move', { gameId: move.gameId, ...updateMessage });
-      chessService.updateChessGame(move.gameId, updateMessage);
-
-      // resolve wagers on the move just played, broadcast results to users
-      resolveCriticalMoveWagers(move.gameId, chessGame, chessDoc.pool_wagers.move.options)
-        .then((wagerResults) => (
-          Object
-            .entries(wagerResults)
-            .forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }))
-        ));
-
-      // get new odds from microservice
-      const oddsPromise = microservice
-        .getWDL(chessGame.fen(), Math.floor((timeWhite / 300) * 180), Math.floor((timeBlack / 300) * 180))
-        .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-      const topMovesPromise = microservice
-        .getTopMoves(chessGame.fen(), 3)
-        .catch(() => []);
-
-      Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
-        const oddsUpdate = {
-          odds,
-          pool_wagers: {
-            move: {
-              wagers: [] as unknown as Types.Array<AnonMoveWager>,
-              options: topMoves as Types.Array<string>,
-            },
-          },
-        };
-
-        // broadcast new odds and save to database
-        socket.to(move.gameId).emit('new_odds', { gameId: move.gameId, ...oddsUpdate });
-        chessService.updateChessGame(move.gameId, oddsUpdate);
-      });
-
-      // Check if game is complete
-      const gameStatus = getChessStatus(chessGame);
-      const complete = gameStatus !== GameStatus.IN_PROGRESS;
-
-      // resolve win/draw/loss wagers, broadcast results to users
-      if (complete) {
-        const completeFields: UpdateQuery<ChessDoc> = {
-          complete: true,
-          game_status: gameStatus,
-        };
-        socket.to(move.gameId).emit('game_over', { gameId: move.gameId, ...completeFields });
-        await chessService.updateChessGame(move.gameId, completeFields);
-
-        resolveWdlWagers(move.gameId, gameStatus)
-          .then((wagerResults) => (
-            Object
-              .entries(wagerResults)
-              .forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId: move.gameId, wagers }))
-          ));
-      }
+      validate(GameChatSchema)(msg);
+      const rej = filter.isProfane(msg.chat);
+      if (rej) return socket.emit('chat_swear', { message: 'You cannot use profanity' });
+      return socket.to(msg.gameId).emit('game_chat', msg);
     } catch (error) {
-      socket.emit('game_error', { gameId: move.gameId, message: error.message });
-      return false;
+      return socket.emit('socket_error', { message: error.message });
     }
-    // Retreive game from database
-    return true;
   });
 };
 

@@ -2,7 +2,7 @@ import supertest from 'supertest';
 import { stringify } from 'querystring';
 import { chessRouter } from 'routers';
 
-import { GameStatus, MoveData } from 'types/models/chess';
+import { GameSource, GameStatus, MoveData } from 'types/models/chess';
 import { Chess } from 'models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
@@ -17,6 +17,7 @@ const fillerMove: MoveData = {
 const chessDataA = {
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
+  source: GameSource.STATIC,
 };
 
 // all fields
@@ -27,6 +28,7 @@ const chessDataB = {
   game_status: GameStatus.IN_PROGRESS,
   player_white: { name: 'playerC', elo: 1200 },
   player_black: { name: 'playerD', elo: 1400 },
+  source: GameSource.STATIC,
   move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove],
   time_white: 293,
   time_black: 291,

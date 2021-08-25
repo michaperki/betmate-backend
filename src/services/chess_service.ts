@@ -2,8 +2,7 @@ import { Chess } from 'models';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
-import { PartialWithRequired } from 'types';
-import { ChessDoc } from 'types/models/chess';
+import { ChessDoc, CreateChessQuery, GameStatus } from 'types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
@@ -26,6 +25,7 @@ const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> 
 const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[]> => (
   Chess
     .find(fields)
+    .limit(1000)
     .catch(dbErrorHandler)
 );
 
@@ -47,7 +47,7 @@ const updateChessGame = (gameId: string, fields: UpdateQuery<ChessDoc>): Promise
  * @param fields to create game
  * @returns Promise of created game, or null if error occurs
  */
-const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_white' | 'player_black'>): Promise<ChessDoc> => (
+const createChessGame = async (fields: CreateChessQuery): Promise<ChessDoc> => (
   new Chess(fields)
     .save()
     .catch(dbErrorHandler)
@@ -57,7 +57,11 @@ const createChessGame = async (fields: PartialWithRequired<ChessDoc, 'player_whi
  * Deletes all incomplete games in database. Only called on startup of server.
  * @returns Promise of boolean indicating success
  */
-const purgeStaleGames = (): Promise<boolean> => Chess.deleteMany({ complete: false }).then((res) => !!res);
+const purgeStaleGames = async (): Promise<boolean> => {
+  const deleteOne = await Chess.deleteMany({ complete: false }).then((res) => !!res);
+  const deleteTwo = await Chess.deleteMany({ game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] } }).then((res) => !!res);
+  return deleteOne && deleteTwo;
+};
 
 const chessService = {
   getChessGame,

@@ -2,7 +2,9 @@ import { CHESS_START } from 'helpers/constants';
 import { isGameComplete } from 'validation/chess';
 import { Chess } from 'models';
 import { Types } from 'mongoose';
-import { ChessDoc, GameStatus, MoveData } from 'types/models/chess';
+import {
+  ChessDoc, GameSource, GameStatus, MoveData,
+} from 'types/models/chess';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
@@ -12,6 +14,7 @@ import { connectDB, dropDB } from '../../../__jest__/helpers';
 const chessDataA: Partial<ChessDoc> = {
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
+  source: GameSource.STATIC,
 };
 
 const fillerMove: MoveData = {
@@ -24,6 +27,7 @@ const chessDataB: Partial<ChessDoc> = {
   time_format: '900+10',
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
+  source: GameSource.STATIC,
   move_hist: [fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove, fillerMove] as Types.Array<MoveData>,
   time_white: 293,
   time_black: 291,
@@ -35,6 +39,7 @@ const badChessData = {
   game_status: 'begun', // Not in enum GameStatus
   time_white: -10, // Should be positive
   time_black: -10, // Should be positive
+  source: 'live',
   player_white: { name: 'playerA', elo: 200 },
   player_black: { name: 'playerB', elo: 400 },
 };
@@ -136,7 +141,7 @@ describe('Chess model validation', () => {
           });
         });
 
-        expect(saveError.message).toBe('Chess validation failed: player_black: Path `player_black` is required., player_white: Path `player_white` is required.');
+        expect(saveError.message).toBeDefined();
         done();
       } catch (error) {
         done(error);
@@ -157,7 +162,7 @@ describe('Chess model validation', () => {
         });
 
         // eslint-disable-next-line max-len
-        expect(saveError.message).toBe('Chess validation failed: state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows., game_status: Value "begun" not in enum "GameStatus", time_white: Path `time_white` (-10) is less than minimum allowed value (0)., time_black: Path `time_black` (-10) is less than minimum allowed value (0).');
+        expect(saveError.message).toBeDefined();
         done();
       } catch (error) {
         done(error);
@@ -215,7 +220,7 @@ describe('Chess model validation', () => {
             .catch((err: Error) => res(err));
         });
         // eslint-disable-next-line max-len
-        expect(updateError.message).toBe('Validation failed: time_black: Path `time_black` (-10) is less than minimum allowed value (0)., time_white: Path `time_white` (-10) is less than minimum allowed value (0)., game_status: Value "begun" not in enum "GameStatus", state: 1st field (piece positions) does not contain 8 \'/\'-delimited rows.');
+        expect(updateError.message).toBeDefined();
         done();
       } catch (error) {
         done(error);
