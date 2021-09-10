@@ -1,11 +1,11 @@
 {
   "name": "betmate-backend",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "API for BetMate",
-  "productionURL": "https://your-api-url.here",
-  "productionClientURL": "https://your-app-url.here",
+  "productionURL": "https://betmate-backend-prod.herokuapp.com",
+  "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
-  "repository": "https://github.com/dali-lab/crud-template-backend",
+  "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
   "contributors": [
     "Jack Keane <John.F.Keane.22@Dartmouth.edu>",

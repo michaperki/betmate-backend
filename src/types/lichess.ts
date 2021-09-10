@@ -12,12 +12,12 @@ export interface Player {
 
 export interface LichessGame {
   id: string
-  rated: boolean
-  variant: string
-  speed: string
-  perf: string
-  createdAt: number
-  lastMoveAt: number
+  rated?: boolean
+  variant?: string
+  speed?: string
+  perf?: string
+  createdAt?: number
+  lastMoveAt?: number
   status: string
   players: {
     white: Player
@@ -25,7 +25,7 @@ export interface LichessGame {
   }
   winner?: string
   moves: string
-  pgn: string
+  pgn?: string
   clock: {
     initial: number
     increment: number
@@ -48,19 +48,19 @@ export interface Status {
 }
 
 export interface LichessStreamStart {
-  id: string
-  variant: Variant
-  speed: string
-  perf: string
-  rated: boolean
-  initialFen: string
+  id?: string
+  variant?: Variant
+  speed?: string
+  perf?: string
+  rated?: boolean
+  initialFen?: string
   fen: string
-  player: string
-  turns: number
-  startedAtTurn: number
-  source: string
-  status: Status
-  createdAt: number
+  player?: string
+  turns?: number
+  startedAtTurn?: number
+  source?: string
+  status?: Status
+  createdAt?: number
   lastMove?: string
   threefold?: boolean
   check?: string
