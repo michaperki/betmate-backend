@@ -66,8 +66,8 @@
     "typescript": "^4.2.3"
   },
   "devDependencies": {
-    "@types/ndjson": "^2.0.1",
     "@types/bad-words": "^3.0.1",
+    "@types/ndjson": "^2.0.1",
     "@types/passport-jwt": "^3.0.5",
     "debug": "^4.2.0",
     "eslint": "^7.9.0",
@@ -77,7 +77,7 @@
     "eslint-plugin-jsx-a11y": "^6.3.1",
     "jest": "^26.4.2",
     "jest-environment-node": "^26.3.0",
-    "mongodb-memory-server": "^6.8.0",
+    "mongodb-memory-server": "^7.4.0",
     "nodemon": "^2.0.4",
     "supertest": "^4.0.2",
     "ts-jest": "^26.5.4",
