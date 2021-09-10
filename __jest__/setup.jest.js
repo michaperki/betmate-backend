@@ -5,13 +5,13 @@
 
 const fs = require('fs');
 const { resolve, join } = require('path');
-const { MongoMemoryServer } = require('mongodb-memory-server');
+const MongodbMemoryServer = require('mongodb-memory-server');
 
 const cwd = process.cwd();
 
 const debug = require('debug')('jest-mongodb:setup');
 
-const mongod = new MongoMemoryServer(getMongodbMemoryOptions());
+const mongod = new MongodbMemoryServer.default(getMongodbMemoryOptions());
 
 const globalConfigPath = join(cwd, 'globalConfig.json');
 
