@@ -81,11 +81,23 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
   }
 };
 
+const clearLeaderboards = async (): Promise<boolean> => {
+  try {
+    const now = new Date();
+    const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    await Leaderboard.deleteMany({ created_at: { $lte: lastWeek } });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 const leaderboardService = {
   createLeaderboard,
   getLeaderboardSection,
   getUserRanking,
   generateLeaderboard,
+  clearLeaderboards,
 };
 
 export default leaderboardService;
