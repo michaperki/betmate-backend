@@ -57,8 +57,10 @@ chessService.purgeStaleGames().then(() => {
 
 // generate leaderboard every minute
 setInterval(leaderboardService.generateLeaderboard, 60000);
-setInterval(leaderboardService.clearLeaderboards, 7 * 24 * 60 * 60 * 1000);
-setInterval(chessService.clearGames, 30 * 24 * 60 * 60 * 1000);
+setInterval(() => {
+  leaderboardService.clearLeaderboards();
+  chessService.clearGames();
+}, 7 * 24 * 60 * 60 * 1000);
 
 // default index route
 app.get('/', (req, res) => {
