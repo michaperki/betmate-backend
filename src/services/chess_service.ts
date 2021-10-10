@@ -63,12 +63,24 @@ const purgeStaleGames = async (): Promise<boolean> => {
   return deleteOne && deleteTwo;
 };
 
+const clearGames = async (): Promise<boolean> => {
+  try {
+    const now = new Date();
+    const lastMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    await Chess.deleteMany({ created_at: { $lte: lastMonth } });
+    return true;
+  } catch (error) {
+    return false;
+  }
+};
+
 const chessService = {
   getChessGame,
   getManyChessGames,
   updateChessGame,
   createChessGame,
   purgeStaleGames,
+  clearGames,
 };
 
 export default chessService;
