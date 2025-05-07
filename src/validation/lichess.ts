@@ -145,3 +145,10 @@ export interface CreateGameIDRequest extends ValidatedRequestSchema {
 export interface CreateStreamerGameRequest extends ValidatedRequestSchema {
   [ContainerTypes.Body]: { userID: string }
 }
+
+export function sanitizeLichessGame(game: any): any {
+  delete game.source;
+  if (game.players?.white?.user) delete game.players.white.user.flair;
+  if (game.players?.black?.user) delete game.players.black.user.flair;
+  return game;
+}

@@ -9,7 +9,12 @@ import { GameSource } from 'types/models/chess';
 import { UserRole } from 'types/models/user';
 import { ValidatedRequestWithJWT } from 'types/requests';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { CreateGameIDRequest, CreateGameURLRequest, CreateStreamerGameRequest } from 'validation/lichess';
+import {
+  CreateGameIDRequest,
+  CreateGameURLRequest,
+  CreateStreamerGameRequest,
+  sanitizeLichessGame, // ✅ import added
+} from 'validation/lichess';
 import { getStream } from 'websockets/lichess_stream';
 import { handleFailure, handleSuccess } from './utils';
 
@@ -34,7 +39,8 @@ const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvent
 
       if (!source) throw new HttpError(400, ['Game quota filled. Remaining slots if available are for streamers.']);
 
-      const game = await lichessService.getGame(req.body.id);
+      const rawGame = await lichessService.getGame(req.body.id);
+      const game = sanitizeLichessGame(rawGame); // ✅ sanitize before use
 
       if (game.status !== 'started') throw new HttpError(400, ['Game has already ended.']);
 

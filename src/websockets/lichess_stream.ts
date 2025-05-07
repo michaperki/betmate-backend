@@ -1,10 +1,11 @@
+
 import ndjson from 'ndjson';
 import { StreamData } from 'types/lichess';
 import {
   AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
-import { StreamEndSchema, StreamMoveSchema, StreamStartSchema } from 'validation/lichess';
+import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
@@ -31,8 +32,6 @@ export const getStream = async (
   let liveTopMoves: string[] = chessDoc.pool_wagers.move.options.map(String);
   const game = new Chess();
 
-  // Initial stream messages are to catch up to current game state
-  // So do not contact microservice until game is up to date
   let canQueryMicroservice = false;
   let startFen = '';
 
@@ -150,7 +149,6 @@ export const getStream = async (
         await chessService.updateChessGame(gameId, completeFields);
         setTimeout(onGameComplete, 100);
 
-        // Resolve win/draw/loss wagers
         resolveWdlWagers(gameId, gameStatus)
           .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
           .catch((e) => console.log('Error:', e.message));
@@ -165,12 +163,14 @@ export const getStream = async (
 export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
     const selectedGame = await lichessService.getTopGame();
+    const sanitizedGame = sanitizeLichessGame(selectedGame); // ✅ sanitize before use
 
-    const gameFields = lichessService.createChessModelFields(selectedGame, GameSource.LOOP);
+    const gameFields = lichessService.createChessModelFields(sanitizedGame, GameSource.LOOP);
 
-    getStream(selectedGame.id, gameFields, socket, () => streamLoop(socket));
+    getStream(sanitizedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
     console.log(error);
     setTimeout(() => streamLoop(socket), 100);
   }
 };
+

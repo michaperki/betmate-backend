@@ -7,7 +7,7 @@ import {
   ChessDoc, CreateChessQuery, GameSource, GameStatus,
 } from 'types/models/chess';
 import { passiveValidate } from 'validation';
-import { LichessGameSchema, StreamerSchema } from 'validation/lichess';
+import { LichessGameSchema, StreamerSchema, sanitizeLichessGame } from 'validation/lichess';
 import chessService from './chess_service';
 import { numMoves, takeLess } from './utils';
 
@@ -19,7 +19,7 @@ const getGame = (id: string): Promise<LichessGame> => (
     params: { pgnInJson: true, opening: false },
   })
     .then((d: AxiosResponse<LichessGame>) => d.data)
-    .then(passiveValidate(LichessGameSchema))
+    .then((game) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(game)))
     .catch((error) => {
       console.log('Lichess error:', error.message);
       throw error;
@@ -61,7 +61,7 @@ const getTopGame = (): Promise<LichessGame> => (
       .split('\n')
       .filter((s) => s.length > 0)
       .map((s) => JSON.parse(s))
-      .map(passiveValidate(LichessGameSchema))
+      .map((g) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(g)))
       .filter((g) => numMoves(g) >= 2)
       .reduce(takeLess(numMoves))
   ))
@@ -99,7 +99,7 @@ const getUserGame = (userID: string): Promise<LichessGame> => (
     params: { pgnInJson: true, opening: false },
   })
     .then((d) => d.data)
-    .then(passiveValidate(LichessGameSchema))
+    .then((game) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(game)))
     .catch((error) => {
       console.log('Lichess error:', error.message);
       throw error;
