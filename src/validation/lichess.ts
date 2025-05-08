@@ -179,15 +179,15 @@ export const sanitizeLichessGame = (game: any) => {
     players: {
       white: {
         user: {
-          id: game.players.white.name ?? 'anonymous-white',
-          name: game.players.white.name ?? 'Anonymous',
+          id: game.players.white.user?.id ?? 'anonymous-white',
+          name: game.players.white.user?.name ?? 'Anonymous',
         },
         rating: game.players.white.rating,
       },
       black: {
         user: {
-          id: game.players.black.name ?? 'anonymous-black',
-          name: game.players.black.name ?? 'Anonymous',
+          id: game.players.black.user?.id ?? 'anonymous-black',
+          name: game.players.black.user?.name ?? 'Anonymous',
         },
         rating: game.players.black.rating,
       },
