@@ -34,6 +34,11 @@ export interface LichessGame {
   tournament?: string
   swiss?: string
   drawOffers?: string[]
+  clock: { initial: number; increment: number; totalTime: number };
+
+  // NEW
+  clocks?: number[];
+  division?: { middle: number; end: number };
 }
 
 export interface Variant {
