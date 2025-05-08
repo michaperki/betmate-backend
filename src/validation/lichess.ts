@@ -45,62 +45,82 @@ export const LichessGameSchema = joi.object<LichessGame>({
   drawOffers: joi.array().items(joi.number()),
 });
 
-export const StreamStartSchema = joi.object<LichessStreamStart>({
-  id: joi.string(),
-  variant: joi.object<Variant>({
-    key: joi.string(),
-    name: joi.string(),
-    short: joi.string(),
-  }),
-  speed: joi.string(),
-  perf: joi.string(),
-  rated: joi.boolean(),
-  initialFen: joi.string(),
+export const StreamStartSchema = joi.object({
+  id: joi.string().required(),
+  variant: joi.object({
+    key: joi.string().required(),
+    name: joi.string().required(),
+    short: joi.string().required(),
+  }).required(),
+  speed: joi.string().required(),
+  perf: joi.string().required(),
+  rated: joi.boolean().required(),
   fen: joi.string().required(),
-  player: joi.string(),
-  turns: joi.number(),
-  startedAtTurn: joi.number(),
-  source: joi.string(),
-  status: joi.object<Status>({
-    id: joi.number(),
-    name: joi.string(),
-  }),
-  createdAt: joi.number(),
-  threefold: joi.boolean(),
+  turns: joi.number().required(),
+  source: joi.string().required(),
+  status: joi.object({
+    id: joi.number().required(),
+    name: joi.string().required(),
+  }).required(),
+  createdAt: joi.number().required(),
+  player: joi.string().required(),
   lastMove: joi.string(),
-  check: joi.string(),
-  winner: joi.string(),
-  drawOffers: joi.array().items(joi.number()),
-  tournamentId: joi.string(),
-  swissId: joi.string(),
+  players: joi.object({
+    white: joi.object({
+      user: joi.object({
+        name: joi.string().required(),
+        id: joi.string().required(),
+        flair: joi.string(),
+      }).required(),
+      rating: joi.number().required(),
+    }).required(),
+    black: joi.object({
+      user: joi.object({
+        name: joi.string().required(),
+        id: joi.string().required(),
+        flair: joi.string(),
+      }).required(),
+      rating: joi.number().required(),
+    }).required(),
+  }).required(),
 });
 
-export const StreamEndSchema = joi.object<LichessStreamEnd>({
-  id: joi.string(),
-  variant: joi.object<Variant>({
-    key: joi.string(),
-    name: joi.string(),
-    short: joi.string(),
-  }),
-  speed: joi.string(),
-  perf: joi.string(),
-  rated: joi.boolean(),
-  initialFen: joi.string(),
+export const StreamEndSchema = joi.object({
+  id: joi.string().required(),
+  variant: joi.object({
+    key: joi.string().required(),
+    name: joi.string().required(),
+    short: joi.string().required(),
+  }).required(),
+  speed: joi.string().required(),
+  perf: joi.string().required(),
+  rated: joi.boolean().required(),
   fen: joi.string().required(),
-  player: joi.string(),
-  turns: joi.number(),
-  startedAtTurn: joi.number(),
-  source: joi.string(),
-  status: joi.object<Status>({
-    id: joi.number(),
-    name: joi.string(),
-  }),
-  createdAt: joi.number(),
+  turns: joi.number().required(),
+  source: joi.string().required(),
+  status: joi.object({
+    id: joi.number().required(),
+    name: joi.string().required(),
+  }).required(),
+  createdAt: joi.number().required(),
   lastMove: joi.string(),
-  drawOffers: joi.array().items(joi.number()),
   winner: joi.string().required(),
-  check: joi.string(),
-  tournamentId: joi.string(),
+  players: joi.object({
+    white: joi.object({
+      user: joi.object({
+        name: joi.string().required(),
+        id: joi.string().required(),
+      }).required(),
+      rating: joi.number().required(),
+    }).required(),
+    black: joi.object({
+      user: joi.object({
+        name: joi.string().required(),
+        id: joi.string().required(),
+      }).required(),
+      rating: joi.number().required(),
+    }).required(),
+  }).required(),
 });
 
 export const StreamMoveSchema = joi.object<LichessStreamMove>({
@@ -146,9 +166,26 @@ export interface CreateStreamerGameRequest extends ValidatedRequestSchema {
   [ContainerTypes.Body]: { userID: string }
 }
 
-export function sanitizeLichessGame(game: any): any {
-  delete game.source;
-  if (game.players?.white?.user) delete game.players.white.user.flair;
-  if (game.players?.black?.user) delete game.players.black.user.flair;
-  return game;
-}
+export const sanitizeLichessGame = (game: any) => {
+  const { source, ...validatedGame } = game;
+
+  return {
+    ...validatedGame,
+    players: {
+      white: {
+        user: {
+          id: game.players.white.name ?? 'anonymous-white',
+          name: game.players.white.name ?? 'Anonymous',
+        },
+        rating: game.players.white.rating,
+      },
+      black: {
+        user: {
+          id: game.players.black.name ?? 'anonymous-black',
+          name: game.players.black.name ?? 'Anonymous',
+        },
+        rating: game.players.black.rating,
+      },
+    },
+  };
+};

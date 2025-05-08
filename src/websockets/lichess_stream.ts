@@ -6,6 +6,7 @@ import {
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
+import { LichessStreamMove } from 'types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
@@ -49,12 +50,15 @@ export const getStream = async (
           chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
           socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
         } else if (matchesSchema(StreamMoveSchema, d)) {
-          if (!canQueryMicroservice && startFen === d.fen) canQueryMicroservice = true;
+          const moveData = d as LichessStreamMove;
 
-          if (d.lm === undefined) return;
-          const move = game.move(d.lm, { sloppy: true });
+          if (!canQueryMicroservice) canQueryMicroservice = true;
+          // if (!canQueryMicroservice && startFen === moveData.fen) canQueryMicroservice = true;
+
+          if (moveData.lm === undefined) return;
+          const move = game.move(moveData.lm, { sloppy: true });
           if (!move) {
-            game.load(`${d.fen} - - 0 1`);
+            game.load(`${moveData.fen} - - 0 1`);
             return;
           }
 
@@ -69,14 +73,14 @@ export const getStream = async (
             to,
             san,
             is_white: isWhite,
-            time: isWhite ? d.wc : d.bc,
+            time: isWhite ? moveData.wc : moveData.bc,
           });
 
           const update = {
             state: game.fen(),
             move_hist: [...moveHist] as Types.Array<MoveData>,
-            time_white: d.wc,
-            time_black: d.bc,
+            time_white: moveData.wc,
+            time_black: moveData.bc,
             pool_wagers: {
               move: {
                 wagers: [] as unknown as Types.Array<AnonMoveWager>,
@@ -84,7 +88,6 @@ export const getStream = async (
               },
             },
           };
-
           const history = moveHist.map((m) => m.san);
 
           chessService.updateChessGame(gameId, update);
@@ -98,15 +101,21 @@ export const getStream = async (
 
           liveTopMoves = [];
 
+          // console.log('⚙️ Checking canQueryMicroservice:', canQueryMicroservice, '| startFen:', startFen, '| moveFen:', moveData.fen);
           if (canQueryMicroservice) {
             const oddsPromise = microservice
-              .getWDL(game.fen(), Math.floor((d.wc / gameTime) * 180), Math.floor((d.bc / gameTime) * 180))
+              .getWDL(game.fen(), Math.floor((moveData.wc / gameTime) * 180), Math.floor((moveData.bc / gameTime) * 180))
               .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
             const topMovesPromise = microservice
               .getTopMoves(game.fen(), 3)
               .catch(() => []);
 
             const [odds, topMoves] = await Promise.all([oddsPromise, topMovesPromise]);
+            // if (!topMoves.length) {
+            //   console.warn(`[topMoves] EMPTY for gameId=${gameId} →`, game.fen());
+            // } else {
+            //   console.log(`[topMoves] gameId=${gameId} →`, topMoves);
+            // }
             liveTopMoves = topMoves;
 
             const oddsUpdate = {
@@ -120,12 +129,13 @@ export const getStream = async (
             };
 
             chessService.updateChessGame(gameId, oddsUpdate);
+            // console.log(`🛰️ Emitting new_odds to gameId=${gameId} →`, oddsUpdate);
             socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
           }
         } else if (matchesSchema(StreamEndSchema, d)) {
           // allow .on('end') to handle game ending
         } else {
-          console.log('FAIL', d);
+          console.warn('FAIL: Unrecognized Lichess stream event', JSON.stringify(d, null, 2));
         }
       } catch (error) {
         console.log('Error:', error.message);
