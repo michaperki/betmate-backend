@@ -9,6 +9,10 @@ import { handleSuccess, handleFailure } from './utils';
  * Get game from request.
  *
  * Uses request param as id
+ *
+ * Note: This endpoint may return 304 Not Modified responses when polling.
+ * This is normal behavior when no new data is available and helps reduce server load.
+ * The frontend should handle these responses appropriately.
  */
 const getChessGameRequest: RequestHandler = (req, res) => (
   chessService

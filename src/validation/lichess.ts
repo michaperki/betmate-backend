@@ -2,6 +2,7 @@ import { ContainerTypes, ValidatedRequestSchema } from 'express-joi-validation';
 import joi from 'joi';
 import {
   LichessGame,
+  LichessStatusEvent,
   LichessStreamEnd,
   LichessStreamer,
   LichessStreamMove, LichessStreamStart, Player, Status, Variant,
@@ -46,7 +47,7 @@ export const LichessGameSchema = joi.object<LichessGame>({
   clocks: joi.array().items(joi.number()).optional(),
   division: joi.object({
     middle: joi.number().required(),
-    end: joi.number().required(),
+    end: joi.number().optional(), // Made optional to handle events without division.end
   }).optional(),
 });
 
@@ -133,6 +134,15 @@ export const StreamMoveSchema = joi.object<LichessStreamMove>({
   lm: joi.string(),
   wc: joi.number().required(),
   bc: joi.number().required(),
+});
+
+export const StatusEventSchema = joi.object<LichessStatusEvent>({
+  id: joi.string().required(),
+  fen: joi.string().required(),
+  status: joi.object({
+    id: joi.number().required(),
+    name: joi.string().required()
+  }).required()
 });
 
 export const StreamerSchema = joi.object<LichessStreamer>({

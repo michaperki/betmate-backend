@@ -88,7 +88,17 @@ export interface LichessStreamMove {
   bc: number
 }
 
-export type StreamData = LichessStreamStart | LichessStreamMove | LichessStreamEnd;
+// Adding a generic StatusEvent type to handle various status updates
+export interface LichessStatusEvent {
+  fen: string;
+  status: {
+    id: number;
+    name: string;
+  };
+  id: string;
+}
+
+export type StreamData = LichessStreamStart | LichessStreamMove | LichessStreamEnd | LichessStatusEvent;
 
 export interface LichessStreamer {
   name: string

@@ -5,8 +5,8 @@ import {
   AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
-import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
-import { LichessStreamMove } from 'types/lichess';
+import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
+import { LichessStreamMove, LichessStatusEvent } from 'types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
@@ -36,10 +36,12 @@ export const getStream = async (
   let canQueryMicroservice = false;
   let startFen = '';
 
+  // Set timeout to 10 minutes (600000ms) instead of 5 minutes for longer games
+  const STALE_GAME_TIMEOUT = 600000; // 10 minutes in milliseconds
   const staleGameTime = setTimeout(async () => {
-    console.log(`Game ${gameId} stale, terminating stream`);
+    console.log(`Game ${gameId} stale, terminating stream after ${STALE_GAME_TIMEOUT/60000} minutes of inactivity`);
     stream.destroy();
-  }, 300000);
+  }, STALE_GAME_TIMEOUT);
 
   stream.pipe(ndjson.parse())
     .on('data', async (d: StreamData) => {
@@ -134,6 +136,23 @@ export const getStream = async (
           }
         } else if (matchesSchema(StreamEndSchema, d)) {
           // allow .on('end') to handle game ending
+        } else if (matchesSchema(StatusEventSchema, d)) {
+          // Use type assertion to properly handle status events
+          const statusEvent = d as LichessStatusEvent;
+
+          // Handle status events like "resign" or "started"
+          if (statusEvent.status.name === 'resign') {
+            // Game has ended by resignation, will be handled by .on('end')
+            console.log(`Game ${gameId} ended by resignation`);
+          } else if (statusEvent.status.name === 'started') {
+            // Game has started
+            startFen = statusEvent.fen.split(' ').slice(0, 2).join(' ');
+            chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
+            socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
+          } else {
+            // Log other status events for debugging
+            console.log(`Game ${gameId} status event: ${statusEvent.status.name}`);
+          }
         } else {
           console.warn('FAIL: Unrecognized Lichess stream event', JSON.stringify(d, null, 2));
         }
