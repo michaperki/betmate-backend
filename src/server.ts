@@ -13,7 +13,7 @@ import leaderboardService from 'services/leaderboard_service';
 import { handleValidationError } from 'validation';
 import { streamLoop } from 'websockets/lichess_stream';
 import {
-  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
+  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -41,6 +41,7 @@ app.use('/auth', authRouter);
 app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
+app.use('/analysis', analysisRouter);
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');

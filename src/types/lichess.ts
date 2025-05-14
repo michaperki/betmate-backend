@@ -34,7 +34,6 @@ export interface LichessGame {
   tournament?: string
   swiss?: string
   drawOffers?: string[]
-  clock: { initial: number; increment: number; totalTime: number };
 
   // NEW
   clocks?: number[];

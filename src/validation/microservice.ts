@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { WDLData } from 'types/microservice';
+import { WDLData, MoveAnalysisData } from 'types/microservice';
 
 export const WDLSchema = joi.object<WDLData>({
   white_win: joi.number().min(0).max(1).required(),
@@ -8,3 +8,9 @@ export const WDLSchema = joi.object<WDLData>({
 });
 
 export const TopMoveSchema = joi.array().items(joi.string());
+
+export const MoveAnalysisSchema = joi.object<MoveAnalysisData>({
+  score: joi.number().required(),
+  percentile: joi.number().min(0).max(100).required(),
+  is_best_move: joi.boolean().required(),
+});

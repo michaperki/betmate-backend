@@ -2,9 +2,9 @@ import axios from 'axios';
 import env from 'env-var';
 import dotenv from 'dotenv';
 import querystring from 'querystring';
-import { WDLData, TopMoveData, MicroserviceResponse } from 'types/microservice';
+import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from 'types/microservice';
 import { MICROSERVICE_URL } from 'helpers/constants';
-import { TopMoveSchema, WDLSchema } from 'validation/microservice';
+import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from 'validation/microservice';
 import { validate } from 'validation';
 
 dotenv.config();
@@ -45,9 +45,27 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
     })
 );
 
+/**
+ * Make call to microservice to analyze a specific move
+ * @param fen state of chess game in FEN notation
+ * @param move move to analyze in SAN notation
+ * @returns Promise of move analysis data, or null if issue occurs
+ */
+const getMoveAnalysis = (fen: string, move: string): Promise<MoveAnalysisData> => (
+  axios
+    .get<MicroserviceResponse<MoveAnalysisData>>(`${MICROSERVICE_URL}/dev/move-analysis?${querystring.stringify({ fen, move })}`, { headers: { 'x-api-key': apiKey } })
+    .then((res) => res.data.data)
+    .then(validate<MoveAnalysisData>(MoveAnalysisSchema))
+    .catch((error) => {
+      console.log('Microservice error:', error.message);
+      throw error;
+    })
+);
+
 const microservice = {
   getWDL,
   getTopMoves,
+  getMoveAnalysis,
 };
 
 export default microservice;
