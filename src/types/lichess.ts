@@ -95,6 +95,21 @@ export interface LichessStatusEvent {
     name: string;
   };
   id: string;
+  winner?: string; // Add optional winner property for game completion events
+  players?: {
+    white: Player;
+    black: Player;
+  };
+  variant?: Variant;
+  speed?: string;
+  perf?: string;
+  rated?: boolean;
+  turns?: number;
+  source?: string;
+  createdAt?: number;
+  lastMove?: string;
+  check?: string;
+  player?: string;
 }
 
 export type StreamData = LichessStreamStart | LichessStreamMove | LichessStreamEnd | LichessStatusEvent;

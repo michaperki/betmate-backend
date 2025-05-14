@@ -143,7 +143,7 @@ export const StatusEventSchema = joi.object<LichessStatusEvent>({
     id: joi.number().required(),
     name: joi.string().required()
   }).required()
-});
+}).unknown(true); // Allow additional properties like winner, players, etc
 
 export const StreamerSchema = joi.object<LichessStreamer>({
   name: joi.string().required(),

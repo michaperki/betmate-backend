@@ -140,10 +140,13 @@ export const getStream = async (
           // Use type assertion to properly handle status events
           const statusEvent = d as LichessStatusEvent;
 
-          // Handle status events like "resign" or "started"
+          // Handle status events like "resign", "mate", or "started"
           if (statusEvent.status.name === 'resign') {
             // Game has ended by resignation, will be handled by .on('end')
             console.log(`Game ${gameId} ended by resignation`);
+          } else if (statusEvent.status.name === 'mate') {
+            // Game has ended by checkmate, will be handled by .on('end')
+            console.log(`Game ${gameId} ended by checkmate, winner: ${statusEvent.winner}`);
           } else if (statusEvent.status.name === 'started') {
             // Game has started
             startFen = statusEvent.fen.split(' ').slice(0, 2).join(' ');
