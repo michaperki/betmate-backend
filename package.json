@@ -29,6 +29,7 @@
     "heroku-postbuild": "npm run build"
   },
   "dependencies": {
+    "@babel/core": "^7.13.0",
     "@babel/preset-typescript": "^7.13.0",
     "@types/bcrypt": "^3.0.0",
     "@types/chess.js": "^0.10.1",
@@ -69,8 +70,7 @@
     "socket.io": "^4.0.1",
     "ts-node": "^9.1.1",
     "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.2.3",
-    "@babel/core": "^7.13.0"
+    "typescript": "^4.2.3"
   },
   "devDependencies": {
     "@types/ndjson": "^2.0.1",
