@@ -1,7 +1,7 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import Filter from 'bad-words';
-import { chessService } from 'services';
+import { chessService, agentService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { decodeToken } from 'helpers/utils';
 import {
@@ -106,6 +106,17 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     try {
       validate(PoolWagerSchema)(wager);
       await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
+
+      // Notify agent service that a wager was placed on this game and move
+      if (wager.type === 'move') {
+        // Get the current game to determine move number
+        const game = await chessService.getChessGame(wager.gameId);
+        if (game) {
+          // Update agent service with information that a move has wagers
+          agentService.handleNewMoveEvent(wager.gameId, true);
+        }
+      }
+
       return socket.to(wager.gameId).emit('pool_wager', wager);
     } catch (error) {
       return socket.emit('socket_error', { message: error.message });

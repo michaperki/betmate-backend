@@ -8,12 +8,12 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
-import { chessService } from 'services';
+import { chessService, agentService } from 'services';
 import leaderboardService from 'services/leaderboard_service';
 import { handleValidationError } from 'validation';
 import { streamLoop } from 'websockets/lichess_stream';
 import {
-  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter,
+  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter, internalRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -29,8 +29,12 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 // enable/disable cross origin resource sharing if necessary
 app.use(cors());
 
-// enable/disable http request logging
-if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+// Custom morgan logger that skips 404 responses
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev', {
+    skip: (req, res) => res.statusCode === 404
+  }));
+}
 
 // enable json message body for posting data to API
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -42,6 +46,7 @@ app.use('/chess', chessRouter);
 app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
 app.use('/analysis', analysisRouter);
+app.use('/internal', internalRouter);
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -62,6 +67,17 @@ setInterval(() => {
   leaderboardService.clearLeaderboards();
   chessService.clearGames();
 }, 7 * 24 * 60 * 60 * 1000);
+
+// Initialize and run bot services
+agentService.initializeBots().then(() => {
+  console.info('Bot service initialized');
+
+  // Check and process empty move bars every 5 seconds
+  setInterval(() => agentService.processEmptyMoveBars(chessWebsocket), 5000);
+
+  // Setup scheduled bankroll refresh
+  agentService.scheduleRefreshBankrolls();
+});
 
 // default index route
 app.get('/', (req, res) => {

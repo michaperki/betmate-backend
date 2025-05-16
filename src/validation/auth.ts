@@ -9,6 +9,7 @@ interface SignUpUserBody {
   password: string
   firstName?: string
   lastName?: string
+  is_bot?: boolean
 }
 
 export const SignUpUserSchema = joi.object<SignUpUserBody>({
@@ -16,6 +17,7 @@ export const SignUpUserSchema = joi.object<SignUpUserBody>({
   password: joi.string().required(),
   firstName: joi.string(),
   lastName: joi.string(),
+  is_bot: joi.boolean(),
 });
 
 export interface SignUpUserRequest extends ValidatedRequestSchema {

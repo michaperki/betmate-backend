@@ -27,7 +27,12 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
     if (!isEmailAvailable) return res.status(409).json({ message: 'Request error', errors: ['Email address already associated to a user'] });
 
     // Save the user then transmit to frontend
-    const user = await userService.createUser(email, password, firstName, lastName);
+    const user = await userService.createUser({
+      email,
+      password,
+      first_name: firstName,
+      last_name: lastName
+    });
     return res.status(201).json({ token: tokenForUser(user), user });
   } catch (error) {
     return handleFailure(res)(error);

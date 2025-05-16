@@ -10,7 +10,7 @@ import { LichessStreamMove, LichessStatusEvent } from 'types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessService, microservice } from 'services';
+import { chessService, microserviceService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
@@ -105,10 +105,10 @@ export const getStream = async (
 
           // console.log('⚙️ Checking canQueryMicroservice:', canQueryMicroservice, '| startFen:', startFen, '| moveFen:', moveData.fen);
           if (canQueryMicroservice) {
-            const oddsPromise = microservice
+            const oddsPromise = microserviceService
               .getWDL(game.fen(), Math.floor((moveData.wc / gameTime) * 180), Math.floor((moveData.bc / gameTime) * 180))
               .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-            const topMovesPromise = microservice
+            const topMovesPromise = microserviceService
               .getTopMoves(game.fen(), 3)
               .catch(() => []);
 

@@ -11,6 +11,8 @@ export const PoolWagerSchema = joi.object<PoolBetMessage>({
   type: joi.string().required(),
   data: joi.string().required(),
   amount: joi.number().min(0).required(),
+  isBot: joi.boolean(),
+  userId: joi.string(),
 });
 
 export const GameChatSchema = joi.object<GameChatMessage>({

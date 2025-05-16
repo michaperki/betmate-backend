@@ -65,19 +65,45 @@ const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery
  * Process will wait 1 second to account for input lag. After wait, will check if wager is still valid
  */
 const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
+  // Handle special fields for bot wagers
+  const isBot = fields.is_bot === true;
+  const skipGameCheck = isBot && fields.skip_game_check === true;
+
+  // Extract standard fields for the wager, removing any special flags
+  const { skip_game_check, ...wagerFields } = fields as any;
+
+  // For bot wagers, ensure the odds field is valid
+  if (isBot) {
+    // Use a reasonable default for bot wagers if missing or invalid
+    wagerFields.odds = wagerFields.odds >= 1 ? wagerFields.odds : 1;
+  }
+
+  // For bot wagers with skip check, bypass all validation
+  if (skipGameCheck) {
+    return new Wager(wagerFields).save();
+  }
+
   await delay(1000);
-  const game = await chessService.getChessGame(fields.game_id);
-  const currentMove = game.move_hist.length;
-  const oddsCorrect = Math.abs((1 / (game?.odds[fields.data] ?? 0)) - Number(fields.odds)) < Number.EPSILON; // allows for floating point imprecision
 
-  const wagerValid = (
-    fields.move_number === currentMove + 1
-    && (!fields.wdl || oddsCorrect)
-  );
+  try {
+    const game = await chessService.getChessGame(fields.game_id);
+    const currentMove = game.move_hist.length;
+    const oddsCorrect = Math.abs((1 / (game?.odds[fields.data] ?? 0)) - Number(fields.odds)) < Number.EPSILON; // allows for floating point imprecision
 
-  if (!wagerValid) throw new HttpError(400, ['Wager not valid']);
+    const wagerValid = (
+      fields.move_number === currentMove + 1
+      && (!fields.wdl || oddsCorrect)
+    );
 
-  return new Wager(fields).save();
+    if (!wagerValid) throw new HttpError(400, ['Wager not valid']);
+  } catch (error) {
+    if (!isBot) {
+      throw error; // Re-throw for non-bot wagers
+    }
+    // For bot wagers, proceed anyway - but quietly
+  }
+
+  return new Wager(wagerFields).save();
 };
 
 const getPopulatedWagers = (fields: FilterQuery<WagerDoc>, populateBy: string): Promise<PopulatedWagerDoc[]> => (

@@ -1,8 +1,17 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-import { CompareCallback, UserDoc, UserRole } from 'types/models/user';
+import { BotConfig, CompareCallback, UserDoc, UserRole } from 'types/models/user';
 import { isUserRole } from 'validation/auth';
+
+const BotConfigSchema = new Schema({
+  persona: { type: String, required: true },
+  riskFactor: { type: Number, required: true, min: 0, max: 1 },
+  maxBankroll: { type: Number, required: true, min: 0 },
+  minWagerAmount: { type: Number, required: true, min: 0 },
+  maxWagerAmount: { type: Number, required: true, min: 0 },
+  emptyBarThreshold: { type: Number, required: true, min: 0 },
+}, { _id: false });
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -18,6 +27,8 @@ const UserSchema = new Schema({
       message: (props) => `Value "${props.value}" not in enum "UserRole"`,
     },
   },
+  is_bot: { type: Boolean, default: false },
+  botConfig: { type: BotConfigSchema, required: false },
 }, {
   toObject: {
     virtuals: true,

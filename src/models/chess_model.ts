@@ -2,7 +2,7 @@
 import mongoose, { Schema, Types } from 'mongoose';
 import { CHESS_START } from 'helpers/constants';
 import { isGameComplete, isGameSource, isGameStatus } from 'validation/chess';
-import microservice from 'services/microservice';
+import { microserviceService } from 'services';
 import { WDLData } from 'types/microservice';
 import { Chess } from 'chess.js';
 import { ChessDoc, GameStatus } from 'types/models/chess';
@@ -72,10 +72,10 @@ ChessSchema.pre('save', async function (next) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const doc = this as ChessDoc;
     if (this.isNew) {
-      const dataPromise = microservice
+      const dataPromise = microserviceService
         .getWDL(doc.state ?? CHESS_START, doc.time_white ?? 180, doc.time_black ?? 180)
         .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-      const moveOptionsPromise = microservice
+      const moveOptionsPromise = microserviceService
         .getTopMoves(doc.state ?? CHESS_START, 3)
         .catch(() => []);
       const [data, moveOptions] = await Promise.all([dataPromise, moveOptionsPromise]);

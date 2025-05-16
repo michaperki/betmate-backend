@@ -13,9 +13,13 @@ const WagerSchema = new Schema({
   },
   better_id: {
     type: Schema.Types.ObjectId,
-    required: true,
     immutable: true,
     ref: 'User',
+  },
+  is_bot: {
+    type: Boolean,
+    default: false,
+    immutable: true,
   },
   wdl: { type: Boolean, required: true, immutable: true },
   amount: {
@@ -26,7 +30,16 @@ const WagerSchema = new Schema({
   },
   odds: {
     type: Number,
-    min: 1,
+    // Allow 0 for bot wagers
+    validate: {
+      validator: function(v: number) {
+        // For bot wagers, allow any odds value
+        if (this.is_bot) return true;
+        // For regular users, require odds >= 1
+        return v >= 1;
+      },
+      message: 'Odds must be at least 1 for user wagers'
+    },
     required: true,
     immutable: true,
   },
