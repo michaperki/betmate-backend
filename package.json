@@ -20,11 +20,11 @@
   "license": "MIT",
   "scripts": {
     "lint": "eslint ./src",
-    "test": "yarn lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
+    "test": "npm run lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
     "start": "ts-node -r tsconfig-paths/register src/server.ts",
     "build": "tsc",
-    "prod": "yarn build; node dist/server.js"
+    "prod": "npm run build && node dist/server.js"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
