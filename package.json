@@ -22,9 +22,9 @@
     "test": "yarn lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
     "start": "node dist/server.js",
-    "build": "tsc",
+    "build": "tsc --skipLibCheck",
     "prod": "node dist/server.js",
-    "heroku-postbuild": "yarn build"
+    "heroku-postbuild": "./heroku-build.sh"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
