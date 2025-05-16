@@ -25,7 +25,8 @@
     "start": "ts-node -r tsconfig-paths/register src/server.ts",
     "build": "tsc",
     "prod": "npm run build && node dist/server.js",
-    "heroku-prebuild": "node heroku-prebuild.js"
+    "heroku-prebuild": "node heroku-prebuild.js",
+    "postinstall": "npm run build"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
@@ -68,7 +69,8 @@
     "socket.io": "^4.0.1",
     "ts-node": "^9.1.1",
     "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.2.3"
+    "typescript": "^4.2.3",
+    "@babel/core": "^7.13.0"
   },
   "devDependencies": {
     "@types/ndjson": "^2.0.1",
