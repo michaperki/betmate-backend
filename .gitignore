@@ -4,4 +4,5 @@ node_modules/
 globalConfig.json
 yarn-error.log
 dist
+# Keep package-lock.json and remove yarn.lock for npm deployments
 yarn.lock
