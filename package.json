@@ -6,7 +6,7 @@
   "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
   "engines": {
-    "node": ">=16.x"
+    "node": "16.20.0"
   },
   "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
