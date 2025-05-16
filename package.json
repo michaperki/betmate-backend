@@ -5,6 +5,10 @@
   "productionURL": "https://betmate-backend-prod.herokuapp.com",
   "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
+  "engines": {
+    "node": "14.x",
+    "npm": "6.x"
+  },
   "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
   "contributors": [
