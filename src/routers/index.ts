@@ -4,7 +4,8 @@ import wagerRouter from './wager_router';
 import leaderboardRouter from './leaderboard_router';
 import lichessRouter from './lichess_router';
 import analysisRouter from './analysis_router';
+import internalRouter from './internal_router';
 
 export {
-  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter,
+  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter, internalRouter,
 };
