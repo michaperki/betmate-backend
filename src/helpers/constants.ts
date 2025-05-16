@@ -8,6 +8,6 @@ export const PORT = process.env.PORT || 9090;
 
 export const CHESS_START = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-export const MICROSERVICE_URL = 'http://localhost:8000';
+export const MICROSERVICE_URL = process.env.MICROSERVICE_URL || 'http://localhost:8000';
 
 export const LICHESS_URL = 'https://lichess.org';

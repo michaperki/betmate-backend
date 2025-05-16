@@ -5,6 +5,9 @@
   "productionURL": "https://betmate-backend-prod.herokuapp.com",
   "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
+  "engines": {
+    "node": ">=16.x"
+  },
   "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
   "contributors": [
@@ -18,9 +21,10 @@
     "lint": "eslint ./src",
     "test": "yarn lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
-    "start": "ts-node -r tsconfig-paths/register src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc",
-    "prod": "yarn build; node dist/server.js"
+    "prod": "node dist/server.js",
+    "heroku-postbuild": "yarn build"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",

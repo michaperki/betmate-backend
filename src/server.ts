@@ -78,7 +78,10 @@ const mongooseOptions = {
 };
 
 // Connect the database
-mongoose.connect(env.get('MONGODB_URI').required().asString(), mongooseOptions).then(() => {
+// Get MongoDB URI from environment variable (Heroku sets MONGODB_URI automatically)
+const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
+
+mongoose.connect(mongoUri, mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') {
     console.info('Connected to Database');
