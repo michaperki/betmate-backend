@@ -22,11 +22,11 @@
     "lint": "eslint ./src",
     "test": "npm run lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
-    "start": "ts-node -r tsconfig-paths/register src/server.ts",
+    "start": "node dist/server.js",
     "build": "tsc",
     "prod": "npm run build && node dist/server.js",
     "heroku-prebuild": "node heroku-prebuild.js",
-    "postinstall": "npm run build"
+    "heroku-postbuild": "npm run build"
   },
   "dependencies": {
     "@babel/preset-typescript": "^7.13.0",
