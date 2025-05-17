@@ -62,7 +62,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
     const wager = await wagerService.getWager(req.params.id);
-    if (!wager.better_id.equals(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
+    if (String(wager.better_id) !== String(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
     return res.status(200).send(wager);
   } catch (error) {
     return handleFailure(res)(error);

@@ -9,6 +9,7 @@ import {
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from '../validation/websocket';
 import { validate } from '../validation';
+import { ChessDoc } from '../types/models/chess';
 
 const filter = new Filter();
 
@@ -29,7 +30,8 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       validate(JoinGameSchema)(gameId);
       const chessDoc = await chessService.getChessGame(gameId);
       socket.join(gameId);
-      return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
+      const gameData = chessDoc.toJSON();
+      return socket.emit('game_info', { gameId, data: gameData as unknown as ChessDoc });
     } catch (error) {
       return socket.emit('game_error', { gameId, message: error.message });
     }

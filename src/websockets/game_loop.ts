@@ -76,7 +76,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   // create game and put into pregame
   const gameDoc = await chessService.createChessGame(gameFields);
   const gameId = String(gameDoc._id);
-  socket.emit('new_game', gameDoc.toJSON());
+  const gameData = gameDoc.toJSON();
+  socket.emit('new_game', gameData as unknown as ChessDoc);
 
   // Pregame phase
   await delay(PREGAME_TIME * 1000);

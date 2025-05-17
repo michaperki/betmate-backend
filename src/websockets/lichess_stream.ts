@@ -2,7 +2,7 @@
 import ndjson from 'ndjson';
 import { StreamData } from '../types/lichess';
 import {
-  AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
+  AnonMoveWager, ChessDoc, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from '../types/models/chess';
 import { matchesSchema } from '../validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from '../validation/lichess'; // ✅ import added
@@ -23,7 +23,8 @@ export const getStream = async (
   onGameComplete = () => {},
 ): Promise<string> => {
   const chessDoc = await chessService.createChessGame(startData);
-  socket.emit('new_game', chessDoc.toJSON());
+  const gameData = chessDoc.toJSON();
+  socket.emit('new_game', gameData as unknown as ChessDoc);
   const gameId = String(chessDoc._id);
 
   const stream = await lichessService.getGameStream(id);

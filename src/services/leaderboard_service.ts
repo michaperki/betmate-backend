@@ -19,9 +19,17 @@ const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId |
   Leaderboard
     .findOne(id ? { _id: id } : undefined)
     .sort({ created_at: -1 })
-    .select(['rankings', 'rankings_size'])
+    .select(['rankings', 'rankings_size', '_id'])
     .slice('rankings', [start, end - start])
     .then(dbNullDocHandler)
+    .then((doc): LeaderboardSection => {
+      // Ensure _id is included by explicitly including it in the return type
+      return {
+        _id: doc._id,
+        rankings: doc.rankings,
+        rankings_size: doc.rankings_size
+      };
+    })
     .catch(dbErrorHandler)
 );
 

@@ -51,7 +51,7 @@ const updateWager = (id: string | Types.ObjectId, fields: UpdateQuery<WagerDoc>)
    * @param fields to update for wager
    * @returns Promise of query result (not the updated wagers), or null if error occurs
    */
-const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>): Promise<Query<WagerDoc>[]> => (
+const updateManyWagers = (conditions: FilterQuery<WagerDoc>, fields: UpdateQuery<WagerDoc>) => (
   Wager
     .updateMany(conditions, fields)
     .catch(dbErrorHandler)
@@ -80,10 +80,12 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
   return new Wager(fields).save();
 };
 
-const getPopulatedWagers = (fields: FilterQuery<WagerDoc>, populateBy: string): Promise<PopulatedWagerDoc[]> => (
+const getPopulatedWagers = (fields: FilterQuery<WagerDoc>, populateBy: string) => (
   Wager
     .find(fields)
     .populate(populateBy)
+    .lean() // Use lean() to convert to plain JavaScript objects
+    .then((docs: any[]) => docs as unknown as PopulatedWagerDoc[])
     .catch(dbErrorHandler)
 );
 
