@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-import { CompareCallback, UserDoc, UserRole } from 'types/models/user';
-import { isUserRole } from 'validation/auth';
+import { CompareCallback, UserDoc, UserRole } from '../types/models/user';
+import { isUserRole } from '../validation/auth';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },

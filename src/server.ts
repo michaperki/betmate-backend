@@ -8,10 +8,10 @@ import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
 
-import { chessService } from 'services';
-import leaderboardService from 'services/leaderboard_service';
-import { handleValidationError } from 'validation';
-import { streamLoop } from 'websockets/lichess_stream';
+import { chessService } from './services';
+import leaderboardService from './services/leaderboard_service';
+import { handleValidationError } from './validation';
+import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter,
 } from './routers';

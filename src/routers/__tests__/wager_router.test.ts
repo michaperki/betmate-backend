@@ -1,11 +1,11 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
 
-import { Chess, Wager, Users } from 'models';
-import { wagerRouter } from 'routers';
+import { Chess, Wager, Users } from '../../models';
+import { wagerRouter } from '../../routers';
 
-import { documentNotFoundError } from 'helpers/constants';
-import { GameSource, GameStatus, MoveData } from 'types/models/chess';
+import { documentNotFoundError } from '../../helpers/constants';
+import { GameSource, GameStatus, MoveData } from '../../types/models/chess';
 import { connectDB, dropDB, mockUser } from '../../../__jest__/helpers';
 
 const request = supertest(wagerRouter);

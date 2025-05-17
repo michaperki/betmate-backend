@@ -1,10 +1,10 @@
-import { CHESS_START } from 'helpers/constants';
-import { isGameComplete } from 'validation/chess';
-import { Chess } from 'models';
+import { CHESS_START } from '../../helpers/constants';
+import { isGameComplete } from '../../validation/chess';
+import { Chess } from '../../models';
 import { Types } from 'mongoose';
 import {
   ChessDoc, GameSource, GameStatus, MoveData,
-} from 'types/models/chess';
+} from '../../types/models/chess';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

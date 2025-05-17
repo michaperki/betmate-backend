@@ -1,9 +1,9 @@
 import { UpdateQuery } from 'mongoose';
-import { userService, wagerService } from 'services';
-import { UserDoc } from 'types/models/user';
+import { userService, wagerService } from '../services';
+import { UserDoc } from '../types/models/user';
 import {
   ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
-} from 'types/models/wager';
+} from '../types/models/wager';
 
 import { delay } from './utils';
 

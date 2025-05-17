@@ -1,6 +1,6 @@
 import jwt from 'jwt-simple';
 import env from 'env-var';
-import { UserDoc } from 'types/models/user';
+import { UserDoc } from '../types/models/user';
 
 /**
  * Helper to pause function execution

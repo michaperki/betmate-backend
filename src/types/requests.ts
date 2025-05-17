@@ -1,7 +1,7 @@
 import { Request } from 'express';
 import { ValidatedRequest, ValidatedRequestSchema } from 'express-joi-validation';
 
-import { UserDoc } from 'types/models/user';
+import { UserDoc } from '../types/models/user';
 
 /* -------- Main Types -------- */
 export interface RequestWithJWT extends Request {

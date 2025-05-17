@@ -1,8 +1,8 @@
 import { Schema } from 'mongoose';
-import { WDLData } from 'types/microservice';
+import { WDLData } from '../types/microservice';
 import {
   AnonMoveWager, MoveData, Player, PoolWagerState,
-} from 'types/models/chess';
+} from '../types/models/chess';
 
 export const PlayerSchema = new Schema<Player>({
   name: { type: String, required: true },

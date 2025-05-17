@@ -1,7 +1,7 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import { microservice } from 'services';
-import { GetMoveAnalysisRequest } from 'validation/analysis';
+import { microservice } from '../services';
+import { GetMoveAnalysisRequest } from '../validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
 
 /**

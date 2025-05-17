@@ -1,7 +1,7 @@
-import HttpError from 'helpers/errors';
-import { Leaderboard } from 'models';
+import HttpError from '../helpers/errors';
+import { Leaderboard } from '../models';
 import { Types } from 'mongoose';
-import { LeaderboardDoc, LeaderboardSection, Rank } from 'types/models/leaderboard';
+import { LeaderboardDoc, LeaderboardSection, Rank } from '../types/models/leaderboard';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import wagerService from './wager_service';
 

@@ -1,6 +1,6 @@
 import { Document, Types } from 'mongoose';
-import { PartialWithRequired } from 'types';
-import { WDLData } from 'types/microservice';
+import { PartialWithRequired } from '../../types';
+import { WDLData } from '../../types/microservice';
 
 /* -------- Helper Types -------- */
 

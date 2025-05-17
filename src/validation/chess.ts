@@ -2,7 +2,7 @@ import joi from 'joi';
 import { ValidatedRequestSchema, ContainerTypes } from 'express-joi-validation';
 import { Condition } from 'mongodb';
 
-import { GameSource, GameStatus } from 'types/models/chess';
+import { GameSource, GameStatus } from '../types/models/chess';
 
 export const isGameStatus = (v: string): boolean => Object.values(GameStatus).includes(v as GameStatus);
 

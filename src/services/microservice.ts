@@ -2,10 +2,10 @@ import axios from 'axios';
 import env from 'env-var';
 import dotenv from 'dotenv';
 import querystring from 'querystring';
-import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from 'types/microservice';
-import { MICROSERVICE_URL } from 'helpers/constants';
-import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from 'validation/microservice';
-import { validate } from 'validation';
+import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from '../types/microservice';
+import { MICROSERVICE_URL } from '../helpers/constants';
+import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/microservice';
+import { validate } from '../validation';
 
 dotenv.config();
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();

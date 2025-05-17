@@ -1,8 +1,8 @@
-import { Chess } from 'models';
+import { Chess } from '../models';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
-import { ChessDoc, CreateChessQuery, GameStatus } from 'types/models/chess';
+import { ChessDoc, CreateChessQuery, GameStatus } from '../types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**

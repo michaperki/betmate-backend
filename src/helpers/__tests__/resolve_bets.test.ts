@@ -1,7 +1,7 @@
 import mongoose, { Types } from 'mongoose';
-import { Wager } from 'models';
-import { GameStatus } from 'types/models/chess';
-import { WagerDoc, WagerStatus, ProcessedWager } from 'types/models/wager';
+import { Wager } from '../../models';
+import { GameStatus } from '../../types/models/chess';
+import { WagerDoc, WagerStatus, ProcessedWager } from '../../types/models/wager';
 import {
   processWager, processCriticalMoveWagers, processWDLWagers, getUserWinnings, getWagerResults,
 } from '../resolve_bets';

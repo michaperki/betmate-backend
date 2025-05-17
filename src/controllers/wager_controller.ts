@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { RequestHandler } from 'express';
 
-import { RequestWithJWT, ValidatedRequestWithJWT } from 'types/requests';
-import { chessService, userService, wagerService } from 'services';
-import { CreateWagerRequest, GetWagersRequest } from 'validation/wager';
+import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
+import { chessService, userService, wagerService } from '../services';
+import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';
 
 type WagerRequestBody = {

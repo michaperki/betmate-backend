@@ -1,6 +1,6 @@
 /* eslint-disable no-nested-ternary */
 import { ChessInstance } from 'chess.js';
-import { ChessDoc, CreateChessQuery, GameStatus } from 'types/models/chess';
+import { ChessDoc, CreateChessQuery, GameStatus } from '../types/models/chess';
 
 /**
  * Convert chess game to `GameStatus`

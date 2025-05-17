@@ -1,10 +1,10 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
-import { RequestWithJWT } from 'types/requests';
-import { userService } from 'services';
-import { tokenForUser } from 'helpers/utils';
-import { SignUpUserRequest } from 'validation/auth';
+import { RequestWithJWT } from '../types/requests';
+import { userService } from '../services';
+import { tokenForUser } from '../helpers/utils';
+import { SignUpUserRequest } from '../validation/auth';
 import { handleFailure } from './utils';
 
 /**

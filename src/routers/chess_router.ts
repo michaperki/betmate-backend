@@ -2,9 +2,9 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
-import { chessController } from 'controllers';
-import { GetManyGamesSchema } from 'validation/chess';
-import { handleValidationError } from 'validation';
+import { chessController } from '../controllers';
+import { GetManyGamesSchema } from '../validation/chess';
+import { handleValidationError } from '../validation';
 
 const router = express();
 const validator = createValidator({ passError: true });

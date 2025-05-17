@@ -1,10 +1,10 @@
-import HttpError from 'helpers/errors';
-import { delay } from 'helpers/utils';
-import { Wager } from 'models';
+import HttpError from '../helpers/errors';
+import { delay } from '../helpers/utils';
+import { Wager } from '../models';
 import {
   FilterQuery, Query, Types, UpdateQuery,
 } from 'mongoose';
-import { CreateWagerQuery, PopulatedWagerDoc, WagerDoc } from 'types/models/wager';
+import { CreateWagerQuery, PopulatedWagerDoc, WagerDoc } from '../types/models/wager';
 import chessService from './chess_service';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 

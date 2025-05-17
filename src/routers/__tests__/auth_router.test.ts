@@ -2,7 +2,7 @@
 /* eslint-disable no-unused-vars */
 import supertest from 'supertest';
 
-import { authRouter } from 'routers';
+import { authRouter } from '../../routers';
 import { mockUser, connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(authRouter);

@@ -1,5 +1,5 @@
 import { Document, Types } from 'mongoose';
-import { PartialWithRequired } from 'types';
+import { PartialWithRequired } from '../../types';
 import { ChessDoc, GameStatus } from './chess';
 import { UserDoc } from './user';
 

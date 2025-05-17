@@ -1,14 +1,14 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import Filter from 'bad-words';
-import { chessService } from 'services';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { decodeToken } from 'helpers/utils';
+import { chessService } from '../services';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
+import { decodeToken } from '../helpers/utils';
 import {
   GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
-} from 'validation/websocket';
-import { validate } from 'validation';
+} from '../validation/websocket';
+import { validate } from '../validation';
 
 const filter = new Filter();
 

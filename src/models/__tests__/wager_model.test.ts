@@ -1,8 +1,8 @@
-import { isWagerResolved } from 'validation/wager';
-import { Chess, Users, Wager } from 'models';
+import { isWagerResolved } from '../../validation/wager';
+import { Chess, Users, Wager } from '../../models';
 import { Types, UpdateQuery } from 'mongoose';
-import { GameSource, GameStatus } from 'types/models/chess';
-import { WagerDoc, WagerStatus } from 'types/models/wager';
+import { GameSource, GameStatus } from '../../types/models/chess';
+import { WagerDoc, WagerStatus } from '../../types/models/wager';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

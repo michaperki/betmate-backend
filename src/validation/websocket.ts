@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { GameChatMessage, PoolBetMessage } from 'types/websocket';
+import { GameChatMessage, PoolBetMessage } from '../types/websocket';
 
 export const JoinGameSchema = joi.string();
 export const LeaveGameSchema = joi.string();

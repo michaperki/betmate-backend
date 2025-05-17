@@ -1,5 +1,5 @@
 import { Schema, model, Types } from 'mongoose';
-import { LeaderboardDoc } from 'types/models/leaderboard';
+import { LeaderboardDoc } from '../types/models/leaderboard';
 
 const RankSchema = new Schema({
   user_id: Types.ObjectId,

@@ -1,7 +1,7 @@
 import joi from 'joi';
 import { ExpressJoiError } from 'express-joi-validation';
 import { ErrorRequestHandler } from 'express';
-import HttpError from 'helpers/errors';
+import HttpError from '../helpers/errors';
 
 export const handleValidationError: ErrorRequestHandler = (err: ExpressJoiError, req, res, next) => {
   if (err.error?.isJoi) {
