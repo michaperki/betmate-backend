@@ -51,9 +51,13 @@ const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvent
 
       const gameId = await getStream(game.id, gameFields, socket);
 
-      handleSuccess(res)({ gameId });
+      if (!res.headersSent) {
+        handleSuccess(res)({ gameId });
+      }
     } catch (error) {
-      handleFailure(res)(error);
+      if (!res.headersSent) {
+        handleFailure(res)(error);
+      }
     }
   }
 );

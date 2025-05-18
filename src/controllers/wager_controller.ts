@@ -37,17 +37,26 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
     // check game exists and hasn't ended
     const game = await chessService.getChessGame(game_id);
-    if (game.complete) return res.status(400).send({ error: 'Game has already ended' });
+    if (game.complete) {
+      res.status(400).send({ error: 'Game has already ended' });
+      return;
+    }
 
     // check user has enough money to place bet
-    if (!req.user.account || amount > req.user.account) return res.status(401).json({ error: 'Insufficient funds' });
+    if (!req.user.account || amount > req.user.account) {
+      res.status(401).json({ error: 'Insufficient funds' });
+      return;
+    }
 
     const doc = await wagerService.createWager({ game_id, better_id, ...req.body });
 
     await userService.updateUserData(req.user._id, { $inc: { account: -amount } });
-    return res.status(200).json(doc);
+    res.status(200).json(doc);
+    return;
   } catch (error) {
-    return handleFailure(res)(error);
+    if (!res.headersSent) {
+      return handleFailure(res)(error);
+    }
   }
 };
 
@@ -62,10 +71,16 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 const getWagerRequest: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
     const wager = await wagerService.getWager(req.params.id);
-    if (String(wager.better_id) !== String(req.user._id)) return res.status(400).send({ error: 'Unauthorized' });
-    return res.status(200).send(wager);
+    if (String(wager.better_id) !== String(req.user._id)) {
+      res.status(400).send({ error: 'Unauthorized' });
+      return;
+    }
+    res.status(200).send(wager);
+    return;
   } catch (error) {
-    return handleFailure(res)(error);
+    if (!res.headersSent) {
+      return handleFailure(res)(error);
+    }
   }
 };
 
