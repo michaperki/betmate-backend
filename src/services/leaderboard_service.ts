@@ -55,20 +55,35 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
 
     const winningsByUser = wagers.reduce((acc, w) => {
       const userID = String(w.better_id._id);
+      // Calculate winnings, ensuring we don't get NaN by using default values
+      const currentWinnings = acc[userID]?.winnings ?? 0;
+      const wagerWinnings = typeof w.winnings === 'number' && !isNaN(w.winnings) ? w.winnings : 0;
+      const wagerAmount = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
+      const totalWinnings = currentWinnings + wagerWinnings - wagerAmount;
+
       return {
         ...acc,
         [userID]: {
           user_id: Types.ObjectId(userID),
           user_name: w.better_id.full_name,
-          winnings: (acc[userID]?.winnings ?? 0) + w.winnings - w.amount,
+          winnings: totalWinnings,
         },
       };
     }, {} as Record<string, Omit<Rank, 'rank'>>);
 
+    // Filter out any records with NaN winnings to prevent sorting errors
+    const validWinnings = Object.values(winningsByUser).filter(w =>
+      typeof w.winnings === 'number' && !isNaN(w.winnings)
+    );
+
     const sortedWinnings: Rank[] = (
-      Object
-        .values(winningsByUser)
-        .sort((a, b) => b.winnings - a.winnings)
+      validWinnings
+        .sort((a, b) => {
+          // Safely compare winnings values, handling any potential NaN
+          const bWin = typeof b.winnings === 'number' && !isNaN(b.winnings) ? b.winnings : 0;
+          const aWin = typeof a.winnings === 'number' && !isNaN(a.winnings) ? a.winnings : 0;
+          return bWin - aWin;
+        })
         .map((data, i) => ({
           ...data,
           rank: i + 1,
