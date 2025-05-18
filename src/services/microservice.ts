@@ -53,7 +53,7 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
     .catch((error) => {
       console.log('Microservice error:', error.message);
       // Return a fallback empty array instead of throwing error
-      return { moves: [] };
+      return [] as TopMoveData;
     })
 );
 
@@ -75,10 +75,10 @@ const getMoveAnalysis = (fen: string, move: string): Promise<MoveAnalysisData> =
       console.log('Microservice error:', error.message);
       // Return a reasonable fallback value instead of throwing error
       return {
-        evaluation: 0,
-        is_mate: false,
-        mate_in: null
-      };
+        score: 0,
+        percentile: 50,
+        is_best_move: false
+      } as MoveAnalysisData;
     })
 );
 
