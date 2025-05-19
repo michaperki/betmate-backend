@@ -7,6 +7,8 @@ import env from 'env-var';
 import http from 'http';
 import dotenv from 'dotenv';
 import { Server } from 'socket.io';
+import fs from 'fs';
+import path from 'path';
 
 import { chessService } from './services';
 import leaderboardService from './services/leaderboard_service';
@@ -18,8 +20,23 @@ import {
 
 import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
+import logger from './helpers/axiom_logger';
 
+// Load main .env file
 dotenv.config();
+
+// Also load .env.local if it exists
+const localEnvPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(localEnvPath)) {
+  const localEnvConfig = dotenv.parse(fs.readFileSync(localEnvPath));
+
+  // Add all .env.local variables to process.env
+  for (const key in localEnvConfig) {
+    process.env[key] = localEnvConfig[key];
+  }
+
+  console.log('Loaded environment variables from .env.local');
+}
 
 // initialize
 const app = express();
@@ -30,7 +47,13 @@ const io = new Server(httpServer, { cors: { origin: '*' } });
 app.use(cors());
 
 // enable/disable http request logging
-if (process.env.NODE_ENV !== 'test') app.use(morgan('dev'));
+if (process.env.NODE_ENV !== 'test') {
+  app.use(morgan('dev'));
+
+  // Import and use the Axiom logger middleware
+  const axiomLoggerMiddleware = require('./middleware/axiom_logger_middleware').default;
+  app.use(axiomLoggerMiddleware);
+}
 
 // enable json message body for posting data to API
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -84,10 +107,10 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
 mongoose.connect(mongoUri, mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') {
-    console.info('Connected to Database');
+    logger.info('Connected to Database');
   }
 }).catch((err) => {
-  console.error('Not Connected to Database - ERROR! ', err);
+  logger.error('Not Connected to Database', { error: err.message });
 });
 
 // Custom 404 middleware
@@ -98,11 +121,15 @@ app.use((req, res) => {
 // Handle errors raised from validation middleware
 app.use(handleValidationError);
 
+// Import and use the global error handler
+const errorHandler = require('./middleware/error_handler').default;
+app.use(errorHandler);
+
 // Set mongoose promise to JS promise
 mongoose.Promise = global.Promise;
 
 // START THE SERVER
 // =============================================================================
 const server = httpServer.listen(constants.PORT);
-if (process.env.NODE_ENV !== 'test') console.log(`listening on: ${constants.PORT}`);
+if (process.env.NODE_ENV !== 'test') logger.info(`Server started`, { port: constants.PORT });
 export default server;
