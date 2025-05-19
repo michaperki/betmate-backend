@@ -3,11 +3,11 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
-import { requireSignin, requireAuth } from 'authentication';
+import { requireSignin, requireAuth } from '../authentication';
 
-import { authController } from 'controllers';
-import { SignUpUserSchema } from 'validation/auth';
-import { handleValidationError } from 'validation';
+import { authController } from '../controllers';
+import { SignUpUserSchema } from '../validation/auth';
+import { handleValidationError } from '../validation';
 
 const router = express();
 const validator = createValidator({ passError: true });

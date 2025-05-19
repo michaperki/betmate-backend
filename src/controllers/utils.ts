@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import HttpError from 'helpers/errors';
+import HttpError from '../helpers/errors';
 
 export const handleSuccess = (res: Response) => <D>(d: D): Response => res.status(200).send(d);
 

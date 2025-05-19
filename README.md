@@ -12,6 +12,8 @@ The server is written in [TypeScript](https://www.typescriptlang.org/), and it u
 
 ## Setup
 
+### Local Development
+
 You must have `Node.js` and `Yarn` installed to run this project
 
 1. Clone this repository
@@ -23,6 +25,39 @@ You must have `Node.js` and `Yarn` installed to run this project
 4. Run `yarn dev`
 
 If you also want to run the microservice locally, follow the setup instructions in the [microservice README](https://github.com/dali-lab/betmate-model-microservice) and change line 11 in `src/helpers/constants.ts` accordingly.
+
+### Heroku Deployment
+
+To deploy the backend to Heroku:
+
+1. Create a new Heroku app:
+   ```
+   heroku create my-app-name
+   ```
+
+2. Add a MongoDB add-on to your Heroku app:
+   ```
+   heroku addons:create mongolab
+   ```
+
+3. Set the required environment variables:
+   ```
+   heroku config:set AUTH_SECRET=your_secret_key
+   heroku config:set MICROSERVICE_URL=your_microservice_url
+   heroku config:set MICROSERVICE_API_KEY=your_microservice_api_key
+   ```
+
+4. Deploy to Heroku:
+   ```
+   git push heroku feature/heroku-deployment:main
+   ```
+
+5. Check the logs to ensure everything is working:
+   ```
+   heroku logs --tail
+   ```
+
+Note: Heroku automatically sets the `PORT` and `MONGODB_URI` environment variables, so you don't need to configure those manually.
 
 ## Testing
 

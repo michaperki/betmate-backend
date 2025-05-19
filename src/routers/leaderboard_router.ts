@@ -2,10 +2,10 @@ import bodyParser from 'body-parser';
 import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
-import { requireAuth } from 'authentication';
-import leaderboardController from 'controllers/leaderboard_controller';
-import { GetLeaderboardSchema, GetUserRankSchema } from 'validation/leaderboard';
-import { handleValidationError } from 'validation';
+import { requireAuth } from '../authentication';
+import leaderboardController from '../controllers/leaderboard_controller';
+import { GetLeaderboardSchema, GetUserRankSchema } from '../validation/leaderboard';
+import { handleValidationError } from '../validation';
 
 const router = express();
 const validator = createValidator({ passError: true });

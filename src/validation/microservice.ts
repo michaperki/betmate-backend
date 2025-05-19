@@ -1,5 +1,5 @@
 import joi from 'joi';
-import { WDLData, MoveAnalysisData } from 'types/microservice';
+import { WDLData, MoveAnalysisData } from '../types/microservice';
 
 export const WDLSchema = joi.object<WDLData>({
   white_win: joi.number().min(0).max(1).required(),

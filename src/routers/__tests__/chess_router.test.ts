@@ -1,9 +1,9 @@
 import supertest from 'supertest';
 import { stringify } from 'querystring';
-import { chessRouter } from 'routers';
+import { chessRouter } from '../../routers';
 
-import { GameSource, GameStatus, MoveData } from 'types/models/chess';
-import { Chess } from 'models';
+import { GameSource, GameStatus, MoveData } from '../../types/models/chess';
+import { Chess } from '../../models';
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 
 const request = supertest(chessRouter);

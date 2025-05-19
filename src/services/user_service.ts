@@ -1,6 +1,6 @@
-import { Users } from 'models';
+import { Users } from '../models';
 import { FilterQuery, Types, UpdateQuery } from 'mongoose';
-import { UserDoc } from 'types/models/user';
+import { UserDoc } from '../types/models/user';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**

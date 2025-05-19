@@ -1,8 +1,8 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import leaderboardService from 'services/leaderboard_service';
-import { ValidatedRequestWithJWT } from 'types/requests';
-import { GetLeaderboardRequest, GetUserRankRequest } from 'validation/leaderboard';
+import leaderboardService from '../services/leaderboard_service';
+import { ValidatedRequestWithJWT } from '../types/requests';
+import { GetLeaderboardRequest, GetUserRankRequest } from '../validation/leaderboard';
 import { handleFailure, handleSuccess } from './utils';
 
 const getLeaderboardRequest: RequestHandler = async (req: ValidatedRequest<GetLeaderboardRequest>, res) => (

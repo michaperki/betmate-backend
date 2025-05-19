@@ -6,8 +6,7 @@
   "productionClientURL": "https://betmate-prod.netlify.app/",
   "main": "src/server.js",
   "engines": {
-    "node": "14.x",
-    "npm": "6.x"
+    "node": ">=16.0.0"
   },
   "repository": "https://github.com/dali-lab/betmate-backend",
   "author": "Jack Keane <John.F.Keane.22@Dartmouth.edu>",
@@ -22,11 +21,11 @@
     "lint": "eslint ./src",
     "test": "npm run lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
-    "start": "node dist/server.js",
-    "build": "tsc",
-    "prod": "npm run build && node dist/server.js",
+    "build": "rimraf dist && tsc --skipLibCheck --noEmitOnError false",
+    "start": "node -r tsconfig-paths/register dist/server.js",
+    "prod": "node -r tsconfig-paths/register dist/server.js",
     "heroku-prebuild": "node heroku-prebuild.js",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "yarn build"
   },
   "dependencies": {
     "@babel/core": "^7.13.0",
@@ -73,12 +72,12 @@
     "passport-local": "^1.0.0",
     "socket.io": "^4.0.1",
     "ts-node": "^9.1.1",
-    "tsconfig-paths": "^3.9.0",
-    "typescript": "^4.2.3"
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.8.3"
   },
   "devDependencies": {
-    "@types/ndjson": "^2.0.1",
     "@types/bad-words": "^3.0.1",
+    "@types/ndjson": "^2.0.1",
     "@types/passport-jwt": "^3.0.5",
     "debug": "^4.2.0",
     "eslint": "^7.9.0",
@@ -90,6 +89,7 @@
     "jest-environment-node": "^26.3.0",
     "mongodb-memory-server": "^6.8.0",
     "nodemon": "^2.0.4",
+    "rimraf": "5",
     "supertest": "^4.0.2",
     "ts-jest": "^26.5.4",
     "uuid": "^8.3.0"

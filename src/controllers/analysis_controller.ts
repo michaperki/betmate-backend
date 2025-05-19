@@ -1,7 +1,7 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import { microservice } from 'services';
-import { GetMoveAnalysisRequest } from 'validation/analysis';
+import { microservice } from '../services';
+import { GetMoveAnalysisRequest } from '../validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
 
 /**
@@ -16,25 +16,35 @@ import { handleSuccess, handleFailure } from './utils';
 const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAnalysisRequest>, res) => {
   const { fen, move } = req.query;
   
+  // Flag to track if timeout already responded
+  let hasResponded = false;
+
   // Add a timeout to prevent long-hanging requests
   const timeout = setTimeout(() => {
-    res.status(503).json({ message: 'Engine analysis timed out' });
+    if (!res.headersSent) {
+      hasResponded = true;
+      res.status(503).json({ message: 'Engine analysis timed out' });
+    }
   }, 5000);
 
   return microservice
     .getMoveAnalysis(fen, move)
     .then(result => {
       clearTimeout(timeout);
-      return handleSuccess(res)(result);
+      if (!hasResponded && !res.headersSent) {
+        return handleSuccess(res)(result);
+      }
     })
     .catch(error => {
       clearTimeout(timeout);
       console.log('Move analysis error:', error.message);
       // Return a 200 with a specific error message to avoid breaking the frontend
-      return res.status(200).json({
-        message: 'Analysis not available',
-        data: null
-      });
+      if (!hasResponded && !res.headersSent) {
+        return res.status(200).json({
+          message: 'Analysis not available',
+          data: null
+        });
+      }
     });
 };
 

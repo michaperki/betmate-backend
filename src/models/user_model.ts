@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-import { CompareCallback, UserDoc, UserRole } from 'types/models/user';
-import { isUserRole } from 'validation/auth';
+import { CompareCallback, UserDoc, UserRole } from '../types/models/user';
+import { isUserRole } from '../validation/auth';
 
 const UserSchema = new Schema({
   email: { type: String, required: true, unique: true },
@@ -56,7 +56,9 @@ UserSchema.pre('save', function (next) {
 // Add a method to the user model to compare passwords
 // Boolean "same" returns whether or not the passwords match to callback function
 UserSchema.methods.comparePassword = function (password: string, callback: CompareCallback) {
-  bcrypt.compare(password, this.password, (error, same) => {
+  // Use type assertion to access password property
+  const user = this as UserDoc;
+  bcrypt.compare(password, user.password, (error, same) => {
     if (error) {
       callback(error);
     } else {

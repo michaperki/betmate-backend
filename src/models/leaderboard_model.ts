@@ -1,11 +1,19 @@
 import { Schema, model, Types } from 'mongoose';
-import { LeaderboardDoc } from 'types/models/leaderboard';
+import { LeaderboardDoc } from '../types/models/leaderboard';
 
 const RankSchema = new Schema({
   user_id: Types.ObjectId,
   user_name: String,
   rank: Number,
-  winnings: Number,
+  winnings: {
+    type: Number,
+    validate: {
+      validator: function(v: number) {
+        return !isNaN(v);
+      },
+      message: props => `${props.value} is not a valid number (NaN detected)`
+    }
+  },
 }, { _id: false });
 
 const LeaderboardSchema = new Schema({

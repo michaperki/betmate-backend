@@ -1,13 +1,13 @@
 import axios, { AxiosResponse } from 'axios';
 import env from 'env-var';
-import { LICHESS_URL } from 'helpers/constants';
+import { LICHESS_URL } from '../helpers/constants';
 import { Readable } from 'stream';
-import { LichessGame, LichessStreamer } from 'types/lichess';
+import { LichessGame, LichessStreamer } from '../types/lichess';
 import {
   ChessDoc, CreateChessQuery, GameSource, GameStatus,
-} from 'types/models/chess';
-import { passiveValidate } from 'validation';
-import { LichessGameSchema, StreamerSchema, sanitizeLichessGame } from 'validation/lichess';
+} from '../types/models/chess';
+import { passiveValidate } from '../validation';
+import { LichessGameSchema, StreamerSchema, sanitizeLichessGame } from '../validation/lichess';
 import chessService from './chess_service';
 import { numMoves, takeLess } from './utils';
 

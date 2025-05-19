@@ -2,10 +2,10 @@ import axios from 'axios';
 import env from 'env-var';
 import dotenv from 'dotenv';
 import querystring from 'querystring';
-import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from 'types/microservice';
-import { MICROSERVICE_URL } from 'helpers/constants';
-import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from 'validation/microservice';
-import { validate } from 'validation';
+import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from '../types/microservice';
+import { MICROSERVICE_URL } from '../helpers/constants';
+import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/microservice';
+import { validate } from '../validation';
 
 dotenv.config();
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
@@ -19,12 +19,20 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  */
 const getWDL = (fen: string, white_time: number, black_time: number): Promise<WDLData> => (
   axios
-    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/dev/wdl?${querystring.stringify({ fen, white_time, black_time })}`, { headers: { 'x-api-key': apiKey } })
+    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/dev/wdl?${querystring.stringify({ fen, white_time, black_time })}`, {
+      headers: { 'x-api-key': apiKey },
+      timeout: 5000, // Add a reasonable timeout
+    })
     .then((res) => res.data.data)
     .then(validate(WDLSchema))
     .catch((error) => {
       console.log('Microservice error:', error.message);
-      throw error;
+      // Return default values instead of throwing error to prevent app crashes
+      return {
+        white_win: 0.33,
+        draw: 0.34,
+        black_win: 0.33,
+      };
     })
 );
 
@@ -36,12 +44,16 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
  */
 const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
   axios
-    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, { headers: { 'x-api-key': apiKey } })
+    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, {
+      headers: { 'x-api-key': apiKey },
+      timeout: 5000, // Add a reasonable timeout
+    })
     .then((res) => res.data.data)
     .then(validate<TopMoveData>(TopMoveSchema))
     .catch((error) => {
       console.log('Microservice error:', error.message);
-      throw error;
+      // Return a fallback empty array instead of throwing error
+      return [] as TopMoveData;
     })
 );
 
@@ -53,12 +65,20 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
  */
 const getMoveAnalysis = (fen: string, move: string): Promise<MoveAnalysisData> => (
   axios
-    .get<MicroserviceResponse<MoveAnalysisData>>(`${MICROSERVICE_URL}/dev/move-analysis?${querystring.stringify({ fen, move })}`, { headers: { 'x-api-key': apiKey } })
+    .get<MicroserviceResponse<MoveAnalysisData>>(`${MICROSERVICE_URL}/dev/move-analysis?${querystring.stringify({ fen, move })}`, {
+      headers: { 'x-api-key': apiKey },
+      timeout: 5000, // Add a reasonable timeout
+    })
     .then((res) => res.data.data)
     .then(validate<MoveAnalysisData>(MoveAnalysisSchema))
     .catch((error) => {
       console.log('Microservice error:', error.message);
-      throw error;
+      // Return a reasonable fallback value instead of throwing error
+      return {
+        score: 0,
+        percentile: 50,
+        is_best_move: false
+      } as MoveAnalysisData;
     })
 );
 

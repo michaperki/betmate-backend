@@ -1,8 +1,8 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
-import { chessService } from 'services';
-import { GetManyGamesRequest } from 'validation/chess';
+import { chessService } from '../services';
+import { GetManyGamesRequest } from '../validation/chess';
 import { handleSuccess, handleFailure } from './utils';
 
 /**

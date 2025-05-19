@@ -3,7 +3,7 @@ import { ValidatedRequestSchema, ContainerTypes } from 'express-joi-validation';
 import { isValidObjectId, Types } from 'mongoose';
 import { Condition } from 'mongodb';
 
-import { WagerDoc, WagerStatus } from 'types/models/wager';
+import { WagerDoc, WagerStatus } from '../types/models/wager';
 
 export const isWagerStatus = (v: string): boolean => Object.values(WagerStatus).includes(v as WagerStatus);
 export const isWagerResolved = (v: string): boolean => [WagerStatus.WON, WagerStatus.LOST].includes(v as WagerStatus);

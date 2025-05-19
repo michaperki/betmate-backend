@@ -1,5 +1,5 @@
 import * as bcrypt from 'bcrypt';
-import { Users as UserModel } from 'models';
+import { Users as UserModel } from '../../models';
 
 import { connectDB, dropDB } from '../../../__jest__/helpers';
 

@@ -1,21 +1,21 @@
 /* eslint-disable no-nested-ternary */
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import { samePlayers } from 'helpers/chess_logic';
-import HttpError from 'helpers/errors';
-import lichessService from 'services/lichess_service';
+import { samePlayers } from '../helpers/chess_logic';
+import HttpError from '../helpers/errors';
+import lichessService from '../services/lichess_service';
 import { Namespace } from 'socket.io';
-import { GameSource } from 'types/models/chess';
-import { UserRole } from 'types/models/user';
-import { ValidatedRequestWithJWT } from 'types/requests';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { GameSource } from '../types/models/chess';
+import { UserRole } from '../types/models/user';
+import { ValidatedRequestWithJWT } from '../types/requests';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import {
   CreateGameIDRequest,
   CreateGameURLRequest,
   CreateStreamerGameRequest,
   sanitizeLichessGame, // ✅ import added
-} from 'validation/lichess';
-import { getStream } from 'websockets/lichess_stream';
+} from '../validation/lichess';
+import { getStream } from '../websockets/lichess_stream';
 import { handleFailure, handleSuccess } from './utils';
 
 const convertUrlToId: RequestHandler = (req: ValidatedRequestWithJWT<CreateGameURLRequest>, _res, next) => {
@@ -51,9 +51,13 @@ const createLichessStream = (socket: Namespace<ChessListenEvents, ChessEmitEvent
 
       const gameId = await getStream(game.id, gameFields, socket);
 
-      handleSuccess(res)({ gameId });
+      if (!res.headersSent) {
+        handleSuccess(res)({ gameId });
+      }
     } catch (error) {
-      handleFailure(res)(error);
+      if (!res.headersSent) {
+        handleFailure(res)(error);
+      }
     }
   }
 );

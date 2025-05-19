@@ -1,20 +1,20 @@
 
 import ndjson from 'ndjson';
-import { StreamData } from 'types/lichess';
+import { StreamData } from '../types/lichess';
 import {
-  AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
-} from 'types/models/chess';
-import { matchesSchema } from 'validation';
-import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
-import { LichessStreamMove, LichessStatusEvent } from 'types/lichess';
+  AnonMoveWager, ChessDoc, CreateChessQuery, GameSource, GameStatus, MoveData,
+} from '../types/models/chess';
+import { matchesSchema } from '../validation';
+import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from '../validation/lichess'; // ✅ import added
+import { LichessStreamMove, LichessStatusEvent } from '../types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessService, microservice } from 'services';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
+import { chessService, microservice } from '../services';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { Namespace } from 'socket.io';
-import lichessService from 'services/lichess_service';
-import { getLichessOutcome } from 'helpers/chess_logic';
+import lichessService from '../services/lichess_service';
+import { getLichessOutcome } from '../helpers/chess_logic';
 
 export const getStream = async (
   id: string,
@@ -23,7 +23,8 @@ export const getStream = async (
   onGameComplete = () => {},
 ): Promise<string> => {
   const chessDoc = await chessService.createChessGame(startData);
-  socket.emit('new_game', chessDoc.toJSON());
+  const gameData = chessDoc.toJSON();
+  socket.emit('new_game', gameData as unknown as ChessDoc);
   const gameId = String(chessDoc._id);
 
   const stream = await lichessService.getGameStream(id);

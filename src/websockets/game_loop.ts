@@ -3,17 +3,17 @@
 import { Namespace } from 'socket.io';
 import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { ReplaySchema, GameData } from 'types/game_loop';
-import { chessService, microservice } from 'services';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
+import { ReplaySchema, GameData } from '../types/game_loop';
+import { chessService, microservice } from '../services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { delay } from 'helpers/utils';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
+import { delay } from '../helpers/utils';
 import {
   AnonMoveWager, ChessDoc, GameSource, GameStatus, MoveData,
-} from 'types/models/chess';
+} from '../types/models/chess';
 
 const PREGAME_TIME = 90;
 
@@ -76,7 +76,8 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   // create game and put into pregame
   const gameDoc = await chessService.createChessGame(gameFields);
   const gameId = String(gameDoc._id);
-  socket.emit('new_game', gameDoc.toJSON());
+  const gameData = gameDoc.toJSON();
+  socket.emit('new_game', gameData as unknown as ChessDoc);
 
   // Pregame phase
   await delay(PREGAME_TIME * 1000);

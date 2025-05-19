@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-import { documentNotFoundError } from 'helpers/constants';
-import HttpError from 'helpers/errors';
+import { documentNotFoundError } from '../helpers/constants';
+import HttpError from '../helpers/errors';
 import { Document } from 'mongoose';
-import { LichessGame } from 'types/lichess';
+import { LichessGame } from '../types/lichess';
 
 export const dbNullDocHandler = <D extends Document>(d: D | null) => {
   if (!d) throw new HttpError(404, [documentNotFoundError]);

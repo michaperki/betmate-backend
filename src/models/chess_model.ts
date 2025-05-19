@@ -1,11 +1,11 @@
 /* eslint-disable func-names */
 import mongoose, { Schema, Types } from 'mongoose';
-import { CHESS_START } from 'helpers/constants';
-import { isGameComplete, isGameSource, isGameStatus } from 'validation/chess';
-import microservice from 'services/microservice';
-import { WDLData } from 'types/microservice';
+import { CHESS_START } from '../helpers/constants';
+import { isGameComplete, isGameSource, isGameStatus } from '../validation/chess';
+import microservice from '../services/microservice';
+import { WDLData } from '../types/microservice';
 import { Chess } from 'chess.js';
-import { ChessDoc, GameStatus } from 'types/models/chess';
+import { ChessDoc, GameStatus } from '../types/models/chess';
 import {
   MovesSchema, OddsSchema, PlayerSchema, PoolWagerSchema,
 } from './helper_schemas';

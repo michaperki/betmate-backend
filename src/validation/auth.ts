@@ -1,6 +1,6 @@
 import joi from 'joi';
 import { ContainerTypes, ValidatedRequestSchema } from 'express-joi-validation';
-import { UserRole } from 'types/models/user';
+import { UserRole } from '../types/models/user';
 
 export const isUserRole = (v: string): boolean => Object.values(UserRole).includes(v as UserRole);
 

@@ -6,7 +6,7 @@ import {
   LichessStreamEnd,
   LichessStreamer,
   LichessStreamMove, LichessStreamStart, Player, Status, Variant,
-} from 'types/lichess';
+} from '../types/lichess';
 
 const PlayerSchema = joi.object<Player>({
   user: joi.object({

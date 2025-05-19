@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-this-alias */
-import { isWagerResolved, isWagerStatus } from 'validation/wager';
+import { isWagerResolved, isWagerStatus } from '../validation/wager';
 import mongoose, { Schema } from 'mongoose';
-import { WagerDoc, WagerStatus } from 'types/models/wager';
+import { WagerDoc, WagerStatus } from '../types/models/wager';
 
 const WagerSchema = new Schema({
   game_id: {
