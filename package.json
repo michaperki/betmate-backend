@@ -25,7 +25,7 @@
     "start": "node -r tsconfig-paths/register dist/server.js",
     "prod": "node -r tsconfig-paths/register dist/server.js",
     "heroku-prebuild": "node heroku-prebuild.js",
-    "heroku-postbuild": "yarn build"
+    "heroku-postbuild": "npm run build"
   },
   "dependencies": {
     "@axiomhq/axiom-node": "0.12.0",
