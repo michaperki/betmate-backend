@@ -1,7 +1,7 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import { microservice } from '../services';
-import { GetMoveAnalysisRequest } from '../validation/analysis';
+import { microserviceService } from 'services';
+import { GetMoveAnalysisRequest } from 'validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
 
 /**
@@ -27,7 +27,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
     }
   }, 5000);
 
-  return microservice
+  return microserviceService
     .getMoveAnalysis(fen, move)
     .then(result => {
       clearTimeout(timeout);

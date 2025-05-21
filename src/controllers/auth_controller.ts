@@ -30,9 +30,13 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
     }
 
     // Save the user then transmit to frontend
-    const user = await userService.createUser(email, password, firstName, lastName);
-    res.status(201).json({ token: tokenForUser(user), user });
-    return;
+    const user = await userService.createUser({
+      email,
+      password,
+      first_name: firstName,
+      last_name: lastName
+    });
+    return res.status(201).json({ token: tokenForUser(user), user });
   } catch (error) {
     if (!res.headersSent) {
       return handleFailure(res)(error);

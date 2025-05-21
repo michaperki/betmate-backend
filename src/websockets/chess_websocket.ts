@@ -1,15 +1,15 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import Filter from 'bad-words';
-import { chessService } from '../services';
-import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
-import { decodeToken } from '../helpers/utils';
+import { chessService, agentService } from 'services';
+import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { ChessDoc } from 'types/models/chess';
+import { decodeToken } from 'helpers/utils';
 import {
   GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from '../validation/websocket';
 import { validate } from '../validation';
-import { ChessDoc } from '../types/models/chess';
 
 const filter = new Filter();
 
@@ -30,8 +30,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       validate(JoinGameSchema)(gameId);
       const chessDoc = await chessService.getChessGame(gameId);
       socket.join(gameId);
-      const gameData = chessDoc.toJSON();
-      return socket.emit('game_info', { gameId, data: gameData as unknown as ChessDoc });
+      return socket.emit('game_info', { gameId, data: chessDoc as ChessDoc });
     } catch (error) {
       return socket.emit('game_error', { gameId, message: error.message });
     }
@@ -108,6 +107,17 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     try {
       validate(PoolWagerSchema)(wager);
       await chessService.updateChessGame(wager.gameId, { $push: { [`pool_wagers.${wager.type}.wagers`]: { data: wager.data, amount: wager.amount } } });
+
+      // Notify agent service that a wager was placed on this game and move
+      if (wager.type === 'move') {
+        // Get the current game to determine move number
+        const game = await chessService.getChessGame(wager.gameId);
+        if (game) {
+          // Update agent service with information that a move has wagers
+          agentService.handleNewMoveEvent(wager.gameId, true);
+        }
+      }
+
       return socket.to(wager.gameId).emit('pool_wager', wager);
     } catch (error) {
       return socket.emit('socket_error', { message: error.message });

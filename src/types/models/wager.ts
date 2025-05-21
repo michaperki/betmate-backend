@@ -32,6 +32,7 @@ export interface WagerDoc extends Document {
   winnings: number,
   created_at: Date,
   updated_at: Date,
+  is_bot?: boolean,
 }
 
 export interface PopulatedWagerDoc extends Omit<WagerDoc, 'better_id' | 'game_id'> {
@@ -39,7 +40,7 @@ export interface PopulatedWagerDoc extends Omit<WagerDoc, 'better_id' | 'game_id
   better_id: UserDoc
 }
 
-export type CreateWagerQuery = PartialWithRequired<WagerDoc, 'game_id' | 'better_id' | 'wdl' | 'amount' | 'odds' | 'data' | 'move_number'>;
+export type CreateWagerQuery = PartialWithRequired<WagerDoc, 'game_id' | 'better_id' | 'wdl' | 'amount' | 'odds' | 'data' | 'move_number'> & { skip_game_check?: boolean };
 
 /* -------- Wager Processing Types -------- */
 

@@ -3,9 +3,9 @@
 import { Namespace } from 'socket.io';
 import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
-import { ReplaySchema, GameData } from '../types/game_loop';
-import { chessService, microservice } from '../services';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
+import { ReplaySchema, GameData } from 'types/game_loop';
+import { chessService, microserviceService } from 'services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
@@ -146,10 +146,10 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       liveTopMoves = [];
 
       // Get new odds from microservice
-      const oddsPromise = microservice
+      const oddsPromise = microserviceService
         .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
-      const topMovesPromise = microservice
+      const topMovesPromise = microserviceService
         .getTopMoves(chessGame.fen(), 3)
         .catch(() => []);
 

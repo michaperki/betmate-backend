@@ -46,7 +46,7 @@ export const LichessGameSchema = joi.object<LichessGame>({
   drawOffers: joi.array().items(joi.number()),
   clocks: joi.array().items(joi.number()).optional(),
   division: joi.object({
-    middle: joi.number().required(),
+    middle: joi.number().optional(),
     end: joi.number().optional(), // Made optional to handle events without division.end
   }).optional(),
 });

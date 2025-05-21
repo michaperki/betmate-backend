@@ -8,6 +8,8 @@ export interface PoolBetMessage {
   type: 'move'
   data: string
   amount: number
+  isBot?: boolean
+  userId?: string
 }
 
 interface GameUpdateMessage extends UpdateQuery<ChessDoc> {
