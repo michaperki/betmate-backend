@@ -19,7 +19,7 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  */
 const getWDL = (fen: string, white_time: number, black_time: number): Promise<WDLData> => (
   axios
-    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/dev/wdl?${querystring.stringify({ fen, white_time, black_time })}`, {
+    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`, {
       headers: { 'x-api-key': apiKey },
       timeout: 5000, // Add a reasonable timeout
     })
@@ -44,7 +44,7 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
  */
 const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
   axios
-    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/dev/top-moves?${querystring.stringify({ fen, n })}`, {
+    .get<MicroserviceResponse<TopMoveData>>(`${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n })}`, {
       headers: { 'x-api-key': apiKey },
       timeout: 5000, // Add a reasonable timeout
     })
@@ -65,7 +65,7 @@ const getTopMoves = (fen: string, n: number): Promise<TopMoveData> => (
  */
 const getMoveAnalysis = (fen: string, move: string): Promise<MoveAnalysisData> => (
   axios
-    .get<MicroserviceResponse<MoveAnalysisData>>(`${MICROSERVICE_URL}/dev/move-analysis?${querystring.stringify({ fen, move })}`, {
+    .get<MicroserviceResponse<MoveAnalysisData>>(`${MICROSERVICE_URL}/move-analysis?${querystring.stringify({ fen, move })}`, {
       headers: { 'x-api-key': apiKey },
       timeout: 5000, // Add a reasonable timeout
     })
