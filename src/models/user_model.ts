@@ -68,7 +68,22 @@ UserSchema.methods.comparePassword = function (password: string, callback: Compa
 };
 
 UserSchema.virtual('full_name').get(function () {
-  return `${this.first_name} ${this.last_name}`;
+  const firstName = this.first_name ? this.first_name.trim() : '';
+  const lastName = this.last_name ? this.last_name.trim() : '';
+  const email = this.email || '';
+
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  } else if (firstName) {
+    return firstName;
+  } else if (lastName) {
+    return lastName;
+  } else if (email) {
+    // Use email username as fallback if no name provided
+    return email.split('@')[0];
+  } else {
+    return '';
+  }
 });
 
 const UserModel = mongoose.model<UserDoc>('User', UserSchema);

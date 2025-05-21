@@ -61,11 +61,33 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
       const wagerAmount = typeof w.amount === 'number' && !isNaN(w.amount) ? w.amount : 0;
       const totalWinnings = currentWinnings + wagerWinnings - wagerAmount;
 
+      // Extract name components
+      const firstName = w.better_id.first_name ? w.better_id.first_name.trim() : '';
+      const lastName = w.better_id.last_name ? w.better_id.last_name.trim() : '';
+      const email = w.better_id.email || '';
+
+      // Build display name with priority:
+      // 1. First + Last name if both exist
+      // 2. Just First name if it exists
+      // 3. Just Last name if it exists
+      // 4. Email username (part before @) as fallback
+      let displayName = '';
+
+      if (firstName && lastName) {
+        displayName = `${firstName} ${lastName}`;
+      } else if (firstName) {
+        displayName = firstName;
+      } else if (lastName) {
+        displayName = lastName;
+      } else if (email) {
+        displayName = email.split('@')[0];
+      }
+
       return {
         ...acc,
         [userID]: {
           user_id: Types.ObjectId(userID),
-          user_name: w.better_id.full_name,
+          user_name: displayName,
           winnings: totalWinnings,
         },
       };
