@@ -59,10 +59,45 @@ export const getStream = async (
           // if (!canQueryMicroservice && startFen === moveData.fen) canQueryMicroservice = true;
 
           if (moveData.lm === undefined) return;
-          const move = game.move(moveData.lm, { sloppy: true });
+
+          // Try regular move first
+          let move = game.move(moveData.lm, { sloppy: true });
+
+          // If move fails, check if it's a castling move and try alternative notation
           if (!move) {
-            game.load(`${moveData.fen} - - 0 1`);
-            return;
+            console.warn(`[Move Failed] gameId=${gameId} move="${moveData.lm}" fen="${moveData.fen}"`);
+
+            // Map of UCI castling moves to algebraic notation
+            const castlingMap: {[key: string]: string} = {
+              'e1g1': 'O-O',     // White kingside
+              'e1c1': 'O-O-O',   // White queenside
+              'e8g8': 'O-O',     // Black kingside
+              'e8c8': 'O-O-O'    // Black queenside
+            };
+
+            // Check if it's a castling move and try the algebraic notation
+            if (castlingMap[moveData.lm]) {
+              console.log(`[Castling] Attempting to process castling move using algebraic notation: ${castlingMap[moveData.lm]}`);
+              try {
+                move = game.move(castlingMap[moveData.lm]);
+                if (move) {
+                  console.log(`[Castling] Successfully processed castling move`);
+                } else {
+                  console.warn(`[Castling] Failed to process with algebraic notation`);
+                }
+              } catch (e) {
+                console.warn(`[Castling] Error processing castling move: ${e.message}`);
+              }
+            }
+
+            // If all attempts fail, fall back to loading the FEN
+            if (!move) {
+              // Use the full FEN string from Lichess instead of appending incomplete data
+              // Lichess FEN strings include all needed information including castling rights
+              game.load(moveData.fen);
+              console.log(`[FEN Loaded] Using Lichess FEN: ${moveData.fen}`);
+              return;
+            }
           }
 
           const {
