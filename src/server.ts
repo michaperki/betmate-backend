@@ -1,3 +1,16 @@
+import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+
+// Load .env.local first if it exists (to give it priority)
+const localEnvPath = path.resolve(process.cwd(), '.env.local');
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath });
+}
+
+// Then load main .env file (won't override existing env vars)
+dotenv.config();
+
 import cors from 'cors';
 import express from 'express';
 import bodyParser from 'body-parser';
@@ -5,10 +18,7 @@ import morgan from 'morgan';
 import mongoose from 'mongoose';
 import env from 'env-var';
 import http from 'http';
-import dotenv from 'dotenv';
 import { Server } from 'socket.io';
-import fs from 'fs';
-import path from 'path';
 
 import { chessService } from './services';
 import leaderboardService from './services/leaderboard_service';
@@ -22,21 +32,6 @@ import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
 
-// Load main .env file
-dotenv.config();
-
-// Also load .env.local if it exists
-const localEnvPath = path.resolve(process.cwd(), '.env.local');
-if (fs.existsSync(localEnvPath)) {
-  const localEnvConfig = dotenv.parse(fs.readFileSync(localEnvPath));
-
-  // Add all .env.local variables to process.env
-  for (const key in localEnvConfig) {
-    process.env[key] = localEnvConfig[key];
-  }
-
-  console.log('Loaded environment variables from .env.local');
-}
 
 // initialize
 const app = express();

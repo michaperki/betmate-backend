@@ -1,13 +1,10 @@
 import axios from 'axios';
 import env from 'env-var';
-import dotenv from 'dotenv';
 import querystring from 'querystring';
 import { WDLData, TopMoveData, MicroserviceResponse, MoveAnalysisData } from '../types/microservice';
 import { MICROSERVICE_URL } from '../helpers/constants';
 import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/microservice';
 import { validate } from '../validation';
-
-dotenv.config();
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
 /**
@@ -17,9 +14,11 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  * @param black_time time on clock for black player
  * @returns Promise of win/draw/loss odds, or null if issue occurs
  */
-const getWDL = (fen: string, white_time: number, black_time: number): Promise<WDLData> => (
-  axios
-    .get<MicroserviceResponse<WDLData>>(`${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`, {
+const getWDL = (fen: string, white_time: number, black_time: number): Promise<WDLData> => {
+  const url = `${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`;
+  console.log(`Calling microservice at: ${url}`);
+  return axios
+    .get<MicroserviceResponse<WDLData>>(url, {
       headers: { 'x-api-key': apiKey },
       timeout: 5000, // Add a reasonable timeout
     })
@@ -27,14 +26,15 @@ const getWDL = (fen: string, white_time: number, black_time: number): Promise<WD
     .then(validate(WDLSchema))
     .catch((error) => {
       console.log('Microservice error:', error.message);
+      console.log('Attempted URL:', url);
       // Return default values instead of throwing error to prevent app crashes
       return {
         white_win: 0.33,
         draw: 0.34,
         black_win: 0.33,
       };
-    })
-);
+    });
+};
 
 /**
  * Make call to microservice to get top `n` best moves of chess game
