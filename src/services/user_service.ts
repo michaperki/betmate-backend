@@ -122,7 +122,6 @@ const getBotUsers = (): Promise<UserDoc[]> => (
 const getUserByEmail = (email: string): Promise<UserDoc | null> => (
   Users
     .findOne({ email })
-    .then(dbNullDocHandler)
     .catch(dbErrorHandler)
 );
 
@@ -160,7 +159,7 @@ const getChessGame = (gameId: string): Promise<ChessDoc | null> => (
 const moveHasWagers = async (gameId: string, moveNumber: number): Promise<boolean> => {
   try {
     const count = await Wager.countDocuments({
-      game_id: new Types.ObjectId(gameId),
+      game_id: Types.ObjectId(gameId),
       move_number: moveNumber
     });
     return count > 0;
@@ -178,7 +177,7 @@ const countRealUsersWithWagers = async (gameId: string): Promise<number> => {
   try {
     // Get distinct better_ids for the game
     const betterIds = await Wager.distinct('better_id', {
-      game_id: new Types.ObjectId(gameId)
+      game_id: Types.ObjectId(gameId)
     });
 
     // Count how many of these are real users (not bots)

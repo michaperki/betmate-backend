@@ -13,8 +13,15 @@ const emptyMoveBars: Record<string, number> = {};
 export const initializeBots = async (): Promise<void> => {
   try {
     // Check if bots already exist
+    if (process.env.NODE_ENV !== 'test') {
+      console.log('Checking for existing bots...');
+    }
     const existingBots = await userService.getBotUsers();
-    
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`Found ${existingBots.length} existing bots`);
+    }
+
     if (existingBots.length >= 4) {
       if (process.env.NODE_ENV !== 'test') {
         console.log('Seed bots already exist');
@@ -92,16 +99,29 @@ export const initializeBots = async (): Promise<void> => {
 
     // Create bot accounts
     for (const botConfig of botConfigs) {
+      if (process.env.NODE_ENV !== 'test') {
+        console.log(`Checking for bot: ${botConfig.email}`);
+      }
+
       const existingBot = await userService.getUserByEmail(botConfig.email);
-      
+
       if (!existingBot) {
+        if (process.env.NODE_ENV !== 'test') {
+          console.log(`Creating new bot: ${botConfig.first_name} ${botConfig.last_name}`);
+        }
         const newBot = await userService.createUser(botConfig);
         if (process.env.NODE_ENV !== 'test') {
           console.log(`Created bot: ${botConfig.first_name} ${botConfig.last_name}`);
         }
-        
+
         // Register bot with the seedBot service
         seedBot.registerBot(newBot._id.toString(), botConfig.botConfig);
+      } else {
+        if (process.env.NODE_ENV !== 'test') {
+          console.log(`Bot already exists: ${botConfig.first_name} ${botConfig.last_name}`);
+        }
+        // Register existing bot with the seedBot service
+        seedBot.registerBot(existingBot._id.toString(), botConfig.botConfig);
       }
     }
   } catch (error) {
@@ -125,20 +145,73 @@ export const handleNewMoveEvent = (gameId: string, hasWagers: boolean): void => 
 };
 
 /**
- * Process games with empty move bars
+ * Process bot wagers for a specific game immediately
+ */
+export const processBotWagersForGame = async (gameId: string, io: any): Promise<void> => {
+  try {
+    // Get bot users
+    const bots = await userService.getBotUsers();
+
+    if (bots.length === 0) {
+      return;
+    }
+
+    // Get the game details
+    const game = await userService.getChessGame(gameId);
+
+    if (!game || game.game_status !== 'in_progress') {
+      return;
+    }
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Bot Wagers] Processing ${bots.length} bots for game ${gameId} move ${game.move_hist.length + 1}`);
+    }
+
+    // Have each bot consider placing a wager (with some randomness to avoid all bots betting)
+    for (const bot of bots) {
+      // Add some randomness - not every bot bets on every move
+      const shouldConsiderWager = Math.random() < 0.7; // 70% chance per bot per move
+
+      if (shouldConsiderWager) {
+        try {
+          await seedBot.processBotWager(io, bot as any, game);
+        } catch (error) {
+          if (process.env.NODE_ENV !== 'test') {
+            console.log(`Bot ${bot.first_name} wager failed: ${error.message}`);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`Failed to process bot wagers for game ${gameId}: ${error.message}`);
+    }
+  }
+};
+
+/**
+ * Process games with empty move bars (legacy approach)
  */
 export const processEmptyMoveBars = async (io: any): Promise<void> => {
   try {
     // Get active games with empty move bars
     const gameIds = Object.keys(emptyMoveBars);
-    
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Bot Service] Checking ${gameIds.length} games with empty move bars`);
+    }
+
     if (gameIds.length === 0) {
       return;
     }
 
     // Get bot users
     const bots = await userService.getBotUsers();
-    
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Bot Service] Found ${bots.length} bots available`);
+    }
+
     if (bots.length === 0) {
       if (process.env.NODE_ENV !== 'test') {
         console.log('No bot users found');
@@ -215,5 +288,6 @@ export default {
   initializeBots,
   handleNewMoveEvent,
   processEmptyMoveBars,
+  processBotWagersForGame,
   scheduleRefreshBankrolls,
 };

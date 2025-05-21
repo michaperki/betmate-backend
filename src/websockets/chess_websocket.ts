@@ -3,6 +3,7 @@ import { Socket } from 'socket.io';
 import Filter from 'bad-words';
 import { chessService, agentService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { ChessDoc } from 'types/models/chess';
 import { decodeToken } from 'helpers/utils';
 import {
   GameChatSchema,
@@ -29,7 +30,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       validate(JoinGameSchema)(gameId);
       const chessDoc = await chessService.getChessGame(gameId);
       socket.join(gameId);
-      return socket.emit('game_info', { gameId, data: chessDoc.toJSON() });
+      return socket.emit('game_info', { gameId, data: chessDoc as ChessDoc });
     } catch (error) {
       return socket.emit('game_error', { gameId, message: error.message });
     }

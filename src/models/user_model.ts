@@ -66,7 +66,7 @@ UserSchema.pre('save', function (next) {
 
 // Add a method to the user model to compare passwords
 // Boolean "same" returns whether or not the passwords match to callback function
-UserSchema.methods.comparePassword = function (password: string, callback: CompareCallback) {
+UserSchema.methods.comparePassword = function (this: UserDoc, password: string, callback: CompareCallback) {
   bcrypt.compare(password, this.password, (error, same) => {
     if (error) {
       callback(error);

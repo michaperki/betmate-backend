@@ -102,7 +102,7 @@ async function selectMove(
  */
 async function moveHasWagers(gameId: string, moveNumber: number): Promise<boolean> {
   const wagers = await wagerService.getWagers({
-    game_id: new mongoose.Types.ObjectId(gameId),
+    game_id: mongoose.Types.ObjectId(gameId),
     move_number: moveNumber
   });
   return wagers.length > 0;
@@ -147,13 +147,10 @@ export async function processBotWager(
       return;
     }
 
-    // Check if move already has wagers
-    const moveNumber = game.move_hist.length;
-    const hasWagers = await moveHasWagers(game._id.toString(), moveNumber);
-    
-    // If move has wagers and not CHAOS_KNIGHT (who will bet regardless), skip
-    if (hasWagers && bot.botConfig.persona !== BotPersona.CHAOS_KNIGHT) {
-      return;
+    const moveNumber = game.move_hist.length + 1; // Bet on the NEXT move that will be played
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Bot ${bot.botConfig.persona}] Placing wager for game ${game._id} move ${moveNumber} (${game.move_hist.length} moves played)`);
     }
 
     // Get position evaluation and best moves
@@ -193,14 +190,16 @@ export async function processBotWager(
 
     // Create and place wager
     const newWager: CreateWagerQuery = {
-      game_id: new mongoose.Types.ObjectId(game._id),
-      better_id: new mongoose.Types.ObjectId(bot._id),
+      game_id: mongoose.Types.ObjectId(game._id),
+      better_id: mongoose.Types.ObjectId(bot._id),
       wdl: false, // This is a move bet, not a game outcome bet
       amount: stake,
       odds: 1, // Standard odds for pool wager
       data: selectedMove,
       move_number: moveNumber,
       status: WagerStatus.PENDING,
+      is_bot: true,
+      skip_game_check: true,
     };
 
     // Place the wager

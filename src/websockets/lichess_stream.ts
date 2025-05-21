@@ -2,7 +2,7 @@
 import ndjson from 'ndjson';
 import { StreamData } from 'types/lichess';
 import {
-  AnonMoveWager, CreateChessQuery, GameSource, GameStatus, MoveData,
+  AnonMoveWager, ChessDoc, CreateChessQuery, GameSource, GameStatus, MoveData,
 } from 'types/models/chess';
 import { matchesSchema } from 'validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
@@ -10,7 +10,7 @@ import { LichessStreamMove, LichessStatusEvent } from 'types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessService, microserviceService } from 'services';
+import { chessService, microserviceService, agentService } from 'services';
 import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from 'services/lichess_service';
@@ -23,7 +23,7 @@ export const getStream = async (
   onGameComplete = () => {},
 ): Promise<string> => {
   const chessDoc = await chessService.createChessGame(startData);
-  socket.emit('new_game', chessDoc.toJSON());
+  socket.emit('new_game', chessDoc as ChessDoc);
   const gameId = String(chessDoc._id);
 
   const stream = await lichessService.getGameStream(id);
@@ -91,14 +91,37 @@ export const getStream = async (
             },
           };
           const history = moveHist.map((m) => m.san);
+          const actualMove = history[history.length - 1];
+
+          if (process.env.NODE_ENV !== 'test') {
+            console.log(`[Move Resolution] Game ${gameId} move ${history.length}: ${actualMove}, available options: [${liveTopMoves.join(', ')}]`);
+          }
 
           chessService.updateChessGame(gameId, update);
           socket.to(gameId).emit('new_move', { gameId, ...update });
 
-          (liveTopMoves.length > 0
-            ? resolveCriticalMoveWagers(gameId, history, liveTopMoves)
+          // Save current betting options before updating to new position
+          const previousMoveOptions = [...liveTopMoves];
+
+          // Trigger bot wagers for the new position
+          agentService.processBotWagersForGame(gameId, socket).catch(err => {
+            if (process.env.NODE_ENV !== 'test') {
+              console.log(`Bot wager processing error: ${err.message}`);
+            }
+          });
+
+          (previousMoveOptions.length > 0
+            ? resolveCriticalMoveWagers(gameId, history, previousMoveOptions)
             : cancelCriticalMoveWagers(gameId, history))
-            .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
+            .then((wagerResults) => {
+              if (process.env.NODE_ENV !== 'test') {
+                console.log(`[Wager Resolution] Game ${gameId} - ${Object.keys(wagerResults).length} users affected, topMoves: ${previousMoveOptions.length > 0 ? previousMoveOptions.join(',') : 'none'}`);
+                Object.entries(wagerResults).forEach(([uid, wagers]) => {
+                  console.log(`[Wager Resolution] Sending to user ${uid}: ${wagers.length} wagers, statuses: ${wagers.map(w => w.status).join(',')}`);
+                });
+              }
+              Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers }));
+            })
             .catch((e) => console.log('Error:', e.message));
 
           liveTopMoves = [];
