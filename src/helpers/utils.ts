@@ -31,3 +31,11 @@ export const decodeToken = (token: string, noVerify = false): any => {
     return null;
   }
 };
+
+/**
+ * Generate a short correlation ID for tracking related log entries
+ * @returns 8-character alphanumeric string
+ */
+export const generateCorrelationId = (): string => {
+  return Math.random().toString(36).substring(2, 10);
+};

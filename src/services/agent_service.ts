@@ -197,12 +197,13 @@ export const processEmptyMoveBars = async (io: any): Promise<void> => {
     // Get active games with empty move bars
     const gameIds = Object.keys(emptyMoveBars);
 
-    if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Bot Service] Checking ${gameIds.length} games with empty move bars`);
-    }
-
+    // Only log when there are games to check (reduce noise)
     if (gameIds.length === 0) {
       return;
+    }
+
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[Bot Service] Processing ${gameIds.length} games with empty move bars`);
     }
 
     // Get bot users

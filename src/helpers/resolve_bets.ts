@@ -5,7 +5,7 @@ import {
   ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
 } from '../types/models/wager';
 
-import { delay } from './utils';
+import { delay, generateCorrelationId } from './utils';
 
 /**
  * Construct function to process `WagerDoc` into `ProcessedWager`
@@ -150,9 +150,18 @@ const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?:
  * @param wagers Array of `WagerDoc`
  * @param correctWager Outcome that wagers will be compared to
  * @param processWagers Function to process wagers, either `processWDLWagers` or `processCriticalMoveWagers`
+ * @param correlationId Optional correlation ID for tracking related logs
  * @returns JSON mapping user IDs to their wagers
  */
-const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor): Promise<UserWagers> => {
+const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor, correlationId?: string): Promise<UserWagers> => {
+  const cid = correlationId || generateCorrelationId();
+  const userCount = new Set(wagers.map(w => w.better_id)).size;
+
+  // Only log if there are actual users affected
+  if (userCount > 0) {
+    console.log(`[${cid}] Resolving ${wagers.length} wagers for ${userCount} users`);
+  }
+
   const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
 
   const userWinnings = getUserWinnings(processedWagers);
@@ -160,6 +169,11 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
 
   updateUserWinnings(userWinnings);
   const updatedWagers = await updateWagerResults(wagerResults, winningPoolShare);
+
+  if (userCount > 0) {
+    console.log(`[${cid}] Resolution complete: ${userCount} users affected`);
+  }
+
   return getUserWagers(updatedWagers);
 };
 
@@ -171,9 +185,12 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
  * @returns JSON mapping user IDs to their wagers
  */
 export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: string[], topMoves: string[]): Promise<UserWagers> => {
+  const correlationId = generateCorrelationId();
   const moveNum = chessHistory.length;
   const lastMove = chessHistory[chessHistory.length - 1];
   const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
+
+  console.log(`[${correlationId}] Starting critical move resolution for game ${gameId}, move ${moveNum}`);
 
   await delay(500); // ensures all wagers are present in database
 
@@ -184,7 +201,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
     resolved: false,
   });
 
-  return resolveWagers(wagers, correctMove, processCriticalMoveWagers);
+  return resolveWagers(wagers, correctMove, processCriticalMoveWagers, correlationId);
 };
 
 /**
@@ -194,6 +211,9 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
  * @returns JSON mapping user IDs to their wagers
  */
 export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers> => {
+  const correlationId = generateCorrelationId();
+  console.log(`[${correlationId}] Starting WDL resolution for game ${gameId} with outcome: ${gameStatus}`);
+
   await delay(500); // ensures all wagers are present in database
 
   const wagers = await wagerService.getWagers({
@@ -202,7 +222,7 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
     resolved: false,
   });
 
-  return resolveWagers(wagers, gameStatus, processWDLWagers);
+  return resolveWagers(wagers, gameStatus, processWDLWagers, correlationId);
 };
 
 /**
@@ -212,7 +232,10 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
  * @returns JSON mapping user IDs to their wagers
  */
 export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: string[]): Promise<UserWagers> => {
+  const correlationId = generateCorrelationId();
   const moveNum = chessHistory.length;
+
+  console.log(`[${correlationId}] Cancelling critical move wagers for game ${gameId}, move ${moveNum}`);
 
   await delay(500); // ensures all wagers are present in database
 
@@ -223,5 +246,5 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: str
     resolved: false,
   });
 
-  return resolveWagers(wagers, 'no data', processCriticalMoveWagers);
+  return resolveWagers(wagers, 'no data', processCriticalMoveWagers, correlationId);
 };
