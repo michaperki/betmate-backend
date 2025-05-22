@@ -30,6 +30,11 @@ router.route('/userrank')
     leaderboardController.getUserRankingRequest,
   );
 
+router.route('/game/:gameId')
+  .get(
+    leaderboardController.getGameLeaderboardRequest,
+  );
+
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
 }

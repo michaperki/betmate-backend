@@ -19,9 +19,24 @@ const getUserRankingRequest: RequestHandler = (req: ValidatedRequestWithJWT<GetU
     .catch(handleFailure(res))
 );
 
+const getGameLeaderboardRequest: RequestHandler = async (req, res) => {
+  try {
+    const { gameId } = req.params;
+    if (!gameId) {
+      return res.status(400).json({ error: 'Game ID is required' });
+    }
+
+    const rankings = await leaderboardService.generateGameLeaderboard(gameId);
+    return res.status(200).json({ rankings });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to generate game leaderboard' });
+  }
+};
+
 const leaderboardController = {
   getLeaderboardRequest,
   getUserRankingRequest,
+  getGameLeaderboardRequest,
 };
 
 export default leaderboardController;
