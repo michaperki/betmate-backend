@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "services": ["./dist/services"],
+      "services/*": ["./dist/services/*"],
+      "validation": ["./dist/validation"],
+      "validation/*": ["./dist/validation/*"],
+      "websockets/*": ["./dist/websockets/*"],
+      "helpers/*": ["./dist/helpers/*"],
+      "types/*": ["./dist/types/*"],
+      "models": ["./dist/models"],
+      "models/*": ["./dist/models/*"],
+      "assets/*": ["./dist/assets/*"],
+      "agents/*": ["./dist/agents/*"]
+    }
+  }
+}

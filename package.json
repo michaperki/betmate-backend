@@ -23,7 +23,7 @@
     "dev": "nodemon -r tsconfig-paths/register src/server.ts --exec ts-node",
     "build": "rimraf dist && tsc --skipLibCheck --noEmitOnError false",
     "start": "node -r tsconfig-paths/register dist/server.js",
-    "prod": "cd dist && node server.js",
+    "prod": "TS_NODE_PROJECT=tsconfig.prod.json node -r tsconfig-paths/register dist/server.js",
     "heroku-prebuild": "node heroku-prebuild.js",
     "heroku-postbuild": "npm run build"
   },

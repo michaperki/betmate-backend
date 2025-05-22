@@ -6,7 +6,17 @@
     "rootDir": "src",
     "baseUrl": "./src",
     "paths": {
-      "*": ["*"]
+      "services": ["./services"],
+      "services/*": ["./services/*"],
+      "validation": ["./validation"],
+      "validation/*": ["./validation/*"],
+      "websockets/*": ["./websockets/*"],
+      "helpers/*": ["./helpers/*"],
+      "types/*": ["./types/*"],
+      "models": ["./models"],
+      "models/*": ["./models/*"],
+      "assets/*": ["./assets/*"],
+      "agents/*": ["./agents/*"]
     },
     "moduleResolution": "node",
     "esModuleInterop": true,
