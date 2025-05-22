@@ -1,5 +1,5 @@
 import { Document } from 'mongoose';
-import { BotPersona } from 'agents/seedBot';
+import { BotPersona } from '../../agents/seedBot';
 
 /* -------- Main Types -------- */
 

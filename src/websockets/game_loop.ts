@@ -7,8 +7,8 @@ import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers }
 import { ReplaySchema, GameData } from '../types/game_loop';
 import { chessService, microserviceService } from '../services';
 
-import data300 from 'assets/game_data_300.json';
-import data900 from 'assets/game_data_900.json';
+import data300 from '../assets/game_data_300.json';
+import data900 from '../assets/game_data_900.json';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { delay } from '../helpers/utils';
 import {
