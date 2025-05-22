@@ -20,10 +20,10 @@ import env from 'env-var';
 import http from 'http';
 import { Server } from 'socket.io';
 
-import { chessService, agentService } from 'services';
-import leaderboardService from 'services/leaderboard_service';
-import { handleValidationError } from 'validation';
-import { streamLoop } from 'websockets/lichess_stream';
+import { chessService, agentService } from './services';
+import leaderboardService from './services/leaderboard_service';
+import { handleValidationError } from './validation';
+import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter, internalRouter,
 } from './routers';
