@@ -1,8 +1,8 @@
 /* eslint-disable func-names */
 import mongoose, { Schema } from 'mongoose';
 import bcrypt from 'bcrypt';
-import { BotConfig, CompareCallback, UserDoc, UserRole } from 'types/models/user';
-import { isUserRole } from 'validation/auth';
+import { BotConfig, CompareCallback, UserDoc, UserRole } from '../types/models/user';
+import { isUserRole } from '../validation/auth';
 
 const BotConfigSchema = new Schema({
   persona: { type: String, required: true },

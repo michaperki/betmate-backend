@@ -1,8 +1,8 @@
-import { Chess, Users, Wager } from 'models';
+import { Chess, Users, Wager } from '../models';
 import { FilterQuery, Types, UpdateQuery } from 'mongoose';
-import { BotConfig, UserDoc } from 'types/models/user';
+import { BotConfig, UserDoc } from '../types/models/user';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
-import { ChessDoc } from 'types/models/chess';
+import { ChessDoc } from '../types/models/chess';
 
 interface CreateUserRequest {
   email: string;

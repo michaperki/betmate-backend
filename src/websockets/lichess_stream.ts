@@ -3,15 +3,15 @@ import ndjson from 'ndjson';
 import { StreamData } from '../types/lichess';
 import {
   AnonMoveWager, ChessDoc, CreateChessQuery, GameSource, GameStatus, MoveData,
-} from 'types/models/chess';
-import { matchesSchema } from 'validation';
-import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from 'validation/lichess'; // ✅ import added
-import { LichessStreamMove, LichessStatusEvent } from 'types/lichess';
+} from '../types/models/chess';
+import { matchesSchema } from '../validation';
+import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from '../validation/lichess'; // ✅ import added
+import { LichessStreamMove, LichessStatusEvent } from '../types/lichess';
 import { Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { chessService, microserviceService, agentService } from 'services';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
+import { chessService, microserviceService, agentService } from '../services';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
 import { getLichessOutcome } from '../helpers/chess_logic';

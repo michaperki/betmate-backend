@@ -1,6 +1,6 @@
 import { BotPersona } from 'agents/seedBot';
 import { Server } from 'socket.io';
-import { ChessEmitEvents } from 'types/websocket';
+import { ChessEmitEvents } from '../types/websocket';
 import { userService } from '.';
 import seedBot from '../agents/seedBot';
 

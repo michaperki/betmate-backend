@@ -1,11 +1,11 @@
 /* eslint-disable no-mixed-operators */
 import { Server } from 'socket.io';
-import { ChessDoc } from 'types/models/chess';
-import { UserDoc } from 'types/models/user';
-import { wagerService, userService, microserviceService } from 'services';
-import { CreateWagerQuery, WagerStatus } from 'types/models/wager';
+import { ChessDoc } from '../types/models/chess';
+import { UserDoc } from '../types/models/user';
+import { wagerService, userService, microserviceService } from '../services';
+import { CreateWagerQuery, WagerStatus } from '../types/models/wager';
 import mongoose from 'mongoose';
-import { ChessEmitEvents } from 'types/websocket';
+import { ChessEmitEvents } from '../types/websocket';
 import { AxiosError } from 'axios';
 
 // Bot personas

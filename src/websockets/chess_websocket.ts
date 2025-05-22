@@ -1,10 +1,10 @@
 /* eslint-disable no-mixed-operators */
 import { Socket } from 'socket.io';
 import Filter from 'bad-words';
-import { chessService, agentService } from 'services';
-import { ChessEmitEvents, ChessListenEvents } from 'types/websocket';
-import { ChessDoc } from 'types/models/chess';
-import { decodeToken } from 'helpers/utils';
+import { chessService, agentService } from '../services';
+import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
+import { ChessDoc } from '../types/models/chess';
+import { decodeToken } from '../helpers/utils';
 import {
   GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,

@@ -3,9 +3,9 @@
 import { Namespace } from 'socket.io';
 import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
-import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from 'helpers/resolve_bets';
-import { ReplaySchema, GameData } from 'types/game_loop';
-import { chessService, microserviceService } from 'services';
+import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
+import { ReplaySchema, GameData } from '../types/game_loop';
+import { chessService, microserviceService } from '../services';
 
 import data300 from 'assets/game_data_300.json';
 import data900 from 'assets/game_data_900.json';
