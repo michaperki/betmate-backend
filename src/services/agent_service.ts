@@ -3,9 +3,25 @@ import { Server } from 'socket.io';
 import { ChessEmitEvents } from '../types/websocket';
 import { userService } from '.';
 import seedBot from '../agents/seedBot';
+import logger from '../helpers/axiom_logger';
 
 // Track empty move bars and when they became empty
 const emptyMoveBars: Record<string, number> = {};
+
+// Throttle duplicate logs - track last log time per event type
+const lastLogTime: Record<string, number> = {};
+const LOG_THROTTLE_MS = 30000; // 30 seconds
+
+function shouldLog(eventKey: string): boolean {
+  const now = Date.now();
+  const lastTime = lastLogTime[eventKey] || 0;
+
+  if (now - lastTime > LOG_THROTTLE_MS) {
+    lastLogTime[eventKey] = now;
+    return true;
+  }
+  return false;
+}
 
 /**
  * Initialize seed bots with different personas
@@ -163,8 +179,17 @@ export const processBotWagersForGame = async (gameId: string, io: any): Promise<
       return;
     }
 
-    if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Bot Wagers] Processing ${bots.length} bots for game ${gameId} move ${game.move_hist.length + 1}`);
+    // Throttle this high-volume log
+    if (shouldLog(`bot_processing_${gameId}`)) {
+      logger.log({
+        level: 'debug',
+        event: 'bot_processing_start',
+        context: {
+          gameId,
+          bot_count: bots.length,
+          move_number: game.move_hist.length + 1
+        }
+      });
     }
 
     // Have each bot consider placing a wager (with some randomness to avoid all bots betting)
@@ -176,16 +201,24 @@ export const processBotWagersForGame = async (gameId: string, io: any): Promise<
         try {
           await seedBot.processBotWager(io, bot as any, game);
         } catch (error) {
-          if (process.env.NODE_ENV !== 'test') {
-            console.log(`Bot ${bot.first_name} wager failed: ${error.message}`);
-          }
+          logger.log({
+            level: 'warn',
+            event: 'bot_wager_failed',
+            context: {
+              gameId,
+              bot_name: bot.first_name,
+              error: error.message
+            }
+          });
         }
       }
     }
   } catch (error) {
-    if (process.env.NODE_ENV !== 'test') {
-      console.log(`Failed to process bot wagers for game ${gameId}: ${error.message}`);
-    }
+    logger.log({
+      level: 'error',
+      event: 'bot_processing_error',
+      context: { gameId, error: error.message }
+    });
   }
 };
 

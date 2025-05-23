@@ -6,6 +6,7 @@ import { MICROSERVICE_URL } from '../helpers/constants';
 import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/microservice';
 import { validate } from '../validation';
 import { generateCorrelationId } from '../helpers/utils';
+import logger from '../helpers/axiom_logger';
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
 /**
@@ -17,24 +18,56 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  * @returns Promise of win/draw/loss odds, or null if issue occurs
  */
 const getWDL = (fen: string, white_time: number, black_time: number, correlationId?: string): Promise<WDLData> => {
-  const cid = correlationId || generateCorrelationId();
+  const trace_id = correlationId || generateCorrelationId();
   const url = `${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`;
   const startTime = Date.now();
-  console.log(`[${cid}] [Microservice] Calling WDL endpoint`);
+
   return axios
     .get<MicroserviceResponse<WDLData>>(url, {
-      headers: { 'x-api-key': apiKey },
-      timeout: 5000, // Add a reasonable timeout
+      headers: {
+        'x-api-key': apiKey,
+        'x-trace-id': trace_id
+      },
+      timeout: 5000,
     })
     .then((res) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] WDL completed in ${latency}ms`);
+      logger.log({
+        level: 'debug',
+        event: 'wdl_success',
+        trace_id,
+        context: { latency_ms: latency, fen_hash: fen.substring(0, 10) }
+      });
       return res.data.data;
     })
     .then(validate(WDLSchema))
     .catch((error) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] WDL failed after ${latency}ms:`, error.message);
+
+      if (error.code === 'ECONNABORTED') {
+        logger.log({
+          level: 'warn',
+          event: 'wdl_timeout',
+          trace_id,
+          context: {
+            timeout_ms: 5000,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10)
+          }
+        });
+      } else {
+        logger.log({
+          level: 'error',
+          event: 'wdl_error',
+          trace_id,
+          context: {
+            error: error.message,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10)
+          }
+        });
+      }
+
       // Return default values instead of throwing error to prevent app crashes
       return {
         white_win: 0.33,
@@ -52,24 +85,56 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
  * @returns Promise of array containing at least `n` moves in SAN notation, or null if issue occurs
  */
 const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<TopMoveData> => {
-  const cid = correlationId || generateCorrelationId();
+  const trace_id = correlationId || generateCorrelationId();
   const url = `${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n })}`;
   const startTime = Date.now();
-  console.log(`[${cid}] [Microservice] Calling top-moves endpoint`);
+
   return axios
     .get<MicroserviceResponse<TopMoveData>>(url, {
-      headers: { 'x-api-key': apiKey },
-      timeout: 5000, // Add a reasonable timeout
+      headers: {
+        'x-api-key': apiKey,
+        'x-trace-id': trace_id
+      },
+      timeout: 5000,
     })
     .then((res) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] Top-moves completed in ${latency}ms`);
+      logger.log({
+        level: 'debug',
+        event: 'top_moves_success',
+        trace_id,
+        context: { latency_ms: latency, fen_hash: fen.substring(0, 10), move_count: n }
+      });
       return res.data.data;
     })
     .then(validate<TopMoveData>(TopMoveSchema))
     .catch((error) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] Top-moves failed after ${latency}ms:`, error.message);
+
+      if (error.code === 'ECONNABORTED') {
+        logger.log({
+          level: 'warn',
+          event: 'top_moves_timeout',
+          trace_id,
+          context: {
+            timeout_ms: 5000,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10)
+          }
+        });
+      } else {
+        logger.log({
+          level: 'error',
+          event: 'top_moves_error',
+          trace_id,
+          context: {
+            error: error.message,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10)
+          }
+        });
+      }
+
       // Return a fallback empty array instead of throwing error
       return [] as TopMoveData;
     });
@@ -83,24 +148,59 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
  * @returns Promise of move analysis data, or null if issue occurs
  */
 const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Promise<MoveAnalysisData> => {
-  const cid = correlationId || generateCorrelationId();
+  const trace_id = correlationId || generateCorrelationId();
   const url = `${MICROSERVICE_URL}/move-analysis?${querystring.stringify({ fen, move })}`;
   const startTime = Date.now();
-  console.log(`[${cid}] [Microservice] Calling move-analysis endpoint`);
+
   return axios
     .get<MicroserviceResponse<MoveAnalysisData>>(url, {
-      headers: { 'x-api-key': apiKey },
-      timeout: 5000, // Add a reasonable timeout
+      headers: {
+        'x-api-key': apiKey,
+        'x-trace-id': trace_id
+      },
+      timeout: 5000,
     })
     .then((res) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] Move-analysis completed in ${latency}ms`);
+      logger.log({
+        level: 'debug',
+        event: 'move_analysis_success',
+        trace_id,
+        context: { latency_ms: latency, fen_hash: fen.substring(0, 10), move }
+      });
       return res.data.data;
     })
     .then(validate<MoveAnalysisData>(MoveAnalysisSchema))
     .catch((error) => {
       const latency = Date.now() - startTime;
-      console.log(`[${cid}] [Microservice] Move-analysis failed after ${latency}ms:`, error.message);
+
+      if (error.code === 'ECONNABORTED') {
+        logger.log({
+          level: 'warn',
+          event: 'move_analysis_timeout',
+          trace_id,
+          context: {
+            timeout_ms: 5000,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10),
+            move
+          }
+        });
+      } else {
+        logger.log({
+          level: 'error',
+          event: 'move_analysis_error',
+          trace_id,
+          context: {
+            error: error.message,
+            status: error.response?.status,
+            latency_ms: latency,
+            fen_hash: fen.substring(0, 10),
+            move
+          }
+        });
+      }
+
       // Return a reasonable fallback value instead of throwing error
       return {
         score: 0,

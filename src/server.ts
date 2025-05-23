@@ -82,7 +82,10 @@ setInterval(() => {
 
 // Initialize and run bot services
 agentService.initializeBots().then(() => {
-  console.info('Bot service initialized');
+  logger.log({
+    level: 'info',
+    event: 'bot_service_initialized'
+  });
 
   // Check and process empty move bars every 5 seconds
   setInterval(() => agentService.processEmptyMoveBars(chessWebsocket), 5000);
@@ -112,10 +115,18 @@ const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
 mongoose.connect(mongoUri, mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   if (process.env.NODE_ENV !== 'test') {
-    logger.info('Connected to Database');
+    logger.log({
+      level: 'info',
+      event: 'database_connected',
+      context: { uri: mongoUri.replace(/\/\/.*@/, '//***@') } // Hide credentials
+    });
   }
 }).catch((err) => {
-  logger.error('Not Connected to Database', { error: err.message });
+  logger.log({
+    level: 'error',
+    event: 'database_connection_failed',
+    context: { error: err.message }
+  });
 });
 
 // Custom 404 middleware
@@ -136,5 +147,11 @@ mongoose.Promise = global.Promise;
 // START THE SERVER
 // =============================================================================
 const server = httpServer.listen(constants.PORT);
-if (process.env.NODE_ENV !== 'test') logger.info(`Server started`, { port: constants.PORT });
+if (process.env.NODE_ENV !== 'test') {
+  logger.log({
+    level: 'info',
+    event: 'server_started',
+    context: { port: constants.PORT }
+  });
+}
 export default server;

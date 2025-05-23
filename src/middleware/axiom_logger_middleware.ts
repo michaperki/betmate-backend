@@ -1,6 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../helpers/axiom_logger';
 
+// Extend Request interface to include trace_id
+declare global {
+  namespace Express {
+    interface Request {
+      trace_id?: string;
+    }
+  }
+}
+
 /**
  * Extracts context information from the request path
  * Identifies endpoint context like "game:getState" or "wager:create"
@@ -66,6 +75,12 @@ const isPollingRequest = (req: Request): boolean => {
  * Express middleware for logging HTTP requests to Axiom with enhanced context
  */
 export const axiomLoggerMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  // Generate or use existing trace_id
+  req.trace_id = req.get('x-trace-id') || logger.generateTraceId();
+
+  // Add trace_id to response headers for client tracking
+  res.set('x-trace-id', req.trace_id);
+
   // Capture request start time
   const startTime = Date.now();
 
@@ -93,31 +108,46 @@ export const axiomLoggerMiddleware = (req: Request, res: Response, next: NextFun
       gameId = gameIdMatch[1];
     }
 
-    // Extract relevant request data
+    // Create structured log data
     const logData = {
-      // Standard request data
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
-      duration,
+      latency_ms: duration,
       ip: req.ip,
       userAgent: req.get('user-agent') || 'unknown',
       query: req.query,
-
-      // Enhanced context
       context,
       isPolling,
       userId,
       gameId,
     };
 
-    // Log based on status code
+    // Log based on status code with structured events
     if (res.statusCode >= 500) {
-      logger.error('Server error response', logData);
+      logger.log({
+        level: 'error',
+        event: 'request_error',
+        trace_id: req.trace_id,
+        context: logData
+      });
     } else if (res.statusCode >= 400) {
-      logger.warn('Client error response', logData);
+      logger.log({
+        level: 'warn',
+        event: 'request_client_error',
+        trace_id: req.trace_id,
+        context: logData
+      });
     } else {
-      logger.info('Request completed', logData);
+      // For successful requests, only log if it's not a polling request or if it's slow
+      if (!isPolling || duration > 1000) {
+        logger.log({
+          level: duration > 2000 ? 'warn' : 'debug',
+          event: 'request_completed',
+          trace_id: req.trace_id,
+          context: logData
+        });
+      }
     }
 
     // Remove listeners to prevent memory leaks
