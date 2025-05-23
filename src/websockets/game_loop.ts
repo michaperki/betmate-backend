@@ -6,6 +6,7 @@ import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
 import { ReplaySchema, GameData } from '../types/game_loop';
 import { chessService, microserviceService } from '../services';
+import logger from '../helpers/axiom_logger';
 
 import data300 from '../assets/game_data_300.json';
 import data900 from '../assets/game_data_900.json';
@@ -94,6 +95,11 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   let liveTopMoves = updatedGame.pool_wagers.move.options.map(String);
   let liveTopMovesNumber = 1;
 
+  // Track top moves for each position to ensure correct wager resolution
+  const topMovesForMove: Record<number, string[]> = {
+    1: liveTopMoves // Initial top moves for move 1
+  };
+
   try {
     for (const [i, move] of Array.from(game.moves.entries())) {
       // const move = game.moves[i];
@@ -133,17 +139,26 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       chessService.updateChessGame(gameDoc._id, updateMessage);
 
       // resolve wagers on the move just played, if any
-      // safety check to see if topMoves are valid
-      const validTopMoves = liveTopMovesNumber === moveHist.length && liveTopMoves.length > 0;
+      const currentMoveNumber = moveHist.length;
+      const topMovesForCurrentMove = topMovesForMove[currentMoveNumber] || [];
+      const hasValidTopMoves = topMovesForCurrentMove.length > 0;
 
-      // Resolve move bets if options valid, otherwise cancel bets
-      (validTopMoves
-        ? resolveCriticalMoveWagers(gameId, chessGame.history(), liveTopMoves)
+      logger.log({
+        level: 'info',
+        event: 'wager_resolution_start',
+        context: {
+          gameId,
+          moveNumber: currentMoveNumber,
+          topMoves: topMovesForCurrentMove,
+          hasValidTopMoves
+        }
+      });
+
+      // Resolve move bets if we have valid top moves for this move, otherwise cancel bets
+      (hasValidTopMoves
+        ? resolveCriticalMoveWagers(gameId, chessGame.history(), topMovesForCurrentMove)
         : cancelCriticalMoveWagers(gameId, chessGame.history()))
         .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
-
-      // reset top moves
-      liveTopMoves = [];
 
       // Get new odds from microservice
       const oddsPromise = microserviceService
@@ -155,8 +170,25 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
+        const nextMoveNumber = i + 2;
+
+        // Store top moves for the next move for future wager resolution
+        topMovesForMove[nextMoveNumber] = topMoves;
+
+        // Update live variables for compatibility
         liveTopMoves = topMoves;
-        liveTopMovesNumber = i + 2;
+        liveTopMovesNumber = nextMoveNumber;
+
+        logger.log({
+          level: 'debug',
+          event: 'top_moves_fetched',
+          context: {
+            gameId,
+            moveNumber: nextMoveNumber,
+            topMoves
+          }
+        });
+
         const oddsUpdate = {
           odds,
           pool_wagers: {
@@ -185,7 +217,11 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
     resolveWdlWagers(gameId, game.outcome)
       .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
   } catch (error) {
-    console.log('Error:', error.message);
+    logger.log({
+      level: 'error',
+      event: 'game_loop_error',
+      context: { gameId, error: error.message }
+    });
     socket.emit('game_error', { gameId, message: error.message });
   }
 
