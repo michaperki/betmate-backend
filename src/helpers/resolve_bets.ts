@@ -188,9 +188,11 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
   const correlationId = generateCorrelationId();
   const moveNum = chessHistory.length;
   const lastMove = chessHistory[chessHistory.length - 1];
-  const correctMove = topMoves.includes(lastMove) ? lastMove : 'Other';
+  // The correct move is always the actual move played, regardless of predictions
+  const correctMove = lastMove;
 
   console.log(`[${correlationId}] Starting critical move resolution for game ${gameId}, move ${moveNum}`);
+  console.log(`[${correlationId}] Actual move played: "${lastMove}", Top moves were: [${topMoves.join(', ')}]`);
 
   await delay(500); // ensures all wagers are present in database
 
