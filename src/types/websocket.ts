@@ -53,4 +53,6 @@ export interface ChessEmitEvents {
   'join_auth': Emitter<{ message: string }>,
   'leave_auth': Emitter<{ message: string }>
   'socket_error': Emitter<{ message: string }>
+  'viewer_count_update': Emitter<{ gameId: string, viewerCount: number }>
+  'bet_update': Emitter<{ gameId: string, type: string, data: string, amount: number }>
 }

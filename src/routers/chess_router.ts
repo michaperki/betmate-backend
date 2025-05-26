@@ -26,6 +26,9 @@ router
 router.route('/:id')
   .get(chessController.getChessGameRequest);
 
+router.route('/:id/stats')
+  .get(chessController.getGameStatsRequest);
+
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
 }

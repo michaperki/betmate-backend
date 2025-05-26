@@ -13,6 +13,9 @@ import { validate } from '../validation';
 
 const filter = new Filter();
 
+// Track viewer counts per game room
+const gameViewerCounts: { [gameId: string]: number } = {};
+
 /**
  * Websocket event handler
  * @param socket in `/chessws` namespace
@@ -30,6 +33,20 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       validate(JoinGameSchema)(gameId);
       const chessDoc = await chessService.getChessGame(gameId);
       socket.join(gameId);
+
+      // Update viewer count
+      gameViewerCounts[gameId] = (gameViewerCounts[gameId] || 0) + 1;
+
+      // Broadcast updated viewer count to all clients in the room (including this one)
+      socket.emit('viewer_count_update', {
+        gameId,
+        viewerCount: gameViewerCounts[gameId]
+      });
+      socket.to(gameId).emit('viewer_count_update', {
+        gameId,
+        viewerCount: gameViewerCounts[gameId]
+      });
+
       return socket.emit('game_info', { gameId, data: chessDoc as ChessDoc });
     } catch (error) {
       return socket.emit('game_error', { gameId, message: error.message });
@@ -46,6 +63,18 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     try {
       validate(LeaveGameSchema)(gameId);
       socket.leave(gameId);
+
+      // Update viewer count
+      if (gameViewerCounts[gameId] > 0) {
+        gameViewerCounts[gameId] -= 1;
+
+        // Broadcast updated viewer count to remaining clients in the room
+        socket.to(gameId).emit('viewer_count_update', {
+          gameId,
+          viewerCount: gameViewerCounts[gameId]
+        });
+      }
+
       return socket.emit('leave_game', { gameId, message: 'Left room' });
     } catch (error) {
       return socket.emit('game_error', { gameId, message: error.message });
@@ -118,7 +147,24 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
         }
       }
 
-      return socket.to(wager.gameId).emit('pool_wager', wager);
+      // Broadcast the wager to all clients in the game room
+      socket.to(wager.gameId).emit('pool_wager', wager);
+
+      // Also emit a general bet update event for real-time stats updates (to all clients including current)
+      socket.emit('bet_update', {
+        gameId: wager.gameId,
+        type: wager.type,
+        data: wager.data,
+        amount: wager.amount
+      });
+      socket.to(wager.gameId).emit('bet_update', {
+        gameId: wager.gameId,
+        type: wager.type,
+        data: wager.data,
+        amount: wager.amount
+      });
+
+      return;
     } catch (error) {
       return socket.emit('socket_error', { message: error.message });
     }
@@ -134,6 +180,25 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       return socket.emit('socket_error', { message: error.message });
     }
   });
+
+  // Handle socket disconnection to clean up viewer counts
+  socket.on('disconnect', () => {
+    // Clean up viewer counts for all rooms this socket was in
+    socket.rooms.forEach((room) => {
+      if (gameViewerCounts[room] && gameViewerCounts[room] > 0) {
+        gameViewerCounts[room] -= 1;
+        socket.to(room).emit('viewer_count_update', {
+          gameId: room,
+          viewerCount: gameViewerCounts[room]
+        });
+      }
+    });
+  });
+};
+
+// Export function to get current viewer count for API calls
+export const getViewerCount = (gameId: string): number => {
+  return gameViewerCounts[gameId] || 0;
 };
 
 export default websocket;

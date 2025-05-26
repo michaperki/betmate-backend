@@ -1,9 +1,10 @@
-import { Chess } from '../models';
+import { Chess, Wager } from '../models';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
 import { ChessDoc, CreateChessQuery, GameStatus } from '../types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
+import { getViewerCount } from '../websockets/chess_websocket';
 
 /**
  * Retreives game from database by ID
@@ -74,6 +75,68 @@ const clearGames = async (): Promise<boolean> => {
   }
 };
 
+/**
+ * Get game statistics including viewer count and move wager data
+ * @param gameId ID of game
+ * @returns Promise of game stats object
+ */
+const getGameStats = async (gameId: string | Types.ObjectId) => {
+  try {
+    // Get the game first
+    const game = await Chess.findById(gameId);
+    if (!game) {
+      throw new Error('Game not found');
+    }
+
+    // Get wager data grouped by move number
+    const wagerData = await Wager.aggregate([
+      {
+        $match: {
+          game_id: game._id,
+          wdl: false // Only count move-specific wagers, not WDL bets
+        }
+      },
+      {
+        $group: {
+          _id: '$move_number',
+          totalAmount: { $sum: '$amount' }, // Changed from $stake to $amount
+          betCount: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          moveNumber: '$_id',
+          totalAmount: 1,
+          betCount: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    // Convert to object format for easier frontend consumption
+    const moveWagerData: { [key: string]: { totalAmount: number; betCount: number } } = {};
+    wagerData.forEach((item) => {
+      moveWagerData[item.moveNumber] = {
+        totalAmount: item.totalAmount,
+        betCount: item.betCount
+      };
+    });
+
+    // Get real viewer count from websocket tracking
+    const viewerCount = getViewerCount(game._id.toString());
+
+    return {
+      gameId: game._id.toString(),
+      viewerCount,
+      moveWagerData,
+      currentMoveNumber: game.move_hist?.length || 0,
+      gameStatus: game.game_status
+    };
+  } catch (error) {
+    return dbErrorHandler(error);
+  }
+};
+
 const chessService = {
   getChessGame,
   getManyChessGames,
@@ -81,6 +144,7 @@ const chessService = {
   createChessGame,
   purgeStaleGames,
   clearGames,
+  getGameStats,
 };
 
 export default chessService;

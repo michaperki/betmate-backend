@@ -37,9 +37,20 @@ const getManyChessGamesRequest: RequestHandler = (req: ValidatedRequest<GetManyG
     .catch(handleFailure(res))
 );
 
+/**
+ * Get game stats including viewer count and move wager data
+ */
+const getGameStatsRequest: RequestHandler = (req, res) => (
+  chessService
+    .getGameStats(req.params.id)
+    .then(handleSuccess(res))
+    .catch(handleFailure(res))
+);
+
 const chessController = {
   getChessGameRequest,
   getManyChessGamesRequest,
+  getGameStatsRequest,
 };
 
 export default chessController;
