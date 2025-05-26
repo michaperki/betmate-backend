@@ -113,12 +113,54 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
       }
     ]);
 
+    // Get WDL wager data grouped by outcome
+    const wdlWagerData = await Wager.aggregate([
+      {
+        $match: {
+          game_id: game._id,
+          wdl: true // Only count WDL bets
+        }
+      },
+      {
+        $group: {
+          _id: '$data',
+          totalAmount: { $sum: '$amount' },
+          betCount: { $sum: 1 },
+          averageOdds: { $avg: '$odds' }
+        }
+      },
+      {
+        $project: {
+          outcome: '$_id',
+          totalAmount: 1,
+          betCount: 1,
+          averageOdds: 1,
+          _id: 0
+        }
+      }
+    ]);
+
     // Convert to object format for easier frontend consumption
     const moveWagerData: { [key: string]: { totalAmount: number; betCount: number } } = {};
     wagerData.forEach((item) => {
       moveWagerData[item.moveNumber] = {
         totalAmount: item.totalAmount,
         betCount: item.betCount
+      };
+    });
+
+    // Convert WDL data to object format with defaults
+    const wdlWagerTotals: { [key: string]: { totalAmount: number; betCount: number; averageOdds: number } } = {
+      white_win: { totalAmount: 0, betCount: 0, averageOdds: 0 },
+      black_win: { totalAmount: 0, betCount: 0, averageOdds: 0 },
+      draw: { totalAmount: 0, betCount: 0, averageOdds: 0 }
+    };
+
+    wdlWagerData.forEach((item) => {
+      wdlWagerTotals[item.outcome] = {
+        totalAmount: item.totalAmount,
+        betCount: item.betCount,
+        averageOdds: item.averageOdds
       };
     });
 
@@ -129,6 +171,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
       gameId: game._id.toString(),
       viewerCount,
       moveWagerData,
+      wdlWagerTotals,
       currentMoveNumber: game.move_hist?.length || 0,
       gameStatus: game.game_status
     };

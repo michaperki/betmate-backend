@@ -40,12 +40,16 @@ const getManyChessGamesRequest: RequestHandler = (req: ValidatedRequest<GetManyG
 /**
  * Get game stats including viewer count and move wager data
  */
-const getGameStatsRequest: RequestHandler = (req, res) => (
-  chessService
-    .getGameStats(req.params.id)
-    .then(handleSuccess(res))
-    .catch(handleFailure(res))
-);
+const getGameStatsRequest: RequestHandler = async (req, res) => {
+  try {
+    const stats = await chessService.getGameStats(req.params.id);
+    console.log('[STATS DEBUG]', { gameId: req.params.id, stats });
+    return handleSuccess(res)(stats);
+  } catch (error) {
+    console.error('[STATS ERROR]', { gameId: req.params.id, error: error.message, stack: error.stack });
+    return handleFailure(res)(error);
+  }
+};
 
 const chessController = {
   getChessGameRequest,
