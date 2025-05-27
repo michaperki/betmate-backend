@@ -6,3 +6,5 @@ yarn-error.log
 dist
 # Keep package-lock.json and remove yarn.lock for npm deployments
 yarn.lock
+
+**/.claude/settings.local.json
