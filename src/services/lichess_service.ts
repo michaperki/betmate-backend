@@ -31,7 +31,7 @@ const getGameStream = (id: string): Promise<Readable> => (
     method: 'GET',
     url: `${LICHESS_URL}/api/stream/game/${id}`,
     responseType: 'stream',
-    params: { key: env.get('STREAM_KEY').required().asString() },
+    params: { key: env.get('STREAM_KEY').default('').asString() },
   }).then((d: AxiosResponse<Readable>) => d.data)
 );
 

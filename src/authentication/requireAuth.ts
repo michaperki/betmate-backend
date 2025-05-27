@@ -46,4 +46,16 @@ const requireAuth: RequestHandler = (req, res, next) => {
   })(req, res, next);
 };
 
+// Optional auth middleware - populates user if token exists, but doesn't require it
+export const optionalAuth: RequestHandler = (req, res, next) => {
+  passport.authenticate('jwt', { session: false }, (err, user: UserDoc) => {
+    if (err) { return next(err); }
+    // If user found, attach to request. If not, continue without error
+    if (user) {
+      req.user = user;
+    }
+    return next();
+  })(req, res, next);
+};
+
 export default requireAuth;
