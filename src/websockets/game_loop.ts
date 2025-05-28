@@ -266,7 +266,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           pool_wagers: {
             move: {
               wagers: [] as unknown as Types.Array<AnonMoveWager>,
-              options: topMoves as Types.Array<string>,
+              options: topMoves.map(move => move.move) as Types.Array<string>,
             },
           },
         };
