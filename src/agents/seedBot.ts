@@ -60,7 +60,7 @@ function calculateStake(
 async function selectMove(
   persona: BotPersona,
   fen: string,
-  topMoves: string[]
+  topMoves: TopMoveData
 ): Promise<string> {
   if (!topMoves.length) {
     return '';
@@ -69,31 +69,31 @@ async function selectMove(
   switch (persona) {
     case BotPersona.BOOKWORM:
       // Always choose the best move
-      return topMoves[0];
+      return topMoves[0].move;
 
     case BotPersona.RISKY_ROOK: {
       // 70% chance for best move, 30% for 2nd or 3rd
       const rand = Math.random();
       if (rand < 0.7 || topMoves.length === 1) {
-        return topMoves[0];
+        return topMoves[0].move;
       }
       // Choose between 2nd and 3rd best if available
       const index = Math.min(1 + Math.floor(Math.random() * 2), topMoves.length - 1);
-      return topMoves[index];
+      return topMoves[index].move;
     }
 
     case BotPersona.CHAOS_KNIGHT: {
       // Completely random from available moves
       const index = Math.floor(Math.random() * topMoves.length);
-      return topMoves[index];
+      return topMoves[index].move;
     }
 
     case BotPersona.LATE_JOINER:
       // LATE_JOINER uses the best move when it decides to bet
-      return topMoves[0];
+      return topMoves[0].move;
 
     default:
-      return topMoves[0];
+      return topMoves[0].move;
   }
 }
 

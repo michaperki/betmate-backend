@@ -228,10 +228,10 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
 
         // Store top moves for the next move for future wager resolution
-        topMovesForMove[nextMoveNumber] = topMoves;
+        topMovesForMove[nextMoveNumber] = topMoves.map(move => move.move);
 
         // Update live variables for compatibility
-        liveTopMoves = topMoves;
+        liveTopMoves = topMoves.map(move => move.move);
         liveTopMovesNumber = nextMoveNumber;
 
         logger.log({

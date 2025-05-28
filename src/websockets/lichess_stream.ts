@@ -176,7 +176,7 @@ export const getStream = async (
             // } else {
             //   console.log(`[topMoves] gameId=${gameId} →`, topMoves);
             // }
-            liveTopMoves = topMoves;
+            liveTopMoves = topMoves.map(move => move.move);
 
             const oddsUpdate = {
               odds,
