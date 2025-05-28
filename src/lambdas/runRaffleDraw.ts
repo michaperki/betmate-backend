@@ -1,4 +1,12 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+// Define local interfaces instead of importing from aws-lambda
+interface APIGatewayProxyEvent {
+  body: string | null;
+}
+
+interface APIGatewayProxyResult {
+  statusCode: number;
+  body: string;
+}
 import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { RaffleDraw, RaffleTicket, Prize } from '../models/raffle_model';
