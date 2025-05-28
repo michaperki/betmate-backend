@@ -187,7 +187,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       let fenValidationError = '';
       try {
         const testChess = new Chess(currentFen);
-        isFenValid = testChess.isGameOver() === false || testChess.isCheckmate() || testChess.isStalemate() || testChess.isThreefoldRepetition() || testChess.isInsufficientMaterial();
+        isFenValid = !testChess.game_over() || testChess.in_checkmate() || testChess.in_stalemate() || testChess.in_threefold_repetition() || testChess.insufficient_material();
       } catch (error) {
         fenValidationError = error instanceof Error ? error.message : 'Unknown FEN validation error';
       }
