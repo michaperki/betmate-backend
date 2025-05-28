@@ -103,8 +103,29 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
         level: 'debug',
         event: 'top_moves_success',
         trace_id,
-        context: { latency_ms: latency, fen_hash: fen.substring(0, 10), move_count: n }
+        context: {
+          latency_ms: latency,
+          fen_hash: fen.substring(0, 10),
+          full_fen: fen,
+          move_count: n,
+          returned_moves: res.data.data.length
+        }
       });
+
+      // Additional logging for empty results
+      if (res.data.data.length === 0) {
+        logger.log({
+          level: 'warn',
+          event: 'top_moves_empty_result',
+          trace_id,
+          context: {
+            full_fen: fen,
+            expected_moves: n,
+            microservice_response: res.data
+          }
+        });
+      }
+
       return res.data.data;
     })
     .then(validate<TopMoveData>(TopMoveSchema))
@@ -119,7 +140,8 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           context: {
             timeout_ms: 5000,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10)
+            fen_hash: fen.substring(0, 10),
+            full_fen: fen
           }
         });
       } else {
@@ -130,7 +152,10 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           context: {
             error: error.message,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10)
+            fen_hash: fen.substring(0, 10),
+            full_fen: fen,
+            status: error.response?.status,
+            response_data: error.response?.data
           }
         });
       }

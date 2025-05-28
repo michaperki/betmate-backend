@@ -150,9 +150,27 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           gameId,
           moveNumber: currentMoveNumber,
           topMoves: topMovesForCurrentMove,
-          hasValidTopMoves
+          topMovesCount: topMovesForCurrentMove.length,
+          hasValidTopMoves,
+          move_just_played: move.san,
+          current_fen: chessGame.fen()
         }
       });
+
+      // Additional logging for move resolution debugging
+      if (!hasValidTopMoves) {
+        logger.log({
+          level: 'warn',
+          event: 'move_resolution_no_options',
+          context: {
+            gameId,
+            moveNumber: currentMoveNumber,
+            move_just_played: move.san,
+            current_fen: chessGame.fen(),
+            message: `Game ${gameId} move ${currentMoveNumber}: ${move.san}, available options: []`
+          }
+        });
+      }
 
       // Resolve move bets if we have valid top moves for this move, otherwise cancel bets
       (hasValidTopMoves
@@ -161,16 +179,53 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         .then((wagerResults) => Object.entries(wagerResults).forEach(([id, wagers]) => socket.to(id).emit('wager_result', { gameId, wagers })));
 
       // Get new odds from microservice
+      const currentFen = chessGame.fen();
+      const nextMoveNumber = i + 2;
+
+      // Validate FEN using chess.js
+      let isFenValid = false;
+      let fenValidationError = '';
+      try {
+        const testChess = new Chess(currentFen);
+        isFenValid = testChess.isGameOver() === false || testChess.isCheckmate() || testChess.isStalemate() || testChess.isThreefoldRepetition() || testChess.isInsufficientMaterial();
+      } catch (error) {
+        fenValidationError = error instanceof Error ? error.message : 'Unknown FEN validation error';
+      }
+
+      logger.log({
+        level: 'debug',
+        event: 'microservice_request_start',
+        context: {
+          gameId,
+          moveNumber: nextMoveNumber,
+          full_fen: currentFen,
+          move_just_played: move.san,
+          fen_valid: isFenValid,
+          fen_validation_error: fenValidationError
+        }
+      });
+
       const oddsPromise = microserviceService
-        .getWDL(chessGame.fen(), Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
+        .getWDL(currentFen, Math.floor((whiteTime / gameTime) * 180), Math.floor((blackTime / gameTime) * 180))
         .catch(() => ({ white_win: 0.0, draw: 0.0, black_win: 0.0 }));
       const topMovesPromise = microserviceService
-        .getTopMoves(chessGame.fen(), 3)
-        .catch(() => []);
+        .getTopMoves(currentFen, 3)
+        .catch((error) => {
+          logger.log({
+            level: 'error',
+            event: 'top_moves_promise_catch',
+            context: {
+              gameId,
+              moveNumber: nextMoveNumber,
+              full_fen: currentFen,
+              error: error.message
+            }
+          });
+          return [];
+        });
 
       // eslint-disable-next-line @typescript-eslint/no-loop-func
       Promise.all([oddsPromise, topMovesPromise]).then(([odds, topMoves]) => {
-        const nextMoveNumber = i + 2;
 
         // Store top moves for the next move for future wager resolution
         topMovesForMove[nextMoveNumber] = topMoves;
@@ -185,9 +240,26 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           context: {
             gameId,
             moveNumber: nextMoveNumber,
-            topMoves
+            topMoves,
+            topMovesCount: topMoves.length,
+            full_fen: currentFen
           }
         });
+
+        // Add specific warning for empty top moves
+        if (topMoves.length === 0) {
+          logger.log({
+            level: 'warn',
+            event: 'empty_top_moves_received',
+            context: {
+              gameId,
+              moveNumber: nextMoveNumber,
+              full_fen: currentFen,
+              move_just_played: move.san,
+              message: 'No legal moves returned from microservice - this will cause move wager cancellation'
+            }
+          });
+        }
 
         const oddsUpdate = {
           odds,
