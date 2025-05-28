@@ -86,7 +86,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
  */
 const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<TopMoveData> => {
   const trace_id = correlationId || generateCorrelationId();
-  const url = `${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n })}`;
+  const url = `${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n, enhanced: 'true' })}`;
   const startTime = Date.now();
 
   return axios

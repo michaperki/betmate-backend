@@ -6,7 +6,12 @@ export type WDLData = {
   black_win: number
 };
 
-export type TopMoveData = string[];
+export type TopMoveData = {
+  move: string,
+  score: number,
+  percentile: number,
+  is_best_move: boolean
+}[];
 
 export type MoveAnalysisData = {
   score: number,
