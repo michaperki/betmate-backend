@@ -23,6 +23,12 @@ router
     analysisController.getMoveAnalysisRequest,
   );
 
+router
+  .route('/top-moves')
+  .get(
+    analysisController.getTopMovesRequest,
+  );
+
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
 }
