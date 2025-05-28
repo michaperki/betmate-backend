@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { handler as runRaffleDrawHandler } from '../lambdas/runRaffleDraw';
+import { handler as runRaffleDrawHandler } from '../../lambdas/runRaffleDraw';
 import { randomBytes } from 'crypto';
 
 // Mock Prisma Client
