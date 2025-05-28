@@ -74,7 +74,7 @@ const getTopMovesRequest: RequestHandler = (req, res) => {
     .then(result => {
       clearTimeout(timeout);
       if (!hasResponded && !res.headersSent) {
-        return handleSuccess(res)(result);
+        return handleSuccess(res)({ message: 'SUCCESS', data: result });
       }
     })
     .catch(error => {
