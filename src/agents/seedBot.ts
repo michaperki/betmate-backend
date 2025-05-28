@@ -7,6 +7,7 @@ import { CreateWagerQuery, WagerStatus } from '../types/models/wager';
 import mongoose from 'mongoose';
 import { ChessEmitEvents } from '../types/websocket';
 import { AxiosError } from 'axios';
+import { TopMoveData } from '../types/microservice';
 
 // Bot personas
 export enum BotPersona {
