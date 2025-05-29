@@ -6,7 +6,16 @@ import lichessRouter from './lichess_router';
 import analysisRouter from './analysis_router';
 import internalRouter from './internal_router';
 import raffleRouter from './raffle_router';
+import logRouter from './log_router';
 
 export {
-  authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter, analysisRouter, internalRouter, raffleRouter,
+  authRouter,
+  chessRouter,
+  wagerRouter,
+  leaderboardRouter,
+  lichessRouter,
+  analysisRouter,
+  internalRouter,
+  raffleRouter,
+  logRouter,
 };
