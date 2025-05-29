@@ -36,18 +36,22 @@ class AxiomLogger {
    */
   private initialize(): void {
     if (this.isInitialized) return;
-    
+
     const apiKey = process.env.AXIOM_API_KEY;
-    
-    if (apiKey) {
+    const env = process.env.NODE_ENV || 'development';
+
+    // Only initialize Axiom client in production or if explicitly enabled
+    if (apiKey && (env === 'production' || process.env.ENABLE_AXIOM_LOGGING === 'true')) {
       this.client = new axiom.Client({
         token: apiKey
       });
-      console.log('Axiom logging initialized successfully');
-    } else {
+      console.log(`Axiom logging initialized successfully for ${env} environment`);
+    } else if (!apiKey) {
       console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
+    } else {
+      console.log('Axiom logging disabled in development environment');
     }
-    
+
     this.isInitialized = true;
   }
 
