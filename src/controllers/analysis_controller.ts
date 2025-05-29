@@ -15,7 +15,9 @@ import { handleSuccess, handleFailure } from './utils';
  */
 const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAnalysisRequest>, res) => {
   const { fen, move } = req.query;
-  
+
+  console.log(`[ANALYSIS CONTROLLER] Move analysis request for FEN: ${fen}, move: ${move}`);
+
   // Flag to track if timeout already responded
   let hasResponded = false;
 
@@ -23,6 +25,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
       hasResponded = true;
+      console.log(`[ANALYSIS CONTROLLER] Request timed out for move: ${move}`);
       res.status(503).json({ message: 'Engine analysis timed out' });
     }
   }, 5000);
@@ -31,13 +34,19 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
     .getMoveAnalysis(fen, move)
     .then(result => {
       clearTimeout(timeout);
+      console.log(`[ANALYSIS CONTROLLER] Got move analysis result for ${move}:`, result);
+
       if (!hasResponded && !res.headersSent) {
-        return handleSuccess(res)(result);
+        return res.status(200).json({
+          message: 'SUCCESS',
+          data: result
+        });
       }
     })
     .catch(error => {
       clearTimeout(timeout);
-      console.log('Move analysis error:', error.message);
+      console.log(`[ANALYSIS CONTROLLER] Move analysis error for ${move}:`, error.message);
+
       // Return a 200 with a specific error message to avoid breaking the frontend
       if (!hasResponded && !res.headersSent) {
         return res.status(200).json({
@@ -74,7 +83,10 @@ const getTopMovesRequest: RequestHandler = (req, res) => {
     .then(result => {
       clearTimeout(timeout);
       if (!hasResponded && !res.headersSent) {
-        return handleSuccess(res)({ message: 'SUCCESS', data: result });
+        return res.status(200).json({
+          message: 'SUCCESS',
+          data: result
+        });
       }
     })
     .catch(error => {

@@ -14,6 +14,7 @@ export type TopMoveData = {
 }[];
 
 export type MoveAnalysisData = {
+  move: string,
   score: number,
   percentile: number,
   is_best_move: boolean

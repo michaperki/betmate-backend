@@ -15,6 +15,7 @@ export const TopMoveSchema = joi.array().items(joi.object({
 }));
 
 export const MoveAnalysisSchema = joi.object<MoveAnalysisData>({
+  move: joi.string().required(),
   score: joi.number().required(),
   percentile: joi.number().min(0).max(100).required(),
   is_best_move: joi.boolean().required(),
