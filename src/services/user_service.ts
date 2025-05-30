@@ -3,7 +3,7 @@ import { FilterQuery, Types, UpdateQuery } from 'mongoose';
 import { BalanceHistoryDoc, BotConfig, UserDoc } from '../types/models/user';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import { ChessDoc } from '../types/models/chess';
-import { WagerStatus } from '../types/models/wager';
+import { WagerDoc, WagerStatus } from '../types/models/wager';
 
 interface CreateUserRequest {
   email: string;
