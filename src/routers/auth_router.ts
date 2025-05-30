@@ -29,6 +29,9 @@ router.route('/signin')
 router.route('/jwt-signin')
   .get(requireAuth, authController.jwtSignIn);
 
+router.route('/balance-history')
+  .get(requireAuth, authController.getBalanceHistory);
+
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
 }

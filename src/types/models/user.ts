@@ -1,4 +1,4 @@
-import { Document } from 'mongoose';
+import mongoose, { Document } from 'mongoose';
 import { BotPersona } from '../../agents/seedBot';
 
 /* -------- Main Types -------- */
@@ -32,4 +32,15 @@ export interface UserDoc extends Document {
   is_bot: boolean,
   botConfig?: BotConfig,
   comparePassword: (password: string, callback: CompareCallback) => void
+}
+
+export interface BalanceHistoryDoc extends Document {
+  user_id: mongoose.Types.ObjectId;
+  amount: number;
+  balance: number;
+  reason: string;
+  reference_id?: mongoose.Types.ObjectId;
+  reference_type?: string;
+  created_at: Date;
+  updated_at: Date;
 }

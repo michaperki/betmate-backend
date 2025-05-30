@@ -112,10 +112,23 @@ export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
 const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]> => {
   const usersToUpdate = Object
     .entries(userWinnings)
-    .map(([id, winnings]) => (
-      userService
-        .updateUserData(id, { $inc: { account: winnings } })
-    ));
+    .map(async ([id, winnings]) => {
+      // Update user account
+      const updatedUser = await userService.updateUserData(id, { $inc: { account: winnings } });
+
+      // Record balance history
+      if (updatedUser && winnings > 0) {
+        await userService.recordBalanceChange(
+          id,
+          winnings,
+          'Wager winnings',
+          undefined,
+          'Wager'
+        );
+      }
+
+      return updatedUser;
+    });
 
   const updatedUsers = await Promise.all(usersToUpdate);
   return updatedUsers.filter((u): u is UserDoc => u !== null);
