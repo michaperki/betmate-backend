@@ -3,6 +3,7 @@ import { FilterQuery, Types, UpdateQuery } from 'mongoose';
 import { BotConfig, UserDoc } from '../types/models/user';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import { ChessDoc } from '../types/models/chess';
+import { WagerStatus } from '../types/models/wager';
 
 interface CreateUserRequest {
   email: string;
@@ -192,6 +193,84 @@ const countRealUsersWithWagers = async (gameId: string): Promise<number> => {
   }
 };
 
+/**
+ * Get user betting statistics
+ * @param userId ID of the user
+ * @returns Promise of user statistics including total wagers and win rate
+ */
+const getUserBettingStats = async (userId: string | Types.ObjectId): Promise<{ totalWagers: number, winRate: number }> => {
+  try {
+    // Get all wagers for the user
+    const wagers = await Wager.find({ better_id: userId });
+
+    // Calculate total wagers
+    const totalWagers = wagers.length;
+
+    // Calculate win rate
+    const wonWagers = wagers.filter(wager => wager.status === WagerStatus.WON).length;
+    const completedWagers = wagers.filter(wager =>
+      wager.status === WagerStatus.WON || wager.status === WagerStatus.LOST
+    ).length;
+
+    // Calculate win rate (default to 0 if no completed wagers)
+    const winRate = completedWagers > 0 ? (wonWagers / completedWagers) * 100 : 0;
+
+    return {
+      totalWagers,
+      winRate: parseFloat(winRate.toFixed(1)) // Round to 1 decimal place
+    };
+  } catch (error) {
+    return {
+      totalWagers: 0,
+      winRate: 0
+    };
+  }
+};
+
+/**
+ * Get user's active wagers
+ * @param userId ID of the user
+ * @returns Promise of array of active (pending) wagers
+ */
+const getUserActiveWagers = (userId: string | Types.ObjectId) => {
+  return Wager.find({
+    better_id: userId,
+    status: WagerStatus.PENDING
+  }).sort({ created_at: -1 })
+    .catch(dbErrorHandler);
+};
+
+/**
+ * Get user's wager history
+ * @param userId ID of the user
+ * @param status Optional filter by wager status
+ * @param limit Optional limit of results
+ * @param skip Optional number of results to skip (for pagination)
+ * @returns Promise of array of user's wager history
+ */
+const getUserWagerHistory = (
+  userId: string | Types.ObjectId,
+  status?: WagerStatus,
+  limit: number = 50,
+  skip: number = 0
+) => {
+  const query: FilterQuery<any> = { better_id: userId };
+
+  // Add status filter if provided
+  if (status) {
+    query.status = status;
+  } else {
+    // If no status provided, exclude pending wagers (show only completed wagers)
+    query.status = { $ne: WagerStatus.PENDING };
+  }
+
+  return Wager.find(query)
+    .sort({ created_at: -1 })
+    .skip(skip)
+    .limit(limit)
+    .catch(dbErrorHandler);
+};
+
 const userService = {
   createUser,
   emailAvailable,
@@ -205,6 +284,9 @@ const userService = {
   getChessGame,
   moveHasWagers,
   countRealUsersWithWagers,
+  getUserBettingStats,
+  getUserActiveWagers,
+  getUserWagerHistory
 };
 
 export default userService;

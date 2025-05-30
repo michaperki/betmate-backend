@@ -26,6 +26,18 @@ router.route('/')
     wagerController.getUserWagersRequest,
   );
 
+// get user betting stats
+router.route('/stats')
+  .get(wagerController.getUserBettingStats);
+
+// get user active wagers
+router.route('/active')
+  .get(wagerController.getUserActiveWagers);
+
+// get user wager history
+router.route('/history')
+  .get(wagerController.getUserWagerHistory);
+
 // create or get a wager for a user
 router.route('/:id')
   .get(wagerController.getWagerRequest)

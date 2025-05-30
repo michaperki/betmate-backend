@@ -6,6 +6,7 @@ import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
 import { chessService, userService, wagerService } from '../services';
 import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';
+import { WagerStatus } from '../types/models/wager';
 
 type WagerRequestBody = {
   wdl: boolean,
@@ -173,11 +174,82 @@ const createBotWager: RequestHandler = async (req, res) => {
   }
 };
 
+/**
+ * Get user's betting statistics (total wagers and win rate)
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getUserBettingStats: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    const stats = await userService.getUserBettingStats(req.user._id);
+    return res.status(200).json(stats);
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
+};
+
+/**
+ * Get user's active wagers (wagers with pending status)
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getUserActiveWagers: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    const activeWagers = await userService.getUserActiveWagers(req.user._id);
+    return res.status(200).json(activeWagers);
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
+};
+
+/**
+ * Get user's wager history with optional filtering and pagination
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getUserWagerHistory: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    const { status, limit, skip } = req.query;
+
+    // Parse status if provided
+    let wagerStatus: WagerStatus | undefined;
+    if (status) {
+      if (Object.values(WagerStatus).includes(status as WagerStatus)) {
+        wagerStatus = status as WagerStatus;
+      } else {
+        return res.status(400).json({ error: 'Invalid status parameter' });
+      }
+    }
+
+    // Parse pagination parameters
+    const parsedLimit = limit ? parseInt(limit as string, 10) : 50;
+    const parsedSkip = skip ? parseInt(skip as string, 10) : 0;
+
+    // Get wager history
+    const wagerHistory = await userService.getUserWagerHistory(
+      req.user._id,
+      wagerStatus,
+      parsedLimit,
+      parsedSkip
+    );
+
+    return res.status(200).json(wagerHistory);
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
+};
+
 const wagerController = {
   createWagerRequest,
   getWagerRequest,
   getUserWagersRequest,
   createBotWager,
+  getUserBettingStats,
+  getUserActiveWagers,
+  getUserWagerHistory
 };
 
 export default wagerController;
