@@ -131,10 +131,15 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
       console.log(`Special handling for very low draw probability (${gameOdds}): accepting bet regardless of odds`);
     }
 
-    const wagerValid = (
-      fields.move_number === currentMove + 1
-      && (!fields.wdl || oddsCorrect || specialDrawCase)
-    );
+    // Different validation rules for move-specific wagers vs. game outcome (WDL) wagers
+    const wagerValid = fields.wdl
+      // For WDL wagers, we only check odds, not move number
+      ? (oddsCorrect || specialDrawCase)
+      // For move wagers, they must be for the next move
+      : (fields.move_number === currentMove + 1);
+
+    // Additional logging to debug validation
+    console.log(`Wager validation: type=${fields.wdl ? 'WDL' : 'move'}, data=${fields.data}, valid=${wagerValid}, move_check=${fields.move_number === currentMove + 1}, odds_check=${oddsCorrect}`);
 
     if (!wagerValid) throw new HttpError(400, ['Wager not valid']);
   } catch (error) {
