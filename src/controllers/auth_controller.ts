@@ -1,4 +1,4 @@
-import { RequestHandler } from 'express';
+import { Request, RequestHandler, Response } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
 import { RequestWithJWT } from '../types/requests';
@@ -71,10 +71,38 @@ const jwtSignIn: RequestHandler = (req: RequestWithJWT, res) => (
   res.json({ user: req.user })
 );
 
+/**
+ * Get user's balance history
+ * - Authenticate user via `requireAuth` middleware
+ * - Return balance history for authenticated user
+ *
+ * Request must be prefixed with appropriate validation middleware
+ * - `requireAuth`
+ */
+const getBalanceHistory = async (req: RequestWithJWT, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
+    const skip = req.query.skip ? parseInt(req.query.skip as string, 10) : 0;
+
+    const history = await userService.getUserBalanceHistory(userId, limit, skip);
+
+    res.status(200).json(history);
+  } catch (error) {
+    handleFailure(res)(error);
+  }
+};
+
 const authController = {
   signUpUserRequest,
   signInUser,
   jwtSignIn,
+  getBalanceHistory,
 };
 
 export default authController;

@@ -64,7 +64,18 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       is_bot: false
     });
 
+    // Update user balance
     await userService.updateUserData(req.user._id, { $inc: { account: -amount } });
+
+    // Record balance history
+    await userService.recordBalanceChange(
+      req.user._id,
+      -amount,
+      'Wager placed',
+      doc._id,
+      'Wager'
+    );
+
     res.status(200).json(doc);
     return;
   } catch (error) {
