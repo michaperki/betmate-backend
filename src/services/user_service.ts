@@ -1,6 +1,6 @@
-import { Chess, Users, Wager } from '../models';
+import { BalanceHistory, Chess, Users, Wager } from '../models';
 import { FilterQuery, Types, UpdateQuery } from 'mongoose';
-import { BotConfig, UserDoc } from '../types/models/user';
+import { BalanceHistoryDoc, BotConfig, UserDoc } from '../types/models/user';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 import { ChessDoc } from '../types/models/chess';
 import { WagerStatus } from '../types/models/wager';
@@ -271,6 +271,67 @@ const getUserWagerHistory = (
     .catch(dbErrorHandler);
 };
 
+/**
+ * Record a balance change for a user
+ * @param userId ID of the user
+ * @param amount Amount of the change (positive for credit, negative for debit)
+ * @param reason Reason for the change
+ * @param referenceId Optional reference ID (e.g., wager ID)
+ * @param referenceType Optional reference type (e.g., "Wager", "Raffle")
+ * @returns Promise of balance history document
+ */
+const recordBalanceChange = async (
+  userId: string | Types.ObjectId,
+  amount: number,
+  reason: string,
+  referenceId?: string | Types.ObjectId,
+  referenceType?: string
+): Promise<BalanceHistoryDoc> => {
+  try {
+    // Find user to get current balance
+    const user = await Users.findById(userId);
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Create balance history record
+    const balanceHistory = new BalanceHistory({
+      user_id: userId,
+      amount: amount,
+      balance: user.account,
+      reason: reason,
+      ...(referenceId && { reference_id: referenceId }),
+      ...(referenceType && { reference_type: referenceType })
+    });
+
+    return await balanceHistory.save();
+  } catch (error) {
+    return dbErrorHandler(error);
+  }
+};
+
+/**
+ * Get user's balance history
+ * @param userId ID of the user
+ * @param limit Optional limit of results
+ * @param skip Optional number of results to skip (for pagination)
+ * @returns Promise of array of balance history items
+ */
+const getUserBalanceHistory = async (
+  userId: string | Types.ObjectId,
+  limit: number = 30,
+  skip: number = 0
+): Promise<BalanceHistoryDoc[]> => {
+  try {
+    return await BalanceHistory.find({ user_id: userId })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(limit);
+  } catch (error) {
+    return dbErrorHandler(error);
+  }
+};
+
 const userService = {
   createUser,
   emailAvailable,
@@ -286,7 +347,9 @@ const userService = {
   countRealUsersWithWagers,
   getUserBettingStats,
   getUserActiveWagers,
-  getUserWagerHistory
+  getUserWagerHistory,
+  recordBalanceChange,
+  getUserBalanceHistory
 };
 
 export default userService;
