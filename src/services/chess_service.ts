@@ -7,13 +7,17 @@ import { dbErrorHandler, dbNullDocHandler } from './utils';
 import { getViewerCount } from '../websockets/chess_websocket';
 
 /**
- * Retreives game from database by ID
+ * Retreives game from database by ID with optional projection
  * @param gameId ID of game
+ * @param projection Optional fields to include/exclude
  * @returns Promise of game, or null if game not found or error occurs
  */
-const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> => (
+const getChessGame = async (
+  gameId: string | Types.ObjectId,
+  projection?: Record<string, number>
+): Promise<ChessDoc> => (
   Chess
-    .findById(gameId)
+    .findById(gameId, projection)
     .then(dbNullDocHandler)
     .catch(dbErrorHandler)
 );
@@ -21,12 +25,22 @@ const getChessGame = async (gameId: string | Types.ObjectId): Promise<ChessDoc> 
 /**
  * Retreives games from database that match provided fields
  * @param fields criteria for games to return
+ * @param projection Optional fields to include/exclude
+ * @param sort Optional sorting criteria
+ * @param limit Optional limit on number of returned documents
  * @returns Promise of games, or null if error occurs
  */
-const getManyChessGames = (fields: FilterQuery<ChessDoc>): Promise<ChessDoc[]> => (
+const getManyChessGames = (
+  fields: FilterQuery<ChessDoc>,
+  projection?: Record<string, number>,
+  sort: Record<string, number> = { created_at: -1 },
+  limit: number = 100
+): Promise<ChessDoc[]> => (
   Chess
-    .find(fields)
-    .limit(1000)
+    .find(fields, projection)
+    .sort(sort)
+    .limit(limit)
+    .cache(300) // Cache results for 5 minutes (300 seconds)
     .catch(dbErrorHandler)
 );
 
@@ -82,72 +96,81 @@ const clearGames = async (): Promise<boolean> => {
  */
 const getGameStats = async (gameId: string | Types.ObjectId) => {
   try {
-    // Get the game first
-    const game = await Chess.findById(gameId);
+    // Get only the necessary fields from the game
+    const game = await Chess.findById(gameId, {
+      _id: 1,
+      move_hist: 1,
+      game_status: 1
+    }).cache(30); // Cache for 30 seconds
+
     if (!game) {
       throw new Error('Game not found');
     }
 
-    // Get wager data grouped by move number
-    const wagerData = await Wager.aggregate([
-      {
-        $match: {
-          game_id: game._id,
-          wdl: false // Only count move-specific wagers, not WDL bets
+    // Run both aggregations in parallel for better performance
+    const [wagerData, wdlWagerData] = await Promise.all([
+      // Get wager data grouped by move number with optimized pipeline
+      Wager.aggregate([
+        {
+          $match: {
+            game_id: game._id,
+            wdl: false // Only count move-specific wagers, not WDL bets
+          }
+        },
+        {
+          $group: {
+            _id: '$move_number',
+            totalAmount: { $sum: '$amount' },
+            betCount: { $sum: 1 }
+          }
+        },
+        {
+          $project: {
+            moveNumber: '$_id',
+            totalAmount: 1,
+            betCount: 1,
+            _id: 0
+          }
         }
-      },
-      {
-        $group: {
-          _id: '$move_number',
-          totalAmount: { $sum: '$amount' }, // Changed from $stake to $amount
-          betCount: { $sum: 1 }
+      ]).allowDiskUse(true).cache(30), // Allow disk use for large aggregations and cache for 30 seconds
+
+      // Get WDL wager data grouped by outcome with optimized pipeline
+      Wager.aggregate([
+        {
+          $match: {
+            game_id: game._id,
+            wdl: true // Only count WDL bets
+          }
+        },
+        {
+          $group: {
+            _id: '$data',
+            totalAmount: { $sum: '$amount' },
+            betCount: { $sum: 1 },
+            averageOdds: { $avg: '$odds' }
+          }
+        },
+        {
+          $project: {
+            outcome: '$_id',
+            totalAmount: 1,
+            betCount: 1,
+            averageOdds: 1,
+            _id: 0
+          }
         }
-      },
-      {
-        $project: {
-          moveNumber: '$_id',
-          totalAmount: 1,
-          betCount: 1,
-          _id: 0
-        }
-      }
+      ]).allowDiskUse(true).cache(30) // Allow disk use for large aggregations and cache for 30 seconds
     ]);
 
-    // Get WDL wager data grouped by outcome
-    const wdlWagerData = await Wager.aggregate([
-      {
-        $match: {
-          game_id: game._id,
-          wdl: true // Only count WDL bets
-        }
-      },
-      {
-        $group: {
-          _id: '$data',
-          totalAmount: { $sum: '$amount' },
-          betCount: { $sum: 1 },
-          averageOdds: { $avg: '$odds' }
-        }
-      },
-      {
-        $project: {
-          outcome: '$_id',
-          totalAmount: 1,
-          betCount: 1,
-          averageOdds: 1,
-          _id: 0
-        }
-      }
-    ]);
-
+    // Use map instead of forEach for better performance when building objects
     // Convert to object format for easier frontend consumption
-    const moveWagerData: { [key: string]: { totalAmount: number; betCount: number } } = {};
-    wagerData.forEach((item) => {
-      moveWagerData[item.moveNumber] = {
+    const moveWagerData = wagerData.reduce((acc, item) => {
+      acc[item.moveNumber] = {
         totalAmount: item.totalAmount,
         betCount: item.betCount
       };
-    });
+      return acc;
+    }, {} as { [key: string]: { totalAmount: number; betCount: number } });
 
     // Convert WDL data to object format with defaults
     const wdlWagerTotals: { [key: string]: { totalAmount: number; betCount: number; averageOdds: number } } = {
@@ -156,6 +179,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
       draw: { totalAmount: 0, betCount: 0, averageOdds: 0 }
     };
 
+    // Use map for better performance
     wdlWagerData.forEach((item) => {
       wdlWagerTotals[item.outcome] = {
         totalAmount: item.totalAmount,

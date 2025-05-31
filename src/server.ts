@@ -20,6 +20,9 @@ import env from 'env-var';
 import http from 'http';
 import { Server } from 'socket.io';
 
+// Import MongoDB caching plugin
+import './helpers/mongo_cache';
+
 import { chessService, agentService } from './services';
 import leaderboardService from './services/leaderboard_service';
 import { handleValidationError } from './validation';
@@ -39,8 +42,15 @@ const app = express();
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, { cors: { origin: '*' } });
 
-// enable/disable cross origin resource sharing if necessary
-app.use(cors());
+// Configure CORS with more secure options
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production'
+    ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+}));
 
 // Custom morgan logger that skips 404 responses
 if (process.env.NODE_ENV !== 'test') {
@@ -49,7 +59,21 @@ if (process.env.NODE_ENV !== 'test') {
   }));
 }
 
-// enable json message body for posting data to API
+// Set security HTTP headers
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
+
+// Cookie parser is temporarily disabled
+// app.use(cookieParser(process.env.AUTH_SECRET));
+
+// Enable json message body for posting data to API
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 

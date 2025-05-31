@@ -22,6 +22,7 @@ export interface BotConfig {
 }
 
 export interface UserDoc extends Document {
+  _id: mongoose.Types.ObjectId,
   email: string,
   password: string,
   first_name: string,
@@ -31,6 +32,8 @@ export interface UserDoc extends Document {
   role?: UserRole,
   is_bot: boolean,
   botConfig?: BotConfig,
+  isNew: boolean,
+  isModified: (path: string) => boolean,
   comparePassword: (password: string, callback: CompareCallback) => void
 }
 

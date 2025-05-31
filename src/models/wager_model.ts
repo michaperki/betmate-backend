@@ -67,6 +67,14 @@ const WagerSchema = new Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
+// Add indexes for better query performance
+WagerSchema.index({ game_id: 1, move_number: 1 }); // For finding wagers on specific move in a game
+WagerSchema.index({ better_id: 1, created_at: -1 }); // For finding user's wagers sorted by date
+WagerSchema.index({ game_id: 1, wdl: 1 }); // For aggregations by game and wager type
+WagerSchema.index({ status: 1 }); // For filtering by status
+WagerSchema.index({ resolved: 1 }); // For filtering by resolution
+WagerSchema.index({ created_at: -1 }); // For global sorting by creation date
+
 WagerSchema.pre('save', function (next) {
   try {
     const doc = this as WagerDoc;

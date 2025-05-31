@@ -41,7 +41,8 @@ const UserSchema = new Schema({
   },
 });
 
-const saltRounds = 10;
+// Increased from 10 to 12 rounds for stronger security
+const saltRounds = 12;
 
 // Add a preprocessing function to the user's save function to hash password before saving
 UserSchema.pre('save', function (next) {
@@ -50,7 +51,12 @@ UserSchema.pre('save', function (next) {
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const document = this as UserDoc; // Save reference to current scope
 
-    // Hash and save document password
+    // Additional validation for password strength
+    if (document.isNew && document.password.length < 8) {
+      return next(new Error('Password must be at least 8 characters'));
+    }
+
+    // Hash and save document password with stronger parameters
     bcrypt.hash(document.password, saltRounds, (error, hashedPassword) => {
       if (error) {
         next(error);

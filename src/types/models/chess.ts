@@ -46,6 +46,7 @@ export interface PoolWagerState {
 /* -------- Main Types -------- */
 
 export interface ChessDoc extends Document {
+  _id: Types.ObjectId,
   state: string,
   time_format: string,
   complete: boolean,

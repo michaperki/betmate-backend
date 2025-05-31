@@ -21,14 +21,24 @@ const getWager = (id: string | Types.ObjectId): Promise<WagerDoc> => (
 );
 
 /**
-   * Get wagers from database that match provided fields
-   * @param fields criterea for games to return
+   * Get wagers from database that match provided fields with optimized querying
+   * @param fields criteria for wagers to return
+   * @param projection Optional fields to include/exclude
+   * @param sort Optional sorting criteria
+   * @param limit Optional limit on number of returned documents
    * @returns Promise of wager array, or null if error occurs
    */
-const getWagers = (fields: FilterQuery<WagerDoc>): Promise<WagerDoc[]> => (
+const getWagers = (
+  fields: FilterQuery<WagerDoc>,
+  projection?: Record<string, number>,
+  sort: Record<string, number> = { created_at: -1 },
+  limit: number = 100
+): Promise<WagerDoc[]> => (
   Wager
-    .find(fields)
-    .limit(1000)
+    .find(fields, projection)
+    .sort(sort)
+    .limit(limit)
+    .cache(60) // Cache results for 60 seconds
     .catch(dbErrorHandler)
 );
 
@@ -152,11 +162,27 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
   return new Wager(wagerFields).save();
 };
 
-const getPopulatedWagers = (fields: FilterQuery<WagerDoc>, populateBy: string) => (
+/**
+ * Get populated wagers with optimized querying
+ * @param fields criteria for wagers to return
+ * @param populateBy fields to populate
+ * @param sort Optional sorting criteria
+ * @param limit Optional limit on number of returned documents
+ * @returns Promise of populated wager array
+ */
+const getPopulatedWagers = (
+  fields: FilterQuery<WagerDoc>,
+  populateBy: string,
+  sort: Record<string, number> = { created_at: -1 },
+  limit: number = 100
+) => (
   Wager
     .find(fields)
+    .sort(sort)
+    .limit(limit)
     .populate(populateBy)
-    .lean() // Use lean() to convert to plain JavaScript objects
+    .lean() // Use lean() to convert to plain JavaScript objects - significantly improves performance
+    .cache(60) // Cache results for 60 seconds
     .then((docs: any[]) => docs as unknown as PopulatedWagerDoc[])
     .catch(dbErrorHandler)
 );

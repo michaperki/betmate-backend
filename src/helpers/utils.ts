@@ -9,13 +9,27 @@ import { UserDoc } from '../types/models/user';
 export const delay = (ms: number): Promise<void> => new Promise((res) => setTimeout(res, ms));
 
 /**
- * Create JWT from `User` ID
+ * Create JWT from `User` ID with expiration
  * @param user `UserDoc`
+ * @param expiresInMinutes Minutes until the token expires (default: 60)
  * @returns JWT
  */
-export const tokenForUser = (user: UserDoc): string => {
+export const tokenForUser = (user: UserDoc, expiresInMinutes = 60): string => {
   const timestamp = new Date().getTime();
-  return jwt.encode({ sub: user.id, iat: timestamp }, env.get('AUTH_SECRET').required().asString());
+  const expirationTime = timestamp + (expiresInMinutes * 60 * 1000);
+
+  // Get the user ID - use the string representation of the document
+  const userId = (user as any)._id?.toString() || (user as any).id;
+
+  return jwt.encode(
+    {
+      sub: userId,
+      iat: timestamp,
+      exp: expirationTime,
+      role: user.role
+    },
+    env.get('AUTH_SECRET').required().asString()
+  );
 };
 
 /**

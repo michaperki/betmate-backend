@@ -94,20 +94,23 @@ const generateLeaderboard = async (): Promise<LeaderboardDoc | null> => {
     }, {} as Record<string, Omit<Rank, 'rank'>>);
 
     // Filter out any records with NaN winnings to prevent sorting errors
-    const validWinnings = Object.values(winningsByUser).filter(w =>
-      typeof w.winnings === 'number' && !isNaN(w.winnings)
-    );
+    const validWinnings = Object.values(winningsByUser).filter(w => {
+      const win = w as Omit<Rank, 'rank'>;
+      return typeof win.winnings === 'number' && !isNaN(win.winnings);
+    });
 
     const sortedWinnings: Rank[] = (
       validWinnings
         .sort((a, b) => {
           // Safely compare winnings values, handling any potential NaN
-          const bWin = typeof b.winnings === 'number' && !isNaN(b.winnings) ? b.winnings : 0;
-          const aWin = typeof a.winnings === 'number' && !isNaN(a.winnings) ? a.winnings : 0;
+          const aTyped = a as Omit<Rank, 'rank'>;
+          const bTyped = b as Omit<Rank, 'rank'>;
+          const bWin = typeof bTyped.winnings === 'number' && !isNaN(bTyped.winnings) ? bTyped.winnings : 0;
+          const aWin = typeof aTyped.winnings === 'number' && !isNaN(aTyped.winnings) ? aTyped.winnings : 0;
           return bWin - aWin;
         })
         .map((data, i) => ({
-          ...data,
+          ...(data as Omit<Rank, 'rank'>),
           rank: i + 1,
         }))
     );
@@ -186,20 +189,23 @@ const generateGameLeaderboard = async (gameId: Types.ObjectId | string): Promise
     }, {} as Record<string, Omit<Rank, 'rank'>>);
 
     // Filter out any records with NaN winnings
-    const validWinnings = Object.values(winningsByUser).filter(w =>
-      typeof w.winnings === 'number' && !isNaN(w.winnings)
-    );
+    const validWinnings = Object.values(winningsByUser).filter(w => {
+      const win = w as Omit<Rank, 'rank'>;
+      return typeof win.winnings === 'number' && !isNaN(win.winnings);
+    });
 
     // Sort and rank the users for this game
     const sortedWinnings: Rank[] = (
       validWinnings
         .sort((a, b) => {
-          const bWin = typeof b.winnings === 'number' && !isNaN(b.winnings) ? b.winnings : 0;
-          const aWin = typeof a.winnings === 'number' && !isNaN(a.winnings) ? a.winnings : 0;
+          const aTyped = a as Omit<Rank, 'rank'>;
+          const bTyped = b as Omit<Rank, 'rank'>;
+          const bWin = typeof bTyped.winnings === 'number' && !isNaN(bTyped.winnings) ? bTyped.winnings : 0;
+          const aWin = typeof aTyped.winnings === 'number' && !isNaN(aTyped.winnings) ? aTyped.winnings : 0;
           return bWin - aWin;
         })
         .map((data, i) => ({
-          ...data,
+          ...(data as Omit<Rank, 'rank'>),
           rank: i + 1,
         }))
     );

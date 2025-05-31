@@ -1,5 +1,5 @@
 import { UpdateQuery } from 'mongoose';
-import { ChessDoc } from './models/chess';
+import { ChessDoc, GameStatus } from './models/chess';
 import { WagerDoc } from './models/wager';
 
 /* -------- Helper Types -------- */
@@ -14,6 +14,7 @@ export interface PoolBetMessage {
 
 interface GameUpdateMessage extends UpdateQuery<ChessDoc> {
   gameId: string
+  game_status?: GameStatus // Add direct game_status property for compatibility
 }
 
 export interface GameChatMessage {
@@ -35,6 +36,7 @@ export interface ChessListenEvents {
   'leave_auth': (gameId: string) => boolean
   'pool_wager': (wager: PoolBetMessage) => Promise<boolean>
   'game_chat': (message: GameChatMessage) => boolean
+  'heartbeat': () => void
 }
 
 export interface ChessEmitEvents {
@@ -55,4 +57,5 @@ export interface ChessEmitEvents {
   'socket_error': Emitter<{ message: string }>
   'viewer_count_update': Emitter<{ gameId: string, viewerCount: number }>
   'bet_update': Emitter<{ gameId: string, type: string, data: string, amount: number }>
+  'heartbeat_ping': Emitter<void>
 }

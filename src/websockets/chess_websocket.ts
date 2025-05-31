@@ -17,10 +17,41 @@ const filter = new Filter();
 const gameViewerCounts: { [gameId: string]: number } = {};
 
 /**
- * Websocket event handler
+ * Websocket event handler with improved connection reliability
  * @param socket in `/chessws` namespace
  */
 const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
+  // Set up heartbeat to detect silent disconnections
+  let heartbeatInterval: NodeJS.Timeout;
+  let missedHeartbeats = 0;
+  const MAX_MISSED_HEARTBEATS = 3;
+
+  // Start heartbeat monitoring
+  const startHeartbeat = () => {
+    clearInterval(heartbeatInterval); // Clear any existing interval
+
+    heartbeatInterval = setInterval(() => {
+      if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
+        // Too many missed heartbeats, consider connection dead
+        console.log(`Client ${socket.id} missed ${MAX_MISSED_HEARTBEATS} heartbeats - closing connection`);
+        socket.disconnect(true);
+        clearInterval(heartbeatInterval);
+        return;
+      }
+
+      missedHeartbeats++;
+      socket.emit('heartbeat_ping');
+    }, 30000); // 30 second interval
+  };
+
+  // Handle heartbeat responses
+  socket.on('heartbeat', () => {
+    missedHeartbeats = 0; // Reset counter when client responds
+  });
+
+  // Initialize heartbeat on connection
+  startHeartbeat();
+
   /**
    * Handler for `join_game` event
    *
@@ -181,8 +212,16 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     }
   });
 
-  // Handle socket disconnection to clean up viewer counts
-  socket.on('disconnect', () => {
+  // Handle socket disconnection to clean up resources and update viewer counts
+  socket.on('disconnect', (reason) => {
+    // Clear the heartbeat interval
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+    }
+
+    // Log disconnection reason for monitoring
+    console.log(`Client ${socket.id} disconnected: ${reason}`);
+
     // Clean up viewer counts for all rooms this socket was in
     socket.rooms.forEach((room) => {
       if (gameViewerCounts[room] && gameViewerCounts[room] > 0) {

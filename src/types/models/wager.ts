@@ -19,6 +19,7 @@ export type WagerOutcomes = Exclude<WagerStatus, WagerStatus.PENDING>;
 /* -------- Main Types -------- */
 
 export interface WagerDoc extends Document {
+  _id: Types.ObjectId,
   game_id: Types.ObjectId,
   better_id: Types.ObjectId,
   wdl: boolean,

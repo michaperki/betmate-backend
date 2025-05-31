@@ -64,6 +64,13 @@ const ChessSchema = new Schema({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
 });
 
+// Add indexes for better query performance
+ChessSchema.index({ created_at: -1 }); // Index for sorting by creation date
+ChessSchema.index({ complete: 1 }); // Index for filtering by completion status
+ChessSchema.index({ game_status: 1 }); // Index for filtering by game status
+ChessSchema.index({ 'player_white.name': 1 }); // Index for searching by white player name
+ChessSchema.index({ 'player_black.name': 1 }); // Index for searching by black player name
+
 /**
  * Get initial WDL odds and move options of game from microservice.
  */
