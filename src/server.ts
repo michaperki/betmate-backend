@@ -139,31 +139,225 @@ const mongooseOptions = {
 // Get MongoDB URI from environment variable (Heroku sets MONGODB_URI automatically)
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
 
-console.log('Connecting to MongoDB...', mongoUri.replace(/\/\/.*@/, '//***@')); // Hide credentials in logs
+// Safely log MongoDB connection without credentials
+const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
+console.log('Connecting to MongoDB...', sanitizedUri);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
-mongoose.connect(mongoUri, mongooseOptions).then(() => {
+// Log environment variables availability (no values, just presence)
+console.log('Environment variables availability:');
+console.log('- MONGODB_URI:', !!process.env.MONGODB_URI);
+console.log('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
+console.log('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
+
+// Try connecting with the provided URI first
+connectWithUri(mongoUri);
+
+/**
+ * Attempt to connect using the provided URI
+ */
+function connectWithUri(uri) {
+  // Check if we're in production and separate credentials are available
+  if (process.env.NODE_ENV === 'production' && 
+      process.env.MONGODB_USERNAME && 
+      process.env.MONGODB_PASSWORD) {
+    
+    try {
+      // Handle MongoDB+SRV format special case for MongoDB Atlas
+      if (uri.startsWith('mongodb+srv://')) {
+        let newUri = constructSrvUri(uri);
+        console.log('🔄 Using separate credentials from environment variables for SRV connection');
+        logSafeUri(newUri);
+        
+        mongoose.connect(newUri, mongooseOptions)
+          .then(connectSuccess)
+          .catch(connectError);
+      } else {
+        // Standard MongoDB URI
+        const parsedUri = new URL(uri);
+        parsedUri.username = encodeURIComponent(process.env.MONGODB_USERNAME);
+        parsedUri.password = encodeURIComponent(process.env.MONGODB_PASSWORD);
+        const newUri = parsedUri.toString();
+        
+        console.log('🔄 Using separate credentials from environment variables');
+        logSafeUri(newUri);
+        
+        mongoose.connect(newUri, mongooseOptions)
+          .then(connectSuccess)
+          .catch(connectError);
+      }
+    } catch (error) {
+      console.error('❌ Error constructing MongoDB URI:', error);
+      // Fall back to original URI
+      mongoose.connect(uri, mongooseOptions)
+        .then(connectSuccess)
+        .catch(connectError);
+    }
+  } else {
+    // Use the original URI directly
+    mongoose.connect(uri, mongooseOptions)
+      .then(connectSuccess)
+      .catch(connectError);
+  }
+}
+
+/**
+ * Construct a properly formatted SRV URI with credentials
+ */
+function constructSrvUri(mongoUri) {
+  try {
+    // Better approach: use the URL constructor to parse the URI
+    const mongoUrl = new URL(mongoUri);
+    
+    // Get just the hostname and pathname (and search params if any)
+    const hostname = mongoUrl.hostname; // e.g., betmate-prod.rb3qn.mongodb.net
+    const pathname = mongoUrl.pathname; // e.g., /betmate
+    const search = mongoUrl.search;    // e.g., ?retryWrites=true&w=majority
+    
+    // Construct the host and path correctly
+    const hostAndPath = hostname + pathname + search;
+    
+    // Reconstruct the URI with the new credentials
+    return `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostAndPath}`;
+  } catch (urlError) {
+    // Fallback to manual parsing if URL constructor fails
+    console.log('⚠️ URL parsing failed, using manual extraction', urlError.message);
+    
+    // Extract the host and everything after it
+    let hostAndPath;
+    if (mongoUri.includes('@')) {
+      // If URI already has auth info, extract what's after the @
+      hostAndPath = mongoUri.split('@')[1];
+    } else {
+      // If no auth info, extract what's after mongodb+srv://
+      hostAndPath = mongoUri.substring('mongodb+srv://'.length);
+    }
+    
+    // Reconstruct the URI with the new credentials
+    return `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostAndPath}`;
+  }
+}
+
+/**
+ * Log a safe version of the URI (without credentials)
+ */
+function logSafeUri(uri) {
+  try {
+    // Create a safe version of the URI for logging (no credentials)
+    const urlObj = new URL(uri);
+    urlObj.username = '***';
+    urlObj.password = '***';
+    const safeUri = urlObj.toString();
+    
+    // Additional validation check for the URI format
+    const protocol = urlObj.protocol;
+    const hostname = urlObj.hostname;
+    
+    console.log('🔍 URI validation check:');
+    console.log('- Protocol:', protocol);
+    console.log('- Hostname:', hostname);
+    
+    // Check if hostname is valid
+    if (!hostname || hostname.includes(':')) {
+      console.warn('⚠️ Potential issue with hostname format:', hostname);
+    }
+    
+    console.log('🔄 New connection string (safe):', safeUri);
+  } catch (err) {
+    // In case of URL parsing errors, do manual sanitization
+    const safeUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.error('⚠️ Error parsing the URI for logging:', err.message);
+    console.log('🔄 New connection string (safe):', safeUri);
+  }
+}
+
+// Success handler for connection
+function connectSuccess() {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   console.log('✅ MongoDB connected successfully');
   if (process.env.NODE_ENV !== 'test') {
     logger.log({
       level: 'info',
       event: 'database_connected',
-      context: { uri: mongoUri.replace(/\/\/.*@/, '//***@') } // Hide credentials
+      context: { uri: sanitizedUri }
     });
   }
-}).catch((err) => {
-  console.error('❌ MongoDB connection error:', err.message, err);
+}
+
+// Error handler for connection
+function connectError(err) {
+  console.error('❌ MongoDB connection error:', err.message);
+  
+  // Check for common MongoDB connection errors and provide more helpful diagnostics
+  if (err.message.includes('bad auth')) {
+    console.error('🔑 Authentication failed: The username or password is incorrect');
+  } else if (err.message.includes('ECONNREFUSED')) {
+    console.error('🔌 Connection refused: MongoDB server may be down or the URI is incorrect');
+  } else if (err.message.includes('invalid hostname')) {
+    console.error('🌐 Invalid hostname: The MongoDB URI contains an invalid hostname');
+  } else if (err.message.includes('No hostname found in URI')) {
+    console.error('⚠️ Invalid URI format: MongoDB URI must contain a hostname');
+  } else if (err.message.includes('Unescaped colon in authority section')) {
+    console.error('⚠️ URI formatting error: Special characters in username/password need URL encoding');
+    console.error('🔧 Make sure MONGODB_USERNAME and MONGODB_PASSWORD are properly URL-encoded');
+  }
+  
+  // Log more detailed error information in a structured way
+  const errorInfo = {
+    code: err.code,
+    codeName: err.codeName,
+    name: err.name,
+    stack: err.stack?.split('\n')[0] || 'No stack trace',
+    // Add diagnostics based on the error message
+    possibleCause: getPossibleCause(err.message)
+  };
+  
+  console.error('📋 Error details:', JSON.stringify(errorInfo, null, 2));
+  
   logger.log({
     level: 'error',
     event: 'database_connection_failed',
-    context: { error: err.message }
+    context: { 
+      error: err.message,
+      details: errorInfo
+    }
   });
+  
+  // Show environment info to help diagnose the issue
+  if (process.env.NODE_ENV === 'production') {
+    console.log('📊 Environment context:');
+    console.log('- NODE_ENV:', process.env.NODE_ENV);
+    console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('- MONGODB_USERNAME exists:', !!process.env.MONGODB_USERNAME);
+    console.log('- MONGODB_PASSWORD exists:', !!process.env.MONGODB_PASSWORD);
+    console.log('- Is SRV connection:', process.env.MONGODB_URI?.startsWith('mongodb+srv://') || false);
+  }
+  
   // Exit with failure in production, but allow development to continue
   if (process.env.NODE_ENV === 'production') {
+    console.error('💥 Exiting due to database connection failure in production');
     process.exit(1);
+  } else {
+    console.warn('⚠️ Continuing without database in development mode');
   }
-});
+}
+
+// Helper function to identify possible causes from error messages
+function getPossibleCause(errorMessage) {
+  if (errorMessage.includes('bad auth')) {
+    return 'Invalid credentials (username/password)';
+  } else if (errorMessage.includes('ECONNREFUSED')) {
+    return 'MongoDB server unreachable or wrong connection string';
+  } else if (errorMessage.includes('invalid hostname') || errorMessage.includes('No hostname')) {
+    return 'Malformed connection string (invalid hostname)';
+  } else if (errorMessage.includes('Unescaped colon')) {
+    return 'Username or password contains special characters that need URL encoding';
+  } else if (errorMessage.includes('timed out')) {
+    return 'Network connectivity issues or firewall blocking connection';
+  } else {
+    return 'Unknown connection issue';
+  }
+}
 
 // Custom 404 middleware
 app.use((req, res) => {
