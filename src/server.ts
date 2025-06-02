@@ -150,31 +150,123 @@ const mongooseOptions = {
 // Get MongoDB URI from environment variable (Heroku sets MONGODB_URI automatically)
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
 
-console.log('Connecting to MongoDB...', mongoUri.replace(/\/\/.*@/, '//***@')); // Hide credentials in logs
+// Safely log MongoDB connection without credentials
+const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
+console.log('Connecting to MongoDB...', sanitizedUri);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
-mongoose.connect(mongoUri, mongooseOptions).then(() => {
+// Check if the URI contains username/password
+if (process.env.NODE_ENV === 'production' && mongoUri.includes('@')) {
+  // URL already has credentials, use it directly
+  mongoose.connect(mongoUri, mongooseOptions)
+    .then(connectSuccess)
+    .catch(error => {
+      console.error('❌ MongoDB connection error with embedded credentials:', error.message);
+      
+      // If authentication fails, try with separate credentials
+      tryWithSeparateCredentials();
+    });
+} else if (process.env.NODE_ENV === 'production') {
+  console.log('⚠️ No credentials found in MongoDB URI, trying separate environment variables');
+  tryWithSeparateCredentials();
+} else {
+  // Non-production environment, connect normally
+  mongoose.connect(mongoUri, mongooseOptions)
+    .then(connectSuccess)
+    .catch(connectError);
+}
+
+/**
+ * Try to connect with credentials from separate environment variables
+ */
+function tryWithSeparateCredentials() {
+  if (process.env.MONGODB_USERNAME && process.env.MONGODB_PASSWORD) {
+    try {
+      // Handle MongoDB+SRV format special case
+      let newUri = '';
+      if (mongoUri.startsWith('mongodb+srv://')) {
+        // For SRV records we need to handle them differently
+        const parts = mongoUri.split('//')[1].split('/');
+        const host = parts[0];
+        const dbAndParams = parts.slice(1).join('/');
+        
+        newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${host}/${dbAndParams}`;
+      } else {
+        // Standard MongoDB URI
+        const parsedUri = new URL(mongoUri);
+        parsedUri.username = encodeURIComponent(process.env.MONGODB_USERNAME);
+        parsedUri.password = encodeURIComponent(process.env.MONGODB_PASSWORD);
+        newUri = parsedUri.toString();
+      }
+      
+      console.log('🔄 Using separate credentials from environment variables');
+      const sanitizedNewUri = newUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
+      console.log('🔄 New connection string:', sanitizedNewUri);
+      
+      // Update the URI with the new one
+      mongoose.connect(newUri, mongooseOptions)
+        .then(connectSuccess)
+        .catch(connectError);
+    } catch (error) {
+      console.error('❌ Error constructing MongoDB URI:', error);
+      // Fall back to original URI if parsing fails
+      mongoose.connect(mongoUri, mongooseOptions)
+        .then(connectSuccess)
+        .catch(connectError);
+    }
+  } else {
+    console.error('❌ No MongoDB credentials available. Set MONGODB_USERNAME and MONGODB_PASSWORD');
+    // Fall back to original URI
+    mongoose.connect(mongoUri, mongooseOptions)
+      .then(connectSuccess)
+      .catch(connectError);
+  }
+}
+
+// Success handler for connection
+function connectSuccess() {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
   console.log('✅ MongoDB connected successfully');
   if (process.env.NODE_ENV !== 'test') {
     logger.log({
       level: 'info',
       event: 'database_connected',
-      context: { uri: mongoUri.replace(/\/\/.*@/, '//***@') } // Hide credentials
+      context: { uri: sanitizedUri }
     });
   }
-}).catch((err) => {
-  console.error('❌ MongoDB connection error:', err.message, err);
+}
+
+// Error handler for connection
+function connectError(err) {
+  console.error('❌ MongoDB connection error:', err.message);
+  
+  // Log more detailed error information in a structured way
+  const errorInfo = {
+    code: err.code,
+    codeName: err.codeName,
+    name: err.name,
+    stack: err.stack?.split('\n')[0] || 'No stack trace'
+  };
+  
+  console.error('📋 Error details:', JSON.stringify(errorInfo, null, 2));
+  
   logger.log({
     level: 'error',
     event: 'database_connection_failed',
-    context: { error: err.message }
+    context: { 
+      error: err.message,
+      details: errorInfo
+    }
   });
+  
   // Exit with failure in production, but allow development to continue
   if (process.env.NODE_ENV === 'production') {
+    console.error('💥 Exiting due to database connection failure in production');
     process.exit(1);
+  } else {
+    console.warn('⚠️ Continuing without database in development mode');
   }
-});
+}
 
 // Custom 404 middleware
 app.use((req, res) => {
