@@ -4,7 +4,7 @@ import { ChessDoc } from '../types/models/chess';
 import { UserDoc } from '../types/models/user';
 import { wagerService, userService, microserviceService } from '../services';
 import { CreateWagerQuery, WagerStatus } from '../types/models/wager';
-import mongoose from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { ChessEmitEvents } from '../types/websocket';
 import { AxiosError } from 'axios';
 import { TopMoveData } from '../types/microservice';
@@ -103,7 +103,7 @@ async function selectMove(
  */
 async function moveHasWagers(gameId: string, moveNumber: number): Promise<boolean> {
   const wagers = await wagerService.getWagers({
-    game_id: gameId,
+    game_id: new Types.ObjectId(gameId),
     move_number: moveNumber
   });
   return wagers.length > 0;
@@ -191,8 +191,8 @@ export async function processBotWager(
 
     // Create and place wager
     const newWager: CreateWagerQuery = {
-      game_id: game._id.toString(),
-      better_id: bot._id.toString(),
+      game_id: new Types.ObjectId(game._id.toString()),
+      better_id: new Types.ObjectId(bot._id.toString()),
       wdl: false, // This is a move bet, not a game outcome bet
       amount: stake,
       odds: 1, // Standard odds for pool wager
