@@ -40,16 +40,45 @@ import logger from './helpers/axiom_logger';
 // initialize
 const app = express();
 const httpServer = http.createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+
+// Define allowed origins for both CORS and Socket.IO
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
+  : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
+
+// Log the allowed origins
+console.log('🌐 CORS allowed origins:', allowedOrigins);
+
+// Configure Socket.IO with CORS settings
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+  },
+  allowEIO3: true, // Allow Engine.IO version 3 client connections
+  transports: ['websocket', 'polling'] // Enable both WebSocket and polling transports
+});
 
 // Configure CORS with more secure options
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
-    : true,
+  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With', 'Access-Control-Allow-Origin'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+}));
+
+// Add a specific OPTIONS handler to ensure preflight requests work properly
+app.options('*', cors({
+  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
+  maxAge: 86400 // Cache preflight response for 24 hours
 }));
 
 // Custom morgan logger that skips 404 responses
@@ -70,6 +99,32 @@ app.use((req, res, next) => {
   next();
 });
 
+// Set CORS headers for all responses
+app.use((req, res, next) => {
+  // Add CORS headers to every response for better compatibility
+  const origin = req.headers.origin;
+  
+  // For production, only allow specific origins; otherwise allow any origin
+  if (process.env.NODE_ENV === 'production') {
+    if (origin && allowedOrigins.includes(origin)) {
+      res.header('Access-Control-Allow-Origin', origin);
+    }
+  } else {
+    res.header('Access-Control-Allow-Origin', '*');
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return res.status(204).end();
+  }
+  
+  next();
+});
+
 // Cookie parser is temporarily disabled
 // app.use(cookieParser(process.env.AUTH_SECRET));
 
@@ -85,7 +140,7 @@ app.use('/leaderboard', leaderboardRouter);
 app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
 app.use('/raffle', raffleRouter);
-app.use('/api/log', logRouter);
+app.use('/api/log', logRouter); // Frontend logging endpoint
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -123,7 +178,31 @@ agentService.initializeBots().then(() => {
 
 // default index route
 app.get('/', (req, res) => {
-  res.status(200).send('Welcome to the backend');
+  res.status(200).json({
+    message: 'Welcome to the Betmate API',
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0',
+    status: 'online',
+    endpoints: {
+      auth: '/auth',
+      chess: '/chess',
+      wager: '/wager',
+      leaderboard: '/leaderboard',
+      analysis: '/analysis',
+      raffle: '/raffle',
+      websocket: '/chessws'
+    }
+  });
+});
+
+// Add an API version endpoint for the frontend to check
+app.get('/api/status', (req, res) => {
+  res.status(200).json({
+    status: 'online',
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // DB Setup
