@@ -79,7 +79,8 @@ const deleteRefreshToken = async (token: string): Promise<boolean> => {
  */
 const deleteAllUserRefreshTokens = async (userId: string | Types.ObjectId): Promise<boolean> => {
   try {
-    const result = await RefreshToken.deleteMany({ userId });
+    const userIdObj = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    const result = await RefreshToken.deleteMany({ userId: userIdObj });
     return result.deletedCount > 0;
   } catch (error) {
     dbErrorHandler(error);
