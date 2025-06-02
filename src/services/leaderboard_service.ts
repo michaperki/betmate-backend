@@ -144,7 +144,7 @@ const generateGameLeaderboard = async (gameId: Types.ObjectId | string): Promise
   try {
     // Get all resolved wagers for this specific game
     const wagers = await wagerService.getPopulatedWagers(
-      { game_id: new Types.ObjectId(String(gameId)), resolved: true },
+      { game_id: Types.ObjectId(String(gameId)), resolved: true },
       'better_id'
     );
 

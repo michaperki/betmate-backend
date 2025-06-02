@@ -23,3 +23,11 @@ declare module 'mongodb' {
     toString(): string;
   }
 }
+
+// Define a function signature for Types.ObjectId
+declare module 'mongoose' {
+  namespace Types {
+    // Make sure constructor is a function that returns ObjectId
+    function ObjectId(id?: string | number | ObjectId): ObjectId;
+  }
+}

@@ -103,7 +103,7 @@ async function selectMove(
  */
 async function moveHasWagers(gameId: string, moveNumber: number): Promise<boolean> {
   const wagers = await wagerService.getWagers({
-    game_id: new Types.ObjectId(gameId),
+    game_id: Types.ObjectId(gameId),
     move_number: moveNumber
   });
   return wagers.length > 0;
@@ -191,8 +191,8 @@ export async function processBotWager(
 
     // Create and place wager
     const newWager: CreateWagerQuery = {
-      game_id: new Types.ObjectId(game._id.toString()),
-      better_id: new Types.ObjectId(bot._id.toString()),
+      game_id: Types.ObjectId(game._id.toString()),
+      better_id: Types.ObjectId(bot._id.toString()),
       wdl: false, // This is a move bet, not a game outcome bet
       amount: stake,
       odds: 1, // Standard odds for pool wager

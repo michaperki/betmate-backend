@@ -210,7 +210,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
   await delay(500); // ensures all wagers are present in database
 
   const wagers = await wagerService.getWagers({
-    game_id: new Types.ObjectId(gameId),
+    game_id: Types.ObjectId(gameId),
     wdl: false,
     move_number: moveNum,
     resolved: false,
@@ -232,7 +232,7 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
   await delay(500); // ensures all wagers are present in database
 
   const wagers = await wagerService.getWagers({
-    game_id: new Types.ObjectId(gameId),
+    game_id: Types.ObjectId(gameId),
     wdl: true,
     resolved: false,
   });
@@ -255,7 +255,7 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: str
   await delay(500); // ensures all wagers are present in database
 
   const wagers = await wagerService.getWagers({
-    game_id: new Types.ObjectId(gameId),
+    game_id: Types.ObjectId(gameId),
     wdl: false,
     move_number: moveNum,
     resolved: false,

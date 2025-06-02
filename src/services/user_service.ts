@@ -201,7 +201,7 @@ const countRealUsersWithWagers = async (gameId: string): Promise<number> => {
 const getUserBettingStats = async (userId: string | Types.ObjectId): Promise<{ totalWagers: number, winRate: number }> => {
   try {
     // Get all wagers for the user
-    const userIdObj = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    const userIdObj = typeof userId === 'string' ? Types.ObjectId(userId) : userId;
     const wagers = await Wager.find({ better_id: userIdObj });
 
     // Calculate total wagers
@@ -234,7 +234,7 @@ const getUserBettingStats = async (userId: string | Types.ObjectId): Promise<{ t
  * @returns Promise of array of active (pending) wagers
  */
 const getUserActiveWagers = (userId: string | Types.ObjectId) => {
-  const userIdObj = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+  const userIdObj = typeof userId === 'string' ? Types.ObjectId(userId) : userId;
   return Wager.find({
     better_id: userIdObj,
     status: WagerStatus.PENDING
@@ -256,7 +256,7 @@ const getUserWagerHistory = (
   limit: number = 50,
   skip: number = 0
 ) => {
-  const userIdObj = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+  const userIdObj = typeof userId === 'string' ? Types.ObjectId(userId) : userId;
   const query: FilterQuery<WagerDoc> = { better_id: userIdObj };
 
   // Add status filter if provided
@@ -326,7 +326,7 @@ const getUserBalanceHistory = async (
   skip: number = 0
 ): Promise<BalanceHistoryDoc[]> => {
   try {
-    const userIdObj = typeof userId === 'string' ? new Types.ObjectId(userId) : userId;
+    const userIdObj = typeof userId === 'string' ? Types.ObjectId(userId) : userId;
     return await BalanceHistory.find({ user_id: userIdObj })
       .sort({ created_at: -1 })
       .skip(skip)
