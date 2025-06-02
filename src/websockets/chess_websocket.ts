@@ -21,6 +21,16 @@ const gameViewerCounts: { [gameId: string]: number } = {};
  * @param socket in `/chessws` namespace
  */
 const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => {
+  // Log new connections with details for debugging
+  const clientInfo = {
+    id: socket.id,
+    origin: socket.handshake.headers.origin,
+    referer: socket.handshake.headers.referer,
+    address: socket.handshake.address
+  };
+
+  console.log(`New websocket connection: ${socket.id}`, { clientInfo });
+
   // Set up heartbeat to detect silent disconnections
   let heartbeatInterval: NodeJS.Timeout;
   let missedHeartbeats = 0;
@@ -219,8 +229,30 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       clearInterval(heartbeatInterval);
     }
 
-    // Log disconnection reason for monitoring
-    console.log(`Client ${socket.id} disconnected: ${reason}`);
+    // Enhanced logging for disconnections with additional context
+    const clientInfo = {
+      id: socket.id,
+      origin: socket.handshake.headers.origin,
+      referer: socket.handshake.headers.referer,
+      address: socket.handshake.address
+    };
+
+    console.log(`Client ${socket.id} disconnected: ${reason}`, { clientInfo });
+
+    // In production, log additional connection details for debugging
+    if (process.env.NODE_ENV === 'production') {
+      try {
+        const connDetails = {
+          transport: socket.conn.transport.name,
+          remoteAddress: socket.conn.remoteAddress,
+          rooms: Array.from(socket.rooms),
+          reason
+        };
+        console.log(`[PROD] Socket connection details:`, connDetails);
+      } catch (err) {
+        console.error("Error logging socket details:", err);
+      }
+    }
 
     // Clean up viewer counts for all rooms this socket was in
     socket.rooms.forEach((room) => {

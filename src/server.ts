@@ -40,13 +40,24 @@ import logger from './helpers/axiom_logger';
 // initialize
 const app = express();
 const httpServer = http.createServer(app);
-const io = new Server(httpServer, { cors: { origin: '*' } });
+
+// Define allowed origins for both CORS and Socket.IO
+const allowedOrigins = process.env.NODE_ENV === 'production'
+  ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
+  : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
+
+// Configure Socket.IO with CORS settings
+const io = new Server(httpServer, {
+  cors: {
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
+});
 
 // Configure CORS with more secure options
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
-    : true,
+  origin: allowedOrigins,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']

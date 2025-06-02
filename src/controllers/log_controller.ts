@@ -7,19 +7,25 @@ import logger from '../helpers/axiom_logger';
  */
 const clientLogRequest: RequestHandler = async (req, res) => {
   try {
+    // Always return 200 in production if AXIOM_TOKEN is not configured
+    // This prevents frontend errors while allowing for local development
+    if (process.env.NODE_ENV === 'production' && !process.env.AXIOM_TOKEN) {
+      return res.status(200).json({ message: 'Logging disabled in production' });
+    }
+
     const { level, event, message, context } = req.body;
 
     // Validate required fields
     if (!level || !event) {
-      return res.status(400).json({ 
-        message: 'Missing required fields: level and event are required' 
+      return res.status(400).json({
+        message: 'Missing required fields: level and event are required'
       });
     }
 
     // Validate log level
     if (!['debug', 'info', 'warn', 'error'].includes(level)) {
-      return res.status(400).json({ 
-        message: 'Invalid log level. Must be one of: debug, info, warn, error' 
+      return res.status(400).json({
+        message: 'Invalid log level. Must be one of: debug, info, warn, error'
       });
     }
 
