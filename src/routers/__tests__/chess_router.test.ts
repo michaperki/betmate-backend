@@ -78,7 +78,7 @@ describe('Working chess router', () => {
   beforeAll(async (done) => {
     try {
       const game = await new Chess(chessDataA).save();
-      validID = game._id;
+      validID = game._id.toString();
       await new Chess(chessDataB).save();
       done();
     } catch (error) {

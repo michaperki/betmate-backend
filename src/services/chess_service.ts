@@ -159,7 +159,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
             _id: 0
           }
         }
-      ]).allowDiskUse(true).cache(30) // Allow disk use for large aggregations and cache for 30 seconds
+      ]).allowDiskUse(true) // Allow disk use for large aggregations, cache temporarily disabled
     ]);
 
     // Use map instead of forEach for better performance when building objects

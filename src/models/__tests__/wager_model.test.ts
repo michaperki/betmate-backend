@@ -75,9 +75,9 @@ describe('Wager model validation', () => {
   beforeAll(async (done) => {
     try {
       const user = await new Users(userData).save();
-      userID = user._id;
+      userID = user._id.toString();
       const game = await new Chess(chessData).save();
-      gameID = game._id;
+      gameID = game._id.toString();
       done();
     } catch (error) {
       done(error);
@@ -107,7 +107,7 @@ describe('Wager model validation', () => {
         // Checks wager has been saved to testing DB
         validateWager(savedWager, wagerData);
 
-        wagerID = savedWager._id;
+        wagerID = savedWager._id.toString();
 
         done();
       } catch (error) {

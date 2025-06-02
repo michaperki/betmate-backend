@@ -24,14 +24,14 @@ if (!mongoose.Query.prototype.hasOwnProperty('cache')) {
       const exec = mongoose.Query.prototype.exec;
 
       // Add cache flag to this query instance
-      this._cache = true;
-      this._cacheTTL = ttlSeconds * 1000; // Convert to milliseconds
+      (this as any)._cache = true;
+      (this as any)._cacheTTL = ttlSeconds * 1000; // Convert to milliseconds
 
-      // If exec hasn't been monkey patched yet, patch it
-      if (!this._execMonkeyPatched) {
+      // Only monkey patch the exec function once
+      if (!(mongoose.Query.prototype as any)._execMonkeyPatched) {
         mongoose.Query.prototype.exec = async function() {
           // Skip caching if it's disabled for this query
-          if (!this._cache) {
+          if (!(this as any)._cache) {
             return exec.apply(this, arguments);
           }
 
@@ -58,12 +58,12 @@ if (!mongoose.Query.prototype.hasOwnProperty('cache')) {
           // Cache the result with expiry
           queryCache.set(key, {
             data: result,
-            expiry: now + this._cacheTTL
+            expiry: now + (this as any)._cacheTTL
           });
 
           return result;
         };
-        mongoose.Query.prototype._execMonkeyPatched = true;
+        (mongoose.Query.prototype as any)._execMonkeyPatched = true;
       }
 
       // Return the query object for chaining
