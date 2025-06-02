@@ -155,6 +155,12 @@ const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
 console.log('Connecting to MongoDB...', sanitizedUri);
 console.log('NODE_ENV:', process.env.NODE_ENV);
 
+// Log environment variables availability (no values, just presence)
+console.log('Environment variables availability:');
+console.log('- MONGODB_URI:', !!process.env.MONGODB_URI);
+console.log('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
+console.log('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
+
 // Check if the URI contains username/password
 if (process.env.NODE_ENV === 'production' && mongoUri.includes('@')) {
   // URL already has credentials, use it directly
@@ -186,11 +192,35 @@ function tryWithSeparateCredentials() {
       let newUri = '';
       if (mongoUri.startsWith('mongodb+srv://')) {
         // For SRV records we need to handle them differently
-        const parts = mongoUri.split('//')[1].split('/');
-        const host = parts[0];
-        const dbAndParams = parts.slice(1).join('/');
-        
-        newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${host}/${dbAndParams}`;
+        try {
+          // Better approach: use the URL constructor to parse the URI
+          const mongoUrl = new URL(mongoUri);
+          
+          // Get just the hostname and pathname (and search params if any)
+          const hostname = mongoUrl.hostname; // e.g., betmate-prod.rb3qn.mongodb.net
+          const pathname = mongoUrl.pathname; // e.g., /betmate
+          const search = mongoUrl.search;    // e.g., ?retryWrites=true&w=majority
+          
+          // Construct the host and path correctly
+          const hostAndPath = hostname + pathname + search;
+          
+          // Reconstruct the URI with the new credentials
+          newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostAndPath}`;
+          
+          console.log('🔍 SRV URI format: Using URL parsing for better reliability');
+        } catch (urlError) {
+          // Fallback to manual parsing if URL constructor fails
+          console.log('⚠️ URL parsing failed, using manual extraction', urlError.message);
+          
+          const parts = mongoUri.split('//')[1].split('/');
+          const host = parts[0];
+          const dbAndParams = parts.slice(1).join('/');
+          
+          // If host contains auth info (user:pass@hostname), extract just the hostname
+          const hostWithoutAuth = host.includes('@') ? host.split('@')[1] : host;
+          
+          newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostWithoutAuth}/${dbAndParams}`;
+        }
       } else {
         // Standard MongoDB URI
         const parsedUri = new URL(mongoUri);
@@ -200,8 +230,7 @@ function tryWithSeparateCredentials() {
       }
       
       console.log('🔄 Using separate credentials from environment variables');
-      const sanitizedNewUri = newUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
-      console.log('🔄 New connection string:', sanitizedNewUri);
+      logSafeUri(newUri);
       
       // Update the URI with the new one
       mongoose.connect(newUri, mongooseOptions)
@@ -223,6 +252,39 @@ function tryWithSeparateCredentials() {
   }
 }
 
+/**
+ * Log a safe version of the URI (without credentials)
+ */
+function logSafeUri(uri) {
+  try {
+    // Create a safe version of the URI for logging (no credentials)
+    const urlObj = new URL(uri);
+    urlObj.username = '***';
+    urlObj.password = '***';
+    const safeUri = urlObj.toString();
+    
+    // Additional validation check for the URI format
+    const protocol = urlObj.protocol;
+    const hostname = urlObj.hostname;
+    
+    console.log('🔍 URI validation check:');
+    console.log('- Protocol:', protocol);
+    console.log('- Hostname:', hostname);
+    
+    // Check if hostname is valid
+    if (!hostname || hostname.includes(':')) {
+      console.warn('⚠️ Potential issue with hostname format:', hostname);
+    }
+    
+    console.log('🔄 New connection string (safe):', safeUri);
+  } catch (err) {
+    // In case of URL parsing errors, do manual sanitization
+    const safeUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
+    console.error('⚠️ Error parsing the URI for logging:', err.message);
+    console.log('🔄 New connection string (safe):', safeUri);
+  }
+}
+
 // Success handler for connection
 function connectSuccess() {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
@@ -240,12 +302,28 @@ function connectSuccess() {
 function connectError(err) {
   console.error('❌ MongoDB connection error:', err.message);
   
+  // Check for common MongoDB connection errors and provide more helpful diagnostics
+  if (err.message.includes('bad auth')) {
+    console.error('🔑 Authentication failed: The username or password is incorrect');
+  } else if (err.message.includes('ECONNREFUSED')) {
+    console.error('🔌 Connection refused: MongoDB server may be down or the URI is incorrect');
+  } else if (err.message.includes('invalid hostname')) {
+    console.error('🌐 Invalid hostname: The MongoDB URI contains an invalid hostname');
+  } else if (err.message.includes('No hostname found in URI')) {
+    console.error('⚠️ Invalid URI format: MongoDB URI must contain a hostname');
+  } else if (err.message.includes('Unescaped colon in authority section')) {
+    console.error('⚠️ URI formatting error: Special characters in username/password need URL encoding');
+    console.error('🔧 Make sure MONGODB_USERNAME and MONGODB_PASSWORD are properly URL-encoded');
+  }
+  
   // Log more detailed error information in a structured way
   const errorInfo = {
     code: err.code,
     codeName: err.codeName,
     name: err.name,
-    stack: err.stack?.split('\n')[0] || 'No stack trace'
+    stack: err.stack?.split('\n')[0] || 'No stack trace',
+    // Add diagnostics based on the error message
+    possibleCause: getPossibleCause(err.message)
   };
   
   console.error('📋 Error details:', JSON.stringify(errorInfo, null, 2));
@@ -259,12 +337,39 @@ function connectError(err) {
     }
   });
   
+  // Show environment info to help diagnose the issue
+  if (process.env.NODE_ENV === 'production') {
+    console.log('📊 Environment context:');
+    console.log('- NODE_ENV:', process.env.NODE_ENV);
+    console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
+    console.log('- MONGODB_USERNAME exists:', !!process.env.MONGODB_USERNAME);
+    console.log('- MONGODB_PASSWORD exists:', !!process.env.MONGODB_PASSWORD);
+    console.log('- Is SRV connection:', process.env.MONGODB_URI?.startsWith('mongodb+srv://') || false);
+  }
+  
   // Exit with failure in production, but allow development to continue
   if (process.env.NODE_ENV === 'production') {
     console.error('💥 Exiting due to database connection failure in production');
     process.exit(1);
   } else {
     console.warn('⚠️ Continuing without database in development mode');
+  }
+}
+
+// Helper function to identify possible causes from error messages
+function getPossibleCause(errorMessage) {
+  if (errorMessage.includes('bad auth')) {
+    return 'Invalid credentials (username/password)';
+  } else if (errorMessage.includes('ECONNREFUSED')) {
+    return 'MongoDB server unreachable or wrong connection string';
+  } else if (errorMessage.includes('invalid hostname') || errorMessage.includes('No hostname')) {
+    return 'Malformed connection string (invalid hostname)';
+  } else if (errorMessage.includes('Unescaped colon')) {
+    return 'Username or password contains special characters that need URL encoding';
+  } else if (errorMessage.includes('timed out')) {
+    return 'Network connectivity issues or firewall blocking connection';
+  } else {
+    return 'Unknown connection issue';
   }
 }
 
