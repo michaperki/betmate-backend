@@ -139,8 +139,12 @@ const mongooseOptions = {
 // Get MongoDB URI from environment variable (Heroku sets MONGODB_URI automatically)
 const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
 
+console.log('Connecting to MongoDB...', mongoUri.replace(/\/\/.*@/, '//***@')); // Hide credentials in logs
+console.log('NODE_ENV:', process.env.NODE_ENV);
+
 mongoose.connect(mongoUri, mongooseOptions).then(() => {
   mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
+  console.log('✅ MongoDB connected successfully');
   if (process.env.NODE_ENV !== 'test') {
     logger.log({
       level: 'info',
@@ -149,11 +153,16 @@ mongoose.connect(mongoUri, mongooseOptions).then(() => {
     });
   }
 }).catch((err) => {
+  console.error('❌ MongoDB connection error:', err.message, err);
   logger.log({
     level: 'error',
     event: 'database_connection_failed',
     context: { error: err.message }
   });
+  // Exit with failure in production, but allow development to continue
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
 // Custom 404 middleware
