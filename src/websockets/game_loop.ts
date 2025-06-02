@@ -77,14 +77,15 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   // create game and put into pregame
   const gameDoc = await chessService.createChessGame(gameFields);
   const gameId = String(gameDoc._id);
-  const gameData = gameDoc.toJSON();
+  // Convert the Mongoose document to a plain object instead of using toJSON
+  const gameData = JSON.parse(JSON.stringify(gameDoc));
   socket.emit('new_game', gameData as unknown as ChessDoc);
 
   // Pregame phase
   await delay(PREGAME_TIME * 1000);
 
   // Start game
-  const updatedGame = await chessService.updateChessGame(gameDoc._id, { game_status: GameStatus.IN_PROGRESS });
+  const updatedGame = await chessService.updateChessGame(gameDoc._id.toString(), { game_status: GameStatus.IN_PROGRESS });
   if (!updatedGame) return false;
   socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
 
@@ -136,7 +137,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       socket.to(gameId).emit('new_move', { gameId, ...updateMessage });
 
       // update gameDoc
-      chessService.updateChessGame(gameDoc._id, updateMessage);
+      chessService.updateChessGame(gameDoc._id.toString(), updateMessage);
 
       // resolve wagers on the move just played, if any
       const currentMoveNumber = moveHist.length;
@@ -273,7 +274,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
 
         // Broadcast new odds, save to database
         socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
-        chessService.updateChessGame(gameDoc._id, oddsUpdate);
+        chessService.updateChessGame(gameDoc._id.toString(), oddsUpdate);
       });
     }
 
@@ -283,7 +284,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
       complete: true,
     };
     socket.to(gameId).emit('game_over', { gameId, ...completeFields });
-    await chessService.updateChessGame(gameDoc._id, completeFields);
+    await chessService.updateChessGame(gameDoc._id.toString(), completeFields);
 
     // Resolve win/draw/loss wagers
     resolveWdlWagers(gameId, game.outcome)

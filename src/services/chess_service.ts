@@ -40,7 +40,7 @@ const getManyChessGames = (
     .find(fields, projection)
     .sort(sort)
     .limit(limit)
-    .cache(300) // Cache results for 5 minutes (300 seconds)
+    // .cache(300) // Cache temporarily disabled
     .catch(dbErrorHandler)
 );
 
@@ -101,7 +101,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
       _id: 1,
       move_hist: 1,
       game_status: 1
-    }).cache(30); // Cache for 30 seconds
+    }); // Cache temporarily disabled
 
     if (!game) {
       throw new Error('Game not found');
@@ -132,7 +132,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
             _id: 0
           }
         }
-      ]).allowDiskUse(true).cache(30), // Allow disk use for large aggregations and cache for 30 seconds
+      ]).allowDiskUse(true), // Allow disk use for large aggregations, cache temporarily disabled
 
       // Get WDL wager data grouped by outcome with optimized pipeline
       Wager.aggregate([
