@@ -103,7 +103,7 @@ describe('Chess model validation', () => {
         // Checks chess has been saved to testing DB
         validateGame(savedGame, chessDataA);
 
-        gameIdA = validGame._id;
+        gameIdA = validGame._id.toString();
 
         done();
       } catch (error) {
@@ -120,7 +120,7 @@ describe('Chess model validation', () => {
         // Checks chess has been saved to testing DB
         validateGame(savedGame, chessDataB);
 
-        gameIdB = savedGame._id;
+        gameIdB = savedGame._id.toString();
 
         done();
       } catch (error) {

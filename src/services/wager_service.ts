@@ -38,7 +38,7 @@ const getWagers = (
     .find(fields, projection)
     .sort(sort)
     .limit(limit)
-    .cache(60) // Cache results for 60 seconds
+    // .cache(60) // Cache temporarily disabled
     .catch(dbErrorHandler)
 );
 
@@ -182,7 +182,7 @@ const getPopulatedWagers = (
     .limit(limit)
     .populate(populateBy)
     .lean() // Use lean() to convert to plain JavaScript objects - significantly improves performance
-    .cache(60) // Cache results for 60 seconds
+    // .cache(60) // Cache temporarily disabled
     .then((docs: any[]) => docs as unknown as PopulatedWagerDoc[])
     .catch(dbErrorHandler)
 );

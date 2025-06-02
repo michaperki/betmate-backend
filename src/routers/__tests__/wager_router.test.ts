@@ -83,7 +83,7 @@ describe('Working wager router', () => {
       await new Users(mockUser).save();
 
       const chessGame = await new Chess(chessData).save();
-      chessGameID = chessGame._id;
+      chessGameID = chessGame._id.toString();
 
       const wager = await new Wager({
         ...wagerData,
@@ -91,7 +91,7 @@ describe('Working wager router', () => {
         game_id: chessGameID,
       }).save();
 
-      validID = wager._id;
+      validID = wager._id.toString();
       done();
     } catch (error) {
       done(error);

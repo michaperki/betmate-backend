@@ -76,8 +76,9 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
   };
   // create game and put into pregame
   const gameDoc = await chessService.createChessGame(gameFields);
-  const gameId = gameDoc._id.toString();
-  const gameData = gameDoc.toJSON();
+  const gameId = String(gameDoc._id);
+  // Convert the Mongoose document to a plain object instead of using toJSON
+  const gameData = JSON.parse(JSON.stringify(gameDoc));
   socket.emit('new_game', gameData as unknown as ChessDoc);
 
   // Pregame phase
