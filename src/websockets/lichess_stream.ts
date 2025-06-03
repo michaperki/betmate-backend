@@ -8,7 +8,8 @@ import { matchesSchema } from '../validation';
 import { StreamEndSchema, StreamMoveSchema, StreamStartSchema, StatusEventSchema, sanitizeLichessGame } from '../validation/lichess'; // ✅ import added
 import { LichessStreamMove, LichessStatusEvent } from '../types/lichess';
 import { Types } from 'mongoose';
-import { Chess } from 'chess.js';
+import { Chess as ChessGame } from 'chess.js';
+import { Chess } from '../models';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
 import { chessService, microserviceService, agentService } from '../services';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
@@ -42,11 +43,15 @@ export const getStream = async (
     // Delay the tweet to ensure game is available in frontend and stored in DB
     setTimeout(async () => {
       try {
-        // Verify game still exists and is in progress before tweeting
+        // Verify game still exists and is the latest active game before tweeting
         const gameExists = await chessService.getChessGame(gameId);
 
-        if (gameExists) {
-          console.log(`Verified game ${gameId} exists, proceeding with tweet`);
+        // Get the latest active game
+        const latestGames = await chessService.getActiveGames(0, 1);
+        const latestGame = latestGames && latestGames.length > 0 ? latestGames[0] : null;
+
+        if (gameExists && latestGame && latestGame._id.toString() === gameId) {
+          console.log(`Verified game ${gameId} exists and is latest active game, proceeding with tweet`);
           twitterService.tweetNewGame(
             gameId,
             startData.player_white?.name || 'Anonymous',
@@ -55,8 +60,13 @@ export const getStream = async (
           ).catch(error => {
             console.warn(`Failed to tweet about new game ${gameId}:`, error.message);
           });
+        } else if (!gameExists) {
+          console.warn(`Skipping tweet: game ${gameId} not found`);
+        } else if (!latestGame || latestGame._id.toString() !== gameId) {
+          console.warn(`Skipping tweet: game ${gameId} is not the latest active game (latest is ${latestGame?._id})`);
+          console.log(`Game creation race condition detected - tweet target: ${gameId}, latest game: ${latestGame?._id}`);
         } else {
-          console.warn(`Skipping tweet: game ${gameId} not found or no longer active`);
+          console.warn(`Skipping tweet: game ${gameId} validation failed for unknown reason`);
         }
       } catch (error) {
         console.warn(`Failed to verify game ${gameId} before tweeting:`, error.message);
@@ -71,7 +81,7 @@ export const getStream = async (
   const moveHist: MoveData[] = [];
   const gameTime = startData.time_white ?? 600;
   let liveTopMoves: string[] = chessDoc.pool_wagers.move.options.map(String);
-  const game = new Chess();
+  const game = new ChessGame();
 
   let canQueryMicroservice = false;
   let startFen = '';
@@ -293,8 +303,17 @@ export const getStream = async (
             setTimeout(async () => {
               try {
                 const chessGame = await chessService.getChessGame(gameId);
-                if (chessGame && chessGame.complete) {
-                  console.log(`Verified game ${gameId} is complete, proceeding with result tweet`);
+
+                // Get the latest completed game
+                const latestCompletedGames = await Chess.find({ complete: true })
+                  .sort({ created_at: -1 })
+                  .limit(1);
+                const latestCompleted = latestCompletedGames && latestCompletedGames.length > 0 ?
+                  latestCompletedGames[0] : null;
+
+                if (chessGame && chessGame.complete &&
+                    latestCompleted && latestCompleted._id.toString() === gameId) {
+                  console.log(`Verified game ${gameId} is complete and is latest finished game, proceeding with result tweet`);
                   twitterService.tweetGameResult(
                     gameId,
                     chessGame.player_white?.name || 'Anonymous',
@@ -305,8 +324,13 @@ export const getStream = async (
                   ).catch(error => {
                     console.warn(`Failed to tweet about game ${gameId} result:`, error.message);
                   });
-                } else {
+                } else if (!chessGame || !chessGame.complete) {
                   console.warn(`Skipping result tweet: game ${gameId} not found or not properly completed`);
+                } else if (!latestCompleted || latestCompleted._id.toString() !== gameId) {
+                  console.warn(`Skipping result tweet: game ${gameId} is not the latest completed game (latest is ${latestCompleted?._id})`);
+                  console.log(`Game completion race condition detected - tweet target: ${gameId}, latest completed game: ${latestCompleted?._id}`);
+                } else {
+                  console.warn(`Skipping result tweet: game ${gameId} validation failed for unknown reason`);
                 }
               } catch (error) {
                 console.warn(`Failed to verify game ${gameId} before tweeting result:`, error.message);

@@ -204,6 +204,23 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
   }
 };
 
+/**
+ * Get the most recent active games
+ * @param start Starting index for pagination
+ * @param limit Maximum number of games to return
+ * @returns Promise of active games, sorted by most recent first
+ */
+const getActiveGames = async (start: number = 0, limit: number = 10): Promise<ChessDoc[]> => {
+  return Chess.find({
+    game_status: { $in: [GameStatus.NOT_STARTED, GameStatus.IN_PROGRESS] },
+    complete: { $ne: true }
+  })
+  .sort({ created_at: -1 })
+  .skip(start)
+  .limit(limit)
+  .catch(dbErrorHandler);
+};
+
 const chessService = {
   getChessGame,
   getManyChessGames,
@@ -212,6 +229,7 @@ const chessService = {
   purgeStaleGames,
   clearGames,
   getGameStats,
+  getActiveGames,
 };
 
 export default chessService;
