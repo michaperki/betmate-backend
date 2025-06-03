@@ -2,11 +2,14 @@
  * Twitter Service
  * Handles interactions with the Twitter API
  *
+ * Simplified to only tweet about new games with a limit of 5 tweets per day.
+ *
  * Note: This service requires the twitter-api-v2 package
  * Uses environment variable ENABLE_TWITTER=true to activate
  */
 
 import logger from '../helpers/axiom_logger';
+import tweetQueue from '../helpers/tweet_queue';
 
 // Debug logging for Twitter initialization
 console.log('Twitter Service Initialization:');
@@ -104,14 +107,14 @@ const initializeClient = () => {
 };
 
 /**
- * Posts a tweet about a new game starting
+ * Actually posts a tweet about a new game starting (internal implementation)
  * @param gameId The ID of the game
  * @param whitePlayer Name of white player
  * @param blackPlayer Name of black player
  * @param timeControl Time control of the game
  * @returns Promise resolving to tweet data or null if posting failed
  */
-const tweetNewGame = async (
+const _sendTweet = async (
   gameId: string,
   whitePlayer: string,
   blackPlayer: string,
@@ -148,12 +151,37 @@ const tweetNewGame = async (
 };
 
 /**
- * Posts a tweet about game results
+ * Queues a tweet about a new game starting
  * @param gameId The ID of the game
  * @param whitePlayer Name of white player
  * @param blackPlayer Name of black player
- * @param result The game result (e.g., "1-0", "0-1", "1/2-1/2")
- * @returns Promise resolving to tweet data or null if posting failed
+ * @param timeControl Time control of the game
+ * @returns Promise resolving to true if queued successfully
+ */
+const tweetNewGame = async (
+  gameId: string,
+  whitePlayer: string,
+  blackPlayer: string,
+  timeControl: string
+) => {
+  if (!isConfigured()) return null;
+
+  logger.info(`Queuing new game tweet for game ${gameId}`);
+
+  // Add the tweet to the queue
+  tweetQueue.queueTweet(
+    gameId,
+    { whitePlayer, blackPlayer, timeControl },
+    _sendTweet
+  );
+
+  // Return a mock result since the actual tweet will be sent later
+  return { id: `queued-${Date.now()}` };
+};
+
+/**
+ * NO LONGER USED - We don't tweet about game results anymore
+ * @deprecated Not in use - only new game tweets are supported
  */
 const tweetGameResult = async (
   gameId: string,
@@ -161,93 +189,33 @@ const tweetGameResult = async (
   blackPlayer: string,
   result: string
 ) => {
-  const client = initializeClient();
-  if (!client) return null;
-
-  try {
-    let resultText = '';
-    switch (result) {
-      case '1-0':
-        resultText = `${whitePlayer} (White) won against ${blackPlayer}`;
-        break;
-      case '0-1':
-        resultText = `${blackPlayer} (Black) won against ${whitePlayer}`;
-        break;
-      case '1/2-1/2':
-        resultText = `${whitePlayer} and ${blackPlayer} played to a draw`;
-        break;
-      default:
-        resultText = `Game between ${whitePlayer} and ${blackPlayer} ended with result: ${result}`;
-    }
-
-    const gameUrl = `https://betmate-prod.netlify.app/chess/${gameId}`;
-    const tweetText = `🏁 Game finished! ${resultText}. See final positions and betting results at ${gameUrl} #chess #betting`;
-
-    // Use the Twitter API if available
-    let result2;
-    if (TwitterApi) {
-      console.log(`Sending game result tweet via Twitter API: "${tweetText}"`);
-      const v2Client = client.v2;
-      result2 = await v2Client.tweet(tweetText);
-      console.log(`Twitter API response for game result:`, result2);
-    } else {
-      // Mock result if Twitter API is not available
-      console.log(`Would tweet game result (mock): "${tweetText}"`);
-      logger.info(`Would tweet (mock): ${tweetText}`);
-      result2 = { data: { id: `mock-${Date.now()}` } };
-    }
-
-    logger.info(`Tweet posted for game ${gameId} result`, { tweetId: result2.data.id });
-    return result2.data;
-  } catch (error) {
-    console.error(`Failed to tweet about game ${gameId} result:`, error);
-    logger.error(`Failed to tweet about game ${gameId} result:`, error);
-    return null;
-  }
+  logger.info(`Game result tweets are disabled, ignoring request for game ${gameId}`);
+  return { id: `disabled-${Date.now()}` };
 };
 
 /**
- * Posts a tweet about a significant betting event
- * @param gameId The ID of the game
- * @param message The message about the betting event
- * @returns Promise resolving to tweet data or null if posting failed
+ * NO LONGER USED - We don't tweet about betting events
+ * @deprecated Not in use - only new game tweets are supported
  */
 const tweetBettingEvent = async (gameId: string, message: string) => {
-  const client = initializeClient();
-  if (!client) return null;
+  logger.info(`Betting event tweets are disabled, ignoring request for game ${gameId}`);
+  return { id: `disabled-${Date.now()}` };
+};
 
-  try {
-    const gameUrl = `https://betmate-prod.netlify.app/chess/${gameId}`;
-    const tweetText = `💰 ${message}. Follow the action at ${gameUrl} #chess #betting`;
-
-    // Use the Twitter API if available
-    let result;
-    if (TwitterApi) {
-      console.log(`Sending betting event tweet via Twitter API: "${tweetText}"`);
-      const v2Client = client.v2;
-      result = await v2Client.tweet(tweetText);
-      console.log(`Twitter API response for betting event:`, result);
-    } else {
-      // Mock result if Twitter API is not available
-      console.log(`Would tweet betting event (mock): "${tweetText}"`);
-      logger.info(`Would tweet (mock): ${tweetText}`);
-      result = { data: { id: `mock-${Date.now()}` } };
-    }
-
-    logger.info(`Tweet posted for betting event in game ${gameId}`, { tweetId: result.data.id });
-    return result.data;
-  } catch (error) {
-    console.error(`Failed to tweet about betting event in game ${gameId}:`, error);
-    logger.error(`Failed to tweet about betting event in game ${gameId}:`, error);
-    return null;
-  }
+/**
+ * Get current tweet queue status
+ * @returns Queue status information
+ */
+const getTweetQueueStatus = () => {
+  return tweetQueue.getQueueStatus();
 };
 
 const twitterService = {
   isConfigured,
   tweetNewGame,
   tweetGameResult,
-  tweetBettingEvent
+  tweetBettingEvent,
+  getTweetQueueStatus
 };
 
 export default twitterService;
