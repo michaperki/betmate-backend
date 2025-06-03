@@ -178,9 +178,20 @@ const connectSuccess = () => {
     console.error('Error initializing bots:', error);
   });
   
-  // Start listening for Lichess games if not in test mode
+  // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {
-    streamLoop(chessWebsocket).catch(console.error);
+    console.log('Purging stale games before starting Lichess stream...');
+    chessService.purgeStaleGames()
+      .then(result => {
+        console.log(`✅ Stale games purged successfully: ${result}`);
+        // Start listening for Lichess games after purging stale games
+        streamLoop(chessWebsocket).catch(console.error);
+      })
+      .catch(error => {
+        console.error('❌ Error purging stale games:', error);
+        // Continue with Lichess stream anyway
+        streamLoop(chessWebsocket).catch(console.error);
+      });
   }
 };
 

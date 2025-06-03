@@ -69,13 +69,57 @@ const createChessGame = async (fields: CreateChessQuery): Promise<ChessDoc> => (
 );
 
 /**
- * Deletes all incomplete games in database. Only called on startup of server.
- * @returns Promise of boolean indicating success
+ * Deletes all incomplete or hanging games in database. Called on startup of server.
+ * This ensures we don't have stale games preventing new ones from being created.
+ * @returns Promise with details about the purge operation
  */
-const purgeStaleGames = async (): Promise<boolean> => {
-  const deleteOne = await Chess.deleteMany({ complete: false }).then((res) => !!res);
-  const deleteTwo = await Chess.deleteMany({ game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] } }).then((res) => !!res);
-  return deleteOne && deleteTwo;
+const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: number, details: string}> => {
+  try {
+    // Get a count of stale games before deletion for logging
+    const incompleteCount = await Chess.countDocuments({ complete: false });
+    const inProgressCount = await Chess.countDocuments({
+      game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] }
+    });
+
+    console.log(`Found ${incompleteCount} incomplete games and ${inProgressCount} in-progress/not-started games`);
+
+    // Perform deletion operations
+    const deleteIncomplete = await Chess.deleteMany({ complete: false });
+    const deleteInProgress = await Chess.deleteMany({
+      game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] }
+    });
+
+    // Additionally, find and mark as complete any games older than 2 hours
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    const markOldGames = await Chess.updateMany(
+      {
+        created_at: { $lt: twoHoursAgo },
+        complete: false
+      },
+      {
+        $set: {
+          complete: true,
+          game_status: GameStatus.ABORTED
+        }
+      }
+    );
+
+    const totalDeleted = (deleteIncomplete.deletedCount || 0) + (deleteInProgress.deletedCount || 0);
+    const totalMarked = markOldGames.modifiedCount || 0;
+
+    return {
+      success: true,
+      deletedCount: totalDeleted,
+      details: `Deleted ${totalDeleted} stale games and marked ${totalMarked} old games as complete.`
+    };
+  } catch (error) {
+    console.error('Error purging stale games:', error);
+    return {
+      success: false,
+      deletedCount: 0,
+      details: `Error: ${error.message}`
+    };
+  }
 };
 
 const clearGames = async (): Promise<boolean> => {
