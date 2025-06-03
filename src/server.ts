@@ -37,6 +37,9 @@ import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
 
 
+// Record server start time for detecting fresh deployments
+global.serverStartTime = Date.now();
+
 // initialize
 const app = express();
 const httpServer = http.createServer(app);

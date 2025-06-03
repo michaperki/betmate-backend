@@ -27,16 +27,43 @@ export const getStream = async (
   socket.emit('new_game', chessDoc as ChessDoc);
   const gameId = String(chessDoc._id);
 
-  // Tweet about the new game if Twitter is configured
-  if (twitterService.isConfigured()) {
-    twitterService.tweetNewGame(
-      gameId,
-      startData.player_white?.name || 'Anonymous',
-      startData.player_black?.name || 'Anonymous',
-      `${Math.floor((startData.time_white || 600)/60)}+0` // Assuming 0 increment
-    ).catch(error => {
-      console.warn(`Failed to tweet about new game ${gameId}:`, error.message);
-    });
+  // We'll use a delay for tweeting to ensure the game is properly created and available
+  // This helps prevent race conditions during deployments and cold starts
+
+  // Store deployment/boot timestamp in a global variable if not already set
+  if (!global.serverStartTime) {
+    global.serverStartTime = Date.now();
+  }
+
+  // Don't tweet during first 30 seconds after server start (deployment/cold boot)
+  const isFreshBoot = Date.now() - global.serverStartTime < 30000;
+
+  if (twitterService.isConfigured() && !isFreshBoot) {
+    // Delay the tweet to ensure game is available in frontend and stored in DB
+    setTimeout(async () => {
+      try {
+        // Verify game still exists and is in progress before tweeting
+        const gameExists = await chessService.getChessGame(gameId);
+
+        if (gameExists) {
+          console.log(`Verified game ${gameId} exists, proceeding with tweet`);
+          twitterService.tweetNewGame(
+            gameId,
+            startData.player_white?.name || 'Anonymous',
+            startData.player_black?.name || 'Anonymous',
+            `${Math.floor((startData.time_white || 600)/60)}+0` // Assuming 0 increment
+          ).catch(error => {
+            console.warn(`Failed to tweet about new game ${gameId}:`, error.message);
+          });
+        } else {
+          console.warn(`Skipping tweet: game ${gameId} not found or no longer active`);
+        }
+      } catch (error) {
+        console.warn(`Failed to verify game ${gameId} before tweeting:`, error.message);
+      }
+    }, 5000); // 5 second delay to ensure game is persisted and available
+  } else if (isFreshBoot) {
+    console.log(`Skipping tweet for game ${gameId}: server recently started/deployed`);
   }
 
   const stream = await lichessService.getGameStream(id);
@@ -258,18 +285,35 @@ export const getStream = async (
 
         // Tweet about the game result if Twitter is configured
         if (twitterService.isConfigured()) {
-          const chessGame = await chessService.getChessGame(gameId);
-          if (chessGame) {
-            twitterService.tweetGameResult(
-              gameId,
-              chessGame.player_white?.name || 'Anonymous',
-              chessGame.player_black?.name || 'Anonymous',
-              gameStatus === GameStatus.WHITE_WIN ? '1-0' :
-                gameStatus === GameStatus.BLACK_WIN ? '0-1' :
-                gameStatus === GameStatus.DRAW ? '1/2-1/2' : 'Unknown'
-            ).catch(error => {
-              console.warn(`Failed to tweet about game ${gameId} result:`, error.message);
-            });
+          // Don't tweet during first 30 seconds after server start (deployment/cold boot)
+          const isFreshBoot = global.serverStartTime && (Date.now() - global.serverStartTime < 30000);
+
+          if (!isFreshBoot) {
+            // Delay slightly to ensure game status is properly updated
+            setTimeout(async () => {
+              try {
+                const chessGame = await chessService.getChessGame(gameId);
+                if (chessGame && chessGame.complete) {
+                  console.log(`Verified game ${gameId} is complete, proceeding with result tweet`);
+                  twitterService.tweetGameResult(
+                    gameId,
+                    chessGame.player_white?.name || 'Anonymous',
+                    chessGame.player_black?.name || 'Anonymous',
+                    gameStatus === GameStatus.WHITE_WIN ? '1-0' :
+                      gameStatus === GameStatus.BLACK_WIN ? '0-1' :
+                      gameStatus === GameStatus.DRAW ? '1/2-1/2' : 'Unknown'
+                  ).catch(error => {
+                    console.warn(`Failed to tweet about game ${gameId} result:`, error.message);
+                  });
+                } else {
+                  console.warn(`Skipping result tweet: game ${gameId} not found or not properly completed`);
+                }
+              } catch (error) {
+                console.warn(`Failed to verify game ${gameId} before tweeting result:`, error.message);
+              }
+            }, 2000); // 2 second delay to ensure game state is properly updated
+          } else {
+            console.log(`Skipping result tweet for game ${gameId}: server recently started/deployed`);
           }
         }
       } catch (error) {
