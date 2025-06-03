@@ -127,10 +127,13 @@ const tweetNewGame = async (
     // Use the Twitter API if available
     let result;
     if (TwitterApi) {
+      console.log(`Sending new game tweet via Twitter API: "${tweetText}"`);
       const v2Client = client.v2;
       result = await v2Client.tweet(tweetText);
+      console.log(`Twitter API response for new game:`, result);
     } else {
       // Mock result if Twitter API is not available
+      console.log(`Would tweet new game (mock): "${tweetText}"`);
       logger.info(`Would tweet (mock): ${tweetText}`);
       result = { data: { id: `mock-${Date.now()}` } };
     }
@@ -138,6 +141,7 @@ const tweetNewGame = async (
     logger.info(`Tweet posted for new game ${gameId}`, { tweetId: result.data.id });
     return result.data;
   } catch (error) {
+    console.error(`Failed to tweet about new game ${gameId}:`, error);
     logger.error(`Failed to tweet about new game ${gameId}:`, error);
     return null;
   }
@@ -182,10 +186,13 @@ const tweetGameResult = async (
     // Use the Twitter API if available
     let result2;
     if (TwitterApi) {
+      console.log(`Sending game result tweet via Twitter API: "${tweetText}"`);
       const v2Client = client.v2;
       result2 = await v2Client.tweet(tweetText);
+      console.log(`Twitter API response for game result:`, result2);
     } else {
       // Mock result if Twitter API is not available
+      console.log(`Would tweet game result (mock): "${tweetText}"`);
       logger.info(`Would tweet (mock): ${tweetText}`);
       result2 = { data: { id: `mock-${Date.now()}` } };
     }
@@ -193,6 +200,7 @@ const tweetGameResult = async (
     logger.info(`Tweet posted for game ${gameId} result`, { tweetId: result2.data.id });
     return result2.data;
   } catch (error) {
+    console.error(`Failed to tweet about game ${gameId} result:`, error);
     logger.error(`Failed to tweet about game ${gameId} result:`, error);
     return null;
   }
@@ -215,10 +223,13 @@ const tweetBettingEvent = async (gameId: string, message: string) => {
     // Use the Twitter API if available
     let result;
     if (TwitterApi) {
+      console.log(`Sending betting event tweet via Twitter API: "${tweetText}"`);
       const v2Client = client.v2;
       result = await v2Client.tweet(tweetText);
+      console.log(`Twitter API response for betting event:`, result);
     } else {
       // Mock result if Twitter API is not available
+      console.log(`Would tweet betting event (mock): "${tweetText}"`);
       logger.info(`Would tweet (mock): ${tweetText}`);
       result = { data: { id: `mock-${Date.now()}` } };
     }
@@ -226,6 +237,7 @@ const tweetBettingEvent = async (gameId: string, message: string) => {
     logger.info(`Tweet posted for betting event in game ${gameId}`, { tweetId: result.data.id });
     return result.data;
   } catch (error) {
+    console.error(`Failed to tweet about betting event in game ${gameId}:`, error);
     logger.error(`Failed to tweet about betting event in game ${gameId}:`, error);
     return null;
   }
