@@ -356,8 +356,40 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
     console.log(`Found ${activeGames.length} active games, ${inProgressGames.length} in progress`);
 
-    // If there are already games in progress, don't create a new one
-    if (inProgressGames.length > 0) {
+    // Check for stale games - games that haven't been updated in more than 10 minutes
+    const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+    const staleGames = inProgressGames.filter(game => {
+      const lastUpdated = game.updated_at || game.created_at;
+      return lastUpdated < tenMinutesAgo;
+    });
+
+    // If there are stale games, mark them as complete so they don't block new game creation
+    if (staleGames.length > 0) {
+      console.log(`Found ${staleGames.length} stale games that haven't been updated in over 10 minutes`);
+
+      // Mark stale games as complete with ABORTED status
+      await Promise.all(staleGames.map(game =>
+        chessService.updateChessGame(game._id.toString(), {
+          complete: true,
+          game_status: GameStatus.ABORTED
+        })
+      ));
+
+      console.log(`Marked ${staleGames.length} stale games as complete with ABORTED status`);
+
+      // Re-fetch the active games after cleanup
+      const updatedActiveGames = await chessService.getActiveGames(0, 10);
+      const updatedInProgressGames = updatedActiveGames.filter(game => game.game_status === GameStatus.IN_PROGRESS);
+
+      // If we still have non-stale in-progress games, respect them
+      if (updatedInProgressGames.length > 0) {
+        console.log(`Still have ${updatedInProgressGames.length} non-stale games in progress, skipping new game creation`);
+        // Check again after a delay
+        setTimeout(() => streamLoop(socket), 30000); // Check again in 30 seconds
+        return;
+      }
+    } else if (inProgressGames.length > 0) {
+      // If there are active non-stale games in progress, don't create a new one
       console.log(`Games already in progress, skipping new game creation`);
       // Check again after a delay
       setTimeout(() => streamLoop(socket), 30000); // Check again in 30 seconds
