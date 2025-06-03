@@ -29,7 +29,7 @@ import { handleValidationError } from './validation';
 import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
-  analysisRouter, internalRouter, raffleRouter, logRouter,
+  analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -49,88 +49,60 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
 // Log the allowed origins
 console.log('🌐 CORS allowed origins:', allowedOrigins);
 
-// Configure Socket.IO with CORS settings
+// Enable CORS with allowed origins
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+// Setup Socket.IO with allowed origins
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
-  },
-  allowEIO3: true, // Allow Engine.IO version 3 client connections
-  transports: ['websocket', 'polling'] // Enable both WebSocket and polling transports
+    origin: allowedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
+  }
 });
 
-// Configure CORS with more secure options
-app.use(cors({
-  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  exposedHeaders: ['Content-Length', 'X-Requested-With', 'Access-Control-Allow-Origin'],
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-}));
+// Set limits for request body
+app.use(bodyParser.json({ limit: '5mb' }));
+app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
 
-// Add a specific OPTIONS handler to ensure preflight requests work properly
-app.options('*', cors({
-  origin: process.env.NODE_ENV === 'production' ? allowedOrigins : '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
-  maxAge: 86400 // Cache preflight response for 24 hours
-}));
+// Setup common middleware
+app.use(morgan('dev')); // logging
 
-// Custom morgan logger that skips 404 responses
-if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('dev', {
-    skip: (req, res) => res.statusCode === 404
-  }));
+// Configure rate limiting middleware
+import { rateLimit } from 'express-rate-limit';
+import errorHandler from './middleware/error_handler';
+import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
+
+// Enable if in production or if a specific env var is set
+if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: "Too many requests from this IP, please try again after 15 minutes"
+  });
+  
+  // Apply to all requests
+  app.use(apiLimiter);
 }
 
-// Set security HTTP headers
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  if (process.env.NODE_ENV === 'production') {
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  }
-  next();
-});
-
-// Cookie parser is temporarily disabled
-// app.use(cookieParser(process.env.AUTH_SECRET));
-
-// Enable json message body for posting data to API
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
-
-// Set security headers for responses
-app.use((req, res, next) => {
-  // Add CORS headers to every response for better compatibility
-  const origin = req.headers.origin;
-
-  // For production, only allow specific origins; otherwise allow any origin
-  if (process.env.NODE_ENV === 'production') {
-    if (origin && allowedOrigins.includes(origin)) {
-      res.header('Access-Control-Allow-Origin', origin);
-    }
-  } else {
-    res.header('Access-Control-Allow-Origin', '*');
-  }
-
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, X-CSRF-Token');
-  res.header('Access-Control-Allow-Credentials', 'true');
-
-  // Handle preflight OPTIONS requests
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end();
-  }
-
-  next();
-});
+// Add Axiom logging middleware
+app.use(axiomLoggerMiddleware);
 
 // declare routers
 app.use('/auth', authRouter);
@@ -141,6 +113,7 @@ app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
 app.use('/raffle', raffleRouter);
 app.use('/api/log', logRouter); // Frontend logging endpoint
+app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -148,38 +121,10 @@ chessWebsocket.on('connection', chessWS);
 
 app.use('/lichess', lichessRouter(chessWebsocket));
 
-// purge stale games before running game loops
-chessService.purgeStaleGames().then(() => {
-  // lichess loops
-  streamLoop(chessWebsocket);
-  setTimeout(() => streamLoop(chessWebsocket), 10000);
-});
-
-// generate leaderboard every minute
-setInterval(leaderboardService.generateLeaderboard, 60000);
-setInterval(() => {
-  leaderboardService.clearLeaderboards();
-  chessService.clearGames();
-}, 7 * 24 * 60 * 60 * 1000);
-
-// Initialize and run bot services
-agentService.initializeBots().then(() => {
-  logger.log({
-    level: 'info',
-    event: 'bot_service_initialized'
-  });
-
-  // Check and process empty move bars every 5 seconds
-  setInterval(() => agentService.processEmptyMoveBars(chessWebsocket), 5000);
-
-  // Setup scheduled bankroll refresh
-  agentService.scheduleRefreshBankrolls();
-});
-
-// default index route
+// Root endpoint just returns a welcome message
 app.get('/', (req, res) => {
-  res.status(200).json({
-    message: 'Welcome to the Betmate API',
+  res.json({
+    message: 'BetMate API',
     environment: process.env.NODE_ENV || 'development',
     version: process.env.npm_package_version || '1.0.0',
     status: 'online',
@@ -190,6 +135,7 @@ app.get('/', (req, res) => {
       leaderboard: '/leaderboard',
       analysis: '/analysis',
       raffle: '/raffle',
+      twitter: '/api/twitter',
       websocket: '/chessws'
     }
   });
@@ -197,28 +143,56 @@ app.get('/', (req, res) => {
 
 // Add an API version endpoint for the frontend to check
 app.get('/api/status', (req, res) => {
-  res.status(200).json({
+  res.json({ 
     status: 'online',
-    environment: process.env.NODE_ENV || 'development',
     version: process.env.npm_package_version || '1.0.0',
-    timestamp: new Date().toISOString()
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-// DB Setup
-const mongooseOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useCreateIndex: true,
-  useFindAndModify: false,
-  loggerLevel: 'error',
+// global error handler - this should be the last middleware
+app.use(errorHandler);
+
+// mongoose setup
+const MONGODB_URI = env.get('MONGODB_URI').required().asString();
+// Add a 10 second timeout for MongoDB connection
+const mongooseOptions = { 
+  serverSelectionTimeoutMS: 10000,
+  connectTimeoutMS: 10000,
 };
 
-// Connect the database
-// Get MongoDB URI from environment variable (Heroku sets MONGODB_URI automatically)
-const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/betmate';
+// Handle successful MongoDB connection
+const connectSuccess = () => {
+  console.log('✅ MongoDB connected successfully');
+  
+  // Initialize Axiom logging
+  const envName = process.env.NODE_ENV || 'development';
+  if (logger.init(envName)) {
+    console.log(`Axiom logging initialized successfully for ${envName} environment`);
+  }
+  
+  // Check for existing bots
+  console.log('Checking for existing bots...');
+  agentService.checkExistingBots().then((botCount) => {
+    console.log(`Found ${botCount} existing bots`);
+    if (botCount === 0) {
+      console.log('Creating seed bots...');
+      agentService.createSeedBots().then(() => {
+        console.log('Seed bots created successfully');
+      });
+    } else {
+      console.log('Seed bots already exist');
+    }
+  });
+  
+  // Start listening for Lichess games if not in test mode
+  if (process.env.NODE_ENV !== 'test') {
+    streamLoop(chessWebsocket).catch(console.error);
+  }
+};
 
-// Safely log MongoDB connection without credentials
+// Connect to MongoDB with proper error handling
+const mongoUri = process.env.MONGODB_URI || '';
 const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
 console.log('Connecting to MongoDB...', sanitizedUri);
 console.log('NODE_ENV:', process.env.NODE_ENV);
@@ -229,241 +203,71 @@ console.log('- MONGODB_URI:', !!process.env.MONGODB_URI);
 console.log('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
 console.log('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
 
-// Check if the URI contains username/password
-if (process.env.NODE_ENV === 'production' && mongoUri.includes('@')) {
-  // URL already has credentials, use it directly
-  mongoose.connect(mongoUri, mongooseOptions)
-    .then(connectSuccess)
-    .catch(error => {
-      console.error('❌ MongoDB connection error with embedded credentials:', error.message);
-      
-      // If authentication fails, try with separate credentials
-      tryWithSeparateCredentials();
-    });
-} else if (process.env.NODE_ENV === 'production') {
-  console.log('⚠️ No credentials found in MongoDB URI, trying separate environment variables');
-  tryWithSeparateCredentials();
-} else {
-  // Non-production environment, connect normally
-  mongoose.connect(mongoUri, mongooseOptions)
-    .then(connectSuccess)
-    .catch(connectError);
-}
-
-/**
- * Try to connect with credentials from separate environment variables
- */
-function tryWithSeparateCredentials() {
-  if (process.env.MONGODB_USERNAME && process.env.MONGODB_PASSWORD) {
-    try {
-      // Handle MongoDB+SRV format special case
-      let newUri = '';
-      if (mongoUri.startsWith('mongodb+srv://')) {
-        // For SRV records we need to handle them differently
-        try {
-          // Better approach: use the URL constructor to parse the URI
-          const mongoUrl = new URL(mongoUri);
-          
-          // Get just the hostname and pathname (and search params if any)
-          const hostname = mongoUrl.hostname; // e.g., betmate-prod.rb3qn.mongodb.net
-          const pathname = mongoUrl.pathname; // e.g., /betmate
-          const search = mongoUrl.search;    // e.g., ?retryWrites=true&w=majority
-          
-          // Construct the host and path correctly
-          const hostAndPath = hostname + pathname + search;
-          
-          // Reconstruct the URI with the new credentials
-          newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostAndPath}`;
-          
-          console.log('🔍 SRV URI format: Using URL parsing for better reliability');
-        } catch (urlError) {
-          // Fallback to manual parsing if URL constructor fails
-          console.log('⚠️ URL parsing failed, using manual extraction', urlError.message);
-          
-          const parts = mongoUri.split('//')[1].split('/');
-          const host = parts[0];
-          const dbAndParams = parts.slice(1).join('/');
-          
-          // If host contains auth info (user:pass@hostname), extract just the hostname
-          const hostWithoutAuth = host.includes('@') ? host.split('@')[1] : host;
-          
-          newUri = `mongodb+srv://${encodeURIComponent(process.env.MONGODB_USERNAME)}:${encodeURIComponent(process.env.MONGODB_PASSWORD)}@${hostWithoutAuth}/${dbAndParams}`;
-        }
-      } else {
-        // Standard MongoDB URI
-        const parsedUri = new URL(mongoUri);
-        parsedUri.username = encodeURIComponent(process.env.MONGODB_USERNAME);
-        parsedUri.password = encodeURIComponent(process.env.MONGODB_PASSWORD);
-        newUri = parsedUri.toString();
+// Attempt to connect to MongoDB with the URI
+mongoose.connect(mongoUri, mongooseOptions)
+  .then(connectSuccess)
+  .catch(error => {
+    console.error('❌ MongoDB connection error:', error.message);
+    
+    // Try constructing the URI differently
+    if (mongoUri.includes('mongodb+srv')) {
+      try {
+        const formattedUri = constructSrvUri(mongoUri);
+        console.log('Trying with reformatted URI...');
+        
+        mongoose.connect(formattedUri, mongooseOptions)
+          .then(connectSuccess)
+          .catch(err => {
+            console.error('❌ MongoDB connection error with reformatted URI:', err.message);
+          });
+      } catch (error) {
+        console.error('❌ Error constructing MongoDB URI:', error);
+        // No more retries, just exit
+        process.exit(1);
       }
-      
-      console.log('🔄 Using separate credentials from environment variables');
-      logSafeUri(newUri);
-      
-      // Update the URI with the new one
-      mongoose.connect(newUri, mongooseOptions)
-        .then(connectSuccess)
-        .catch(connectError);
-    } catch (error) {
-      console.error('❌ Error constructing MongoDB URI:', error);
-      // Fall back to original URI if parsing fails
-      mongoose.connect(mongoUri, mongooseOptions)
-        .then(connectSuccess)
-        .catch(connectError);
-    }
-  } else {
-    console.error('❌ No MongoDB credentials available. Set MONGODB_USERNAME and MONGODB_PASSWORD');
-    // Fall back to original URI
-    mongoose.connect(mongoUri, mongooseOptions)
-      .then(connectSuccess)
-      .catch(connectError);
-  }
-}
-
-/**
- * Log a safe version of the URI (without credentials)
- */
-function logSafeUri(uri) {
-  try {
-    // Create a safe version of the URI for logging (no credentials)
-    const urlObj = new URL(uri);
-    urlObj.username = '***';
-    urlObj.password = '***';
-    const safeUri = urlObj.toString();
-    
-    // Additional validation check for the URI format
-    const protocol = urlObj.protocol;
-    const hostname = urlObj.hostname;
-    
-    console.log('🔍 URI validation check:');
-    console.log('- Protocol:', protocol);
-    console.log('- Hostname:', hostname);
-    
-    // Check if hostname is valid
-    if (!hostname || hostname.includes(':')) {
-      console.warn('⚠️ Potential issue with hostname format:', hostname);
-    }
-    
-    console.log('🔄 New connection string (safe):', safeUri);
-  } catch (err) {
-    // In case of URL parsing errors, do manual sanitization
-    const safeUri = uri.replace(/\/\/([^:]+):([^@]+)@/, '//***:***@');
-    console.error('⚠️ Error parsing the URI for logging:', err.message);
-    console.log('🔄 New connection string (safe):', safeUri);
-  }
-}
-
-// Success handler for connection
-function connectSuccess() {
-  mongoose.Promise = global.Promise; // configures mongoose to use ES6 Promises
-  console.log('✅ MongoDB connected successfully');
-  if (process.env.NODE_ENV !== 'test') {
-    logger.log({
-      level: 'info',
-      event: 'database_connected',
-      context: { uri: sanitizedUri }
-    });
-  }
-}
-
-// Error handler for connection
-function connectError(err) {
-  console.error('❌ MongoDB connection error:', err.message);
-  
-  // Check for common MongoDB connection errors and provide more helpful diagnostics
-  if (err.message.includes('bad auth')) {
-    console.error('🔑 Authentication failed: The username or password is incorrect');
-  } else if (err.message.includes('ECONNREFUSED')) {
-    console.error('🔌 Connection refused: MongoDB server may be down or the URI is incorrect');
-  } else if (err.message.includes('invalid hostname')) {
-    console.error('🌐 Invalid hostname: The MongoDB URI contains an invalid hostname');
-  } else if (err.message.includes('No hostname found in URI')) {
-    console.error('⚠️ Invalid URI format: MongoDB URI must contain a hostname');
-  } else if (err.message.includes('Unescaped colon in authority section')) {
-    console.error('⚠️ URI formatting error: Special characters in username/password need URL encoding');
-    console.error('🔧 Make sure MONGODB_USERNAME and MONGODB_PASSWORD are properly URL-encoded');
-  }
-  
-  // Log more detailed error information in a structured way
-  const errorInfo = {
-    code: err.code,
-    codeName: err.codeName,
-    name: err.name,
-    stack: err.stack?.split('\n')[0] || 'No stack trace',
-    // Add diagnostics based on the error message
-    possibleCause: getPossibleCause(err.message)
-  };
-  
-  console.error('📋 Error details:', JSON.stringify(errorInfo, null, 2));
-  
-  logger.log({
-    level: 'error',
-    event: 'database_connection_failed',
-    context: { 
-      error: err.message,
-      details: errorInfo
+    } else {
+      // Non-SRV URI failed, exit
+      process.exit(1);
     }
   });
-  
-  // Show environment info to help diagnose the issue
-  if (process.env.NODE_ENV === 'production') {
-    console.log('📊 Environment context:');
-    console.log('- NODE_ENV:', process.env.NODE_ENV);
-    console.log('- MONGODB_URI exists:', !!process.env.MONGODB_URI);
-    console.log('- MONGODB_USERNAME exists:', !!process.env.MONGODB_USERNAME);
-    console.log('- MONGODB_PASSWORD exists:', !!process.env.MONGODB_PASSWORD);
-    console.log('- Is SRV connection:', process.env.MONGODB_URI?.startsWith('mongodb+srv://') || false);
-  }
-  
-  // Exit with failure in production, but allow development to continue
-  if (process.env.NODE_ENV === 'production') {
-    console.error('💥 Exiting due to database connection failure in production');
-    process.exit(1);
-  } else {
-    console.warn('⚠️ Continuing without database in development mode');
+
+/**
+ * Construct a properly formatted SRV URI with credentials
+ */
+function constructSrvUri(mongoUri) {
+  try {
+    // Better approach: use the URL constructor to parse the URI
+    const mongoUrl = new URL(mongoUri);
+    
+    // Get just the hostname and pathname (and search params if any)
+    const hostname = mongoUrl.hostname; // e.g., betmate-prod.rb3qn.mongodb.net
+    const pathname = mongoUrl.pathname; // e.g., /betmate
+    const searchParams = mongoUrl.search; // e.g., ?retryWrites=true&w=majority
+    
+    // Get username and password from environment or URL
+    const username = process.env.MONGODB_USERNAME || mongoUrl.username;
+    const password = process.env.MONGODB_PASSWORD || mongoUrl.password;
+    
+    if (!username || !password) {
+      throw new Error('MongoDB username or password missing');
+    }
+    
+    // Construct the URL with proper encoding
+    const encodedUsername = encodeURIComponent(username);
+    const encodedPassword = encodeURIComponent(password);
+    
+    // Build SRV URI with proper format
+    return `mongodb+srv://${encodedUsername}:${encodedPassword}@${hostname}${pathname}${searchParams}`;
+  } catch (error) {
+    console.error('Failed to parse MongoDB URI:', error.message);
+    throw error;
   }
 }
 
-// Helper function to identify possible causes from error messages
-function getPossibleCause(errorMessage) {
-  if (errorMessage.includes('bad auth')) {
-    return 'Invalid credentials (username/password)';
-  } else if (errorMessage.includes('ECONNREFUSED')) {
-    return 'MongoDB server unreachable or wrong connection string';
-  } else if (errorMessage.includes('invalid hostname') || errorMessage.includes('No hostname')) {
-    return 'Malformed connection string (invalid hostname)';
-  } else if (errorMessage.includes('Unescaped colon')) {
-    return 'Username or password contains special characters that need URL encoding';
-  } else if (errorMessage.includes('timed out')) {
-    return 'Network connectivity issues or firewall blocking connection';
-  } else {
-    return 'Unknown connection issue';
-  }
-}
-
-// Custom 404 middleware
-app.use((req, res) => {
-  res.status(404).json({ message: 'The route you\'ve requested doesn\'t exist' });
+// Start the server
+const port = process.env.PORT || 9000;
+httpServer.listen(port, () => {
+  console.log(`Express server running on port ${port}`);
 });
 
-// Handle errors raised from validation middleware
-app.use(handleValidationError);
-
-// Import and use the global error handler
-const errorHandler = require('./middleware/error_handler').default;
-app.use(errorHandler);
-
-// Set mongoose promise to JS promise
-mongoose.Promise = global.Promise;
-
-// START THE SERVER
-// =============================================================================
-const server = httpServer.listen(constants.PORT);
-if (process.env.NODE_ENV !== 'test') {
-  logger.log({
-    level: 'info',
-    event: 'server_started',
-    context: { port: constants.PORT }
-  });
-}
-export default server;
+export { app, httpServer };
