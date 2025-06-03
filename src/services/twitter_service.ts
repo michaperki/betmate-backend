@@ -1,13 +1,26 @@
 /**
  * Twitter Service
  * Handles interactions with the Twitter API
- * 
+ *
  * Note: This service requires the twitter-api-v2 package
- * Install using: npm install twitter-api-v2
+ * Uses environment variable ENABLE_TWITTER=true to activate
  */
-// Import commented out until the package is actually installed
-// import { TwitterApi } from 'twitter-api-v2';
+
 import logger from '../helpers/axiom_logger';
+
+// Only import the Twitter API if enabled
+let TwitterApi: any;
+const ENABLE_TWITTER = process.env.ENABLE_TWITTER === 'true';
+
+if (ENABLE_TWITTER) {
+  try {
+    // Dynamic import to avoid errors when package isn't available
+    // Will only execute if ENABLE_TWITTER is true
+    ({ TwitterApi } = require('twitter-api-v2'));
+  } catch (error) {
+    logger.warn('Failed to import twitter-api-v2 package:', error);
+  }
+}
 
 // Environment variable names
 const TWITTER_API_KEY = process.env.TWITTER_API_KEY || '';
@@ -19,47 +32,50 @@ const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET || '';
 
 // Check if Twitter credentials are configured
 const isConfigured = () => {
-  const hasOAuth1Credentials = TWITTER_API_KEY && TWITTER_API_SECRET && 
-                             TWITTER_ACCESS_TOKEN && TWITTER_ACCESS_SECRET;
-  
+  if (!ENABLE_TWITTER) {
+    logger.info('Twitter integration is disabled by environment variable');
+    return false;
+  }
+
+  const hasOAuth1Credentials = TWITTER_API_KEY && TWITTER_API_SECRET &&
+                            TWITTER_ACCESS_TOKEN && TWITTER_ACCESS_SECRET;
+
   const hasOAuth2Credentials = TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET;
-  
-  return hasOAuth1Credentials || hasOAuth2Credentials;
+
+  const hasCredentials = hasOAuth1Credentials || hasOAuth2Credentials;
+
+  if (!hasCredentials) {
+    logger.warn('Twitter API credentials not configured');
+  }
+
+  return hasCredentials && TwitterApi !== undefined;
 };
 
 // Initialize Twitter client
 const initializeClient = () => {
   if (!isConfigured()) {
-    logger.warn('Twitter API credentials not configured');
     return null;
   }
-  
+
   try {
-    // Twitter API client initialization is commented out until the package is installed
     // OAuth 1.0a authentication (for v1 and v2 endpoints)
     if (TWITTER_API_KEY && TWITTER_API_SECRET && TWITTER_ACCESS_TOKEN && TWITTER_ACCESS_SECRET) {
-      // Uncomment when package is installed
-      // return new TwitterApi({
-      //   appKey: TWITTER_API_KEY,
-      //   appSecret: TWITTER_API_SECRET,
-      //   accessToken: TWITTER_ACCESS_TOKEN,
-      //   accessSecret: TWITTER_ACCESS_SECRET,
-      // });
-      console.log('Would initialize Twitter client with OAuth 1.0a credentials');
-      return {}; // Return empty object as placeholder
+      return new TwitterApi({
+        appKey: TWITTER_API_KEY,
+        appSecret: TWITTER_API_SECRET,
+        accessToken: TWITTER_ACCESS_TOKEN,
+        accessSecret: TWITTER_ACCESS_SECRET,
+      });
     }
 
     // OAuth 2.0 app-only authentication (for v2 endpoints only)
     if (TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET) {
-      // Uncomment when package is installed
-      // return new TwitterApi({
-      //   clientId: TWITTER_CLIENT_ID,
-      //   clientSecret: TWITTER_CLIENT_SECRET,
-      // });
-      console.log('Would initialize Twitter client with OAuth 2.0 credentials');
-      return {}; // Return empty object as placeholder
+      return new TwitterApi({
+        clientId: TWITTER_CLIENT_ID,
+        clientSecret: TWITTER_CLIENT_SECRET,
+      });
     }
-    
+
     return null;
   } catch (error) {
     logger.error('Error initializing Twitter client:', error);
@@ -71,7 +87,7 @@ const initializeClient = () => {
  * Posts a tweet about a new game starting
  * @param gameId The ID of the game
  * @param whitePlayer Name of white player
- * @param blackPlayer Name of black player 
+ * @param blackPlayer Name of black player
  * @param timeControl Time control of the game
  * @returns Promise resolving to tweet data or null if posting failed
  */
@@ -83,19 +99,22 @@ const tweetNewGame = async (
 ) => {
   const client = initializeClient();
   if (!client) return null;
-  
+
   try {
     const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
     const tweetText = `🎮 New game started! ${whitePlayer} (White) vs ${blackPlayer} (Black) with ${timeControl} time control. Watch and bet live at ${gameUrl} #chess #betting`;
-    
-    // Twitter API client is not fully initialized until the package is installed
-    // const v2Client = client.v2;
-    // const result = await v2Client.tweet(tweetText);
 
-    // Mock result for now
-    console.log(`Would tweet: ${tweetText}`);
-    const result = { data: { id: `mock-${Date.now()}` } };
-    
+    // Use the Twitter API if available
+    let result;
+    if (TwitterApi) {
+      const v2Client = client.v2;
+      result = await v2Client.tweet(tweetText);
+    } else {
+      // Mock result if Twitter API is not available
+      logger.info(`Would tweet (mock): ${tweetText}`);
+      result = { data: { id: `mock-${Date.now()}` } };
+    }
+
     logger.info(`Tweet posted for new game ${gameId}`, { tweetId: result.data.id });
     return result.data;
   } catch (error) {
@@ -120,7 +139,7 @@ const tweetGameResult = async (
 ) => {
   const client = initializeClient();
   if (!client) return null;
-  
+
   try {
     let resultText = '';
     switch (result) {
@@ -136,18 +155,21 @@ const tweetGameResult = async (
       default:
         resultText = `Game between ${whitePlayer} and ${blackPlayer} ended with result: ${result}`;
     }
-    
+
     const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
     const tweetText = `🏁 Game finished! ${resultText}. See final positions and betting results at ${gameUrl} #chess #betting`;
-    
-    // Twitter API client is not fully initialized until the package is installed
-    // const v2Client = client.v2;
-    // const result2 = await v2Client.tweet(tweetText);
 
-    // Mock result for now
-    console.log(`Would tweet: ${tweetText}`);
-    const result2 = { data: { id: `mock-${Date.now()}` } };
-    
+    // Use the Twitter API if available
+    let result2;
+    if (TwitterApi) {
+      const v2Client = client.v2;
+      result2 = await v2Client.tweet(tweetText);
+    } else {
+      // Mock result if Twitter API is not available
+      logger.info(`Would tweet (mock): ${tweetText}`);
+      result2 = { data: { id: `mock-${Date.now()}` } };
+    }
+
     logger.info(`Tweet posted for game ${gameId} result`, { tweetId: result2.data.id });
     return result2.data;
   } catch (error) {
@@ -165,19 +187,22 @@ const tweetGameResult = async (
 const tweetBettingEvent = async (gameId: string, message: string) => {
   const client = initializeClient();
   if (!client) return null;
-  
+
   try {
     const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
     const tweetText = `💰 ${message}. Follow the action at ${gameUrl} #chess #betting`;
-    
-    // Twitter API client is not fully initialized until the package is installed
-    // const v2Client = client.v2;
-    // const result = await v2Client.tweet(tweetText);
 
-    // Mock result for now
-    console.log(`Would tweet: ${tweetText}`);
-    const result = { data: { id: `mock-${Date.now()}` } };
-    
+    // Use the Twitter API if available
+    let result;
+    if (TwitterApi) {
+      const v2Client = client.v2;
+      result = await v2Client.tweet(tweetText);
+    } else {
+      // Mock result if Twitter API is not available
+      logger.info(`Would tweet (mock): ${tweetText}`);
+      result = { data: { id: `mock-${Date.now()}` } };
+    }
+
     logger.info(`Tweet posted for betting event in game ${gameId}`, { tweetId: result.data.id });
     return result.data;
   } catch (error) {
