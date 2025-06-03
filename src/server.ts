@@ -42,6 +42,8 @@ global.serverStartTime = Date.now();
 
 // initialize
 const app = express();
+// Trust the Heroku proxy to get correct client IP addresses for rate limiting
+app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
 // Define allowed origins for both CORS and Socket.IO
