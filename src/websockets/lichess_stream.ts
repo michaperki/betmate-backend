@@ -350,6 +350,21 @@ export const getStream = async (
 
 export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
+    // Check for existing active games before creating a new one
+    const activeGames = await chessService.getActiveGames(0, 10);
+    const inProgressGames = activeGames.filter(game => game.game_status === GameStatus.IN_PROGRESS);
+
+    console.log(`Found ${activeGames.length} active games, ${inProgressGames.length} in progress`);
+
+    // If there are already games in progress, don't create a new one
+    if (inProgressGames.length > 0) {
+      console.log(`Games already in progress, skipping new game creation`);
+      // Check again after a delay
+      setTimeout(() => streamLoop(socket), 30000); // Check again in 30 seconds
+      return;
+    }
+
+    // Proceed with creating a new game
     const selectedGame = await lichessService.getTopGame();
     const sanitizedGame = sanitizeLichessGame(selectedGame); // ✅ sanitize before use
 
