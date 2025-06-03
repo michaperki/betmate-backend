@@ -165,24 +165,12 @@ const mongooseOptions = {
 const connectSuccess = () => {
   console.log('✅ MongoDB connected successfully');
   
-  // Initialize Axiom logging
-  const envName = process.env.NODE_ENV || 'development';
-  if (logger.init(envName)) {
-    console.log(`Axiom logging initialized successfully for ${envName} environment`);
-  }
-  
-  // Check for existing bots
+  // Axiom logging is initialized automatically on first use
+
+  // Initialize bots
   console.log('Checking for existing bots...');
-  agentService.checkExistingBots().then((botCount) => {
-    console.log(`Found ${botCount} existing bots`);
-    if (botCount === 0) {
-      console.log('Creating seed bots...');
-      agentService.createSeedBots().then(() => {
-        console.log('Seed bots created successfully');
-      });
-    } else {
-      console.log('Seed bots already exist');
-    }
+  agentService.initializeBots().catch((error) => {
+    console.error('Error initializing bots:', error);
   });
   
   // Start listening for Lichess games if not in test mode
