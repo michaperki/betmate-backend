@@ -121,7 +121,7 @@ const tweetNewGame = async (
   if (!client) return null;
 
   try {
-    const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
+    const gameUrl = `https://betmate-prod.netlify.app/chess/${gameId}`;
     const tweetText = `🎮 New game started! ${whitePlayer} (White) vs ${blackPlayer} (Black) with ${timeControl} time control. Watch and bet live at ${gameUrl} #chess #betting`;
 
     // Use the Twitter API if available
@@ -180,7 +180,7 @@ const tweetGameResult = async (
         resultText = `Game between ${whitePlayer} and ${blackPlayer} ended with result: ${result}`;
     }
 
-    const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
+    const gameUrl = `https://betmate-prod.netlify.app/chess/${gameId}`;
     const tweetText = `🏁 Game finished! ${resultText}. See final positions and betting results at ${gameUrl} #chess #betting`;
 
     // Use the Twitter API if available
@@ -217,7 +217,7 @@ const tweetBettingEvent = async (gameId: string, message: string) => {
   if (!client) return null;
 
   try {
-    const gameUrl = `https://betmate-prod.netlify.app/game/${gameId}`;
+    const gameUrl = `https://betmate-prod.netlify.app/chess/${gameId}`;
     const tweetText = `💰 ${message}. Follow the action at ${gameUrl} #chess #betting`;
 
     // Use the Twitter API if available
