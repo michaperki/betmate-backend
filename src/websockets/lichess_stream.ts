@@ -32,12 +32,12 @@ export const getStream = async (
   // This helps prevent race conditions during deployments and cold starts
 
   // Store deployment/boot timestamp in a global variable if not already set
-  if (!global.serverStartTime) {
-    global.serverStartTime = Date.now();
+  if (!(global as any).serverStartTime) {
+    (global as any).serverStartTime = Date.now();
   }
 
   // Don't tweet during first 30 seconds after server start (deployment/cold boot)
-  const isFreshBoot = Date.now() - global.serverStartTime < 30000;
+  const isFreshBoot = Date.now() - (global as any).serverStartTime < 30000;
 
   if (twitterService.isConfigured() && !isFreshBoot) {
     // Delay the tweet to ensure game is available in frontend and stored in DB
@@ -293,53 +293,9 @@ export const getStream = async (
           .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
           .catch((e) => console.log('Error:', e.message));
 
-        // Tweet about the game result if Twitter is configured
-        if (twitterService.isConfigured()) {
-          // Don't tweet during first 30 seconds after server start (deployment/cold boot)
-          const isFreshBoot = global.serverStartTime && (Date.now() - global.serverStartTime < 30000);
-
-          if (!isFreshBoot) {
-            // Delay slightly to ensure game status is properly updated
-            setTimeout(async () => {
-              try {
-                const chessGame = await chessService.getChessGame(gameId);
-
-                // Get the latest completed game
-                const latestCompletedGames = await Chess.find({ complete: true })
-                  .sort({ created_at: -1 })
-                  .limit(1);
-                const latestCompleted = latestCompletedGames && latestCompletedGames.length > 0 ?
-                  latestCompletedGames[0] : null;
-
-                if (chessGame && chessGame.complete &&
-                    latestCompleted && latestCompleted._id.toString() === gameId) {
-                  console.log(`Verified game ${gameId} is complete and is latest finished game, proceeding with result tweet`);
-                  twitterService.tweetGameResult(
-                    gameId,
-                    chessGame.player_white?.name || 'Anonymous',
-                    chessGame.player_black?.name || 'Anonymous',
-                    gameStatus === GameStatus.WHITE_WIN ? '1-0' :
-                      gameStatus === GameStatus.BLACK_WIN ? '0-1' :
-                      gameStatus === GameStatus.DRAW ? '1/2-1/2' : 'Unknown'
-                  ).catch(error => {
-                    console.warn(`Failed to tweet about game ${gameId} result:`, error.message);
-                  });
-                } else if (!chessGame || !chessGame.complete) {
-                  console.warn(`Skipping result tweet: game ${gameId} not found or not properly completed`);
-                } else if (!latestCompleted || latestCompleted._id.toString() !== gameId) {
-                  console.warn(`Skipping result tweet: game ${gameId} is not the latest completed game (latest is ${latestCompleted?._id})`);
-                  console.log(`Game completion race condition detected - tweet target: ${gameId}, latest completed game: ${latestCompleted?._id}`);
-                } else {
-                  console.warn(`Skipping result tweet: game ${gameId} validation failed for unknown reason`);
-                }
-              } catch (error) {
-                console.warn(`Failed to verify game ${gameId} before tweeting result:`, error.message);
-              }
-            }, 2000); // 2 second delay to ensure game state is properly updated
-          } else {
-            console.log(`Skipping result tweet for game ${gameId}: server recently started/deployed`);
-          }
-        }
+        // Game-ended tweets have been disabled
+        // We only tweet about new games and significant betting events now
+        console.log(`Game ${gameId} completed with result: ${gameStatus}`);
       } catch (error) {
         console.log('Error:', error.message);
       }

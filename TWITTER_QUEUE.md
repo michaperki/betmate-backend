@@ -1,14 +1,15 @@
 # Twitter Queue Implementation
 
-This document explains the implementation of the Twitter queue system, which spaces out tweets to avoid flooding the Twitter timeline.
+This document explains the implementation of the Twitter queue system, which limits tweets about new games to 5 per day.
 
 ## Overview
 
 The Twitter queue manager is designed to:
-- Queue tweets about new games, game results, and betting events
-- Space them out with a minimum time interval (default: 10 minutes) 
-- Ensure tweets are sent in a natural cadence
-- Prevent overwhelming followers with too many tweets at once
+- Queue tweets ONLY about new games (no game results or betting events)
+- Limit tweets to a maximum of 5 per day
+- Space them out with a minimum time interval (default: 30 minutes)
+- Prioritize newer games over older ones
+- Create a more focused Twitter presence with less noise
 
 ## Implementation Details
 
@@ -17,34 +18,39 @@ The Twitter queue manager is designed to:
 1. **Tweet Queue Manager** (`/src/helpers/tweet_queue.ts`)
    - Manages the queue of tweets to be sent
    - Processes the queue at regular intervals
-   - Enforces minimum time between tweets
-   - Provides queue status information
+   - Enforces daily tweet limit and minimum time between tweets
+   - Prioritizes newer games when selecting which to tweet
 
 2. **Twitter Service Integration** (`/src/services/twitter_service.ts`)
-   - Modified to queue tweets instead of sending them immediately
-   - Provides methods to queue different types of tweets
+   - Simplified to only support new game tweets
+   - Provides method to queue tweets about new games
+   - Placeholder stubs for deprecated game result and betting event tweets
    - Exposes queue status information
 
 3. **API Endpoints** 
    - Status endpoint to check if Twitter is configured
    - Queue status endpoint to monitor the tweet queue
-   - Endpoints for queuing different types of tweets
+   - Endpoints for queuing different types of tweets (only new game tweets are processed)
 
 ## How It Works
 
-1. When a new game starts or ends, the tweet is not sent immediately
-2. Instead, it's added to a queue with metadata about tweet type and content
-3. A background process checks the queue every 10 seconds
-4. If it's been at least 10 minutes since the last tweet, the oldest tweet is sent
-5. The system continues processing tweets at the specified interval
+1. When a new game starts, the tweet is queued (not sent immediately)
+2. A background process checks the queue every 10 seconds
+3. If it's been at least 30 minutes since the last tweet and we haven't reached the daily limit of 5 tweets, the newest game in the queue is tweeted
+4. The daily counter resets at midnight
+5. If there are more games than the daily limit allows, the system prioritizes newer games
 
 ## Configuration
 
-The minimum time between tweets is set to 10 minutes by default. This can be adjusted in the `tweet_queue.ts` file:
+The tweet manager is configured with:
+- 30 minute spacing between tweets
+- 5 tweet maximum per day
+
+These can be adjusted in the `tweet_queue.ts` file:
 
 ```typescript
-// Create a singleton instance with 10 minute spacing between tweets
-const tweetQueue = new TweetQueueManager(10);
+// Create a singleton instance with 30 minute spacing between tweets and 5 max daily tweets
+const tweetQueue = new TweetQueueManager(30, 5);
 ```
 
 ## Testing
@@ -57,9 +63,9 @@ node test-twitter-queue.js
 ```
 
 The test script:
-- Queues multiple test tweets of different types
+- Queues multiple test tweets
 - Monitors the queue status every 20 seconds
-- Runs for 11 minutes to observe multiple tweets being sent
+- Runs for 11 minutes to observe tweets being sent
 - Displays queue statistics throughout the test
 
 ## API Endpoints
@@ -79,7 +85,10 @@ Returns:
   "success": true,
   "queueStatus": {
     "queueLength": 3,
-    "nextTweetIn": 245
+    "nextTweetIn": 245,
+    "dailyTweetCount": 2,
+    "maxDailyTweets": 5,
+    "remainingToday": 3
   }
 }
 ```
@@ -95,31 +104,5 @@ Body:
   "whitePlayer": "Magnus",
   "blackPlayer": "Hikaru",
   "timeControl": "5+0"
-}
-```
-
-### Queue a Game Result Tweet
-```
-POST /api/twitter/tweet/result
-```
-Body:
-```json
-{
-  "gameId": "game123",
-  "whitePlayer": "Magnus",
-  "blackPlayer": "Hikaru",
-  "result": "1-0"
-}
-```
-
-### Queue a Betting Event Tweet
-```
-POST /api/twitter/tweet/betting
-```
-Body:
-```json
-{
-  "gameId": "game123",
-  "message": "Huge 500 token bet placed on white win!"
 }
 ```

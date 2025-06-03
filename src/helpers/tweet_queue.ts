@@ -1,8 +1,9 @@
 /**
  * Tweet Queue Manager
  * 
- * Handles queuing and spacing out tweets to avoid flooding the Twitter timeline.
- * This helps maintain a more natural tweet cadence and prevents overwhelming followers.
+ * Handles queuing and spacing out tweets for game starts.
+ * Limits to a maximum of 5 tweets per day.
+ * Only tweets about new games, not game results or betting events.
  */
 
 import logger from './axiom_logger';
@@ -10,8 +11,11 @@ import logger from './axiom_logger';
 // Types for tweet queue management
 interface QueuedTweet {
   id: string;
-  type: 'new_game' | 'game_result' | 'betting_event';
-  payload: any;
+  payload: {
+    whitePlayer: string;
+    blackPlayer: string;
+    timeControl: string;
+  };
   timestamp: number;
   tweetFunction: (gameId: string, ...args: any[]) => Promise<any>;
 }
@@ -19,62 +23,110 @@ interface QueuedTweet {
 class TweetQueueManager {
   private queue: QueuedTweet[] = [];
   private isProcessing: boolean = false;
-  private minTimeBetweenTweets: number = 5 * 60 * 1000; // 5 minutes by default
+  private minTimeBetweenTweets: number = 30 * 60 * 1000; // 30 minutes by default
   private lastTweetTime: number = 0;
+  private dailyTweetCount: number = 0;
+  private maxDailyTweets: number = 5;
+  private lastResetDate: string = ''; // Track the date for resetting daily count
 
   /**
    * Initialize the tweet queue manager
    * @param minTimeInMinutes Minimum time between tweets in minutes
+   * @param maxTweetsPerDay Maximum tweets allowed per day
    */
-  constructor(minTimeInMinutes: number = 5) {
+  constructor(minTimeInMinutes: number = 30, maxTweetsPerDay: number = 5) {
     this.minTimeBetweenTweets = minTimeInMinutes * 60 * 1000;
+    this.maxDailyTweets = maxTweetsPerDay;
+    
+    // Set initial reset date
+    this.lastResetDate = this.getCurrentDate();
     
     // Start the queue processing loop
     this.processQueue();
     
-    logger.info(`Tweet queue manager initialized with ${minTimeInMinutes} minute spacing`);
+    logger.info(`Tweet queue manager initialized with ${minTimeInMinutes} minute spacing and ${maxTweetsPerDay} max daily tweets`);
+  }
+
+  /**
+   * Get current date in YYYY-MM-DD format
+   */
+  private getCurrentDate(): string {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+
+  /**
+   * Check if we should reset the daily counter
+   */
+  private checkResetDailyCounter(): void {
+    const currentDate = this.getCurrentDate();
+    
+    if (currentDate !== this.lastResetDate) {
+      logger.info(`Resetting daily tweet counter. Previous: ${this.dailyTweetCount} tweets on ${this.lastResetDate}`);
+      this.dailyTweetCount = 0;
+      this.lastResetDate = currentDate;
+    }
   }
 
   /**
    * Add a tweet to the queue
    * @param id Unique identifier (usually gameId)
-   * @param type Type of tweet
    * @param payload The data needed for the tweet
    * @param tweetFunction The function to call to actually send the tweet
    */
   public queueTweet(
     id: string,
-    type: 'new_game' | 'game_result' | 'betting_event',
-    payload: any,
+    payload: { whitePlayer: string; blackPlayer: string; timeControl: string },
     tweetFunction: (gameId: string, ...args: any[]) => Promise<any>
   ): void {
-    // Check if a tweet with this ID and type is already in the queue
-    const existingIndex = this.queue.findIndex(tweet => tweet.id === id && tweet.type === type);
+    this.checkResetDailyCounter();
+    
+    // If we already reached our daily limit, don't add more tweets to the queue
+    if (this.dailyTweetCount >= this.maxDailyTweets) {
+      logger.info(`Daily tweet limit (${this.maxDailyTweets}) reached. Not queuing tweet for game ${id}`);
+      return;
+    }
+    
+    // Check if a tweet with this ID is already in the queue
+    const existingIndex = this.queue.findIndex(tweet => tweet.id === id);
     
     if (existingIndex !== -1) {
       // Update the existing entry instead of adding a duplicate
       this.queue[existingIndex] = {
         id,
-        type,
         payload,
         timestamp: Date.now(),
         tweetFunction
       };
-      logger.info(`Updated queued ${type} tweet for ID: ${id}`);
+      logger.info(`Updated queued tweet for game ID: ${id}`);
     } else {
       // Add a new entry to the queue
       this.queue.push({
         id,
-        type,
         payload,
         timestamp: Date.now(),
         tweetFunction
       });
-      logger.info(`Queued new ${type} tweet for ID: ${id}`);
+      logger.info(`Queued new tweet for game ID: ${id}`);
+    }
+    
+    // Limit queue size to the number of remaining daily tweets
+    const remainingDailyTweets = this.maxDailyTweets - this.dailyTweetCount;
+    
+    if (this.queue.length > remainingDailyTweets) {
+      // Sort by timestamp (newest first) and keep only the newest ones
+      this.queue.sort((a, b) => b.timestamp - a.timestamp);
+      
+      // Remove oldest tweets that exceed our limit
+      const removedCount = this.queue.length - remainingDailyTweets;
+      if (removedCount > 0) {
+        this.queue = this.queue.slice(0, remainingDailyTweets);
+        logger.info(`Daily tweet limit approaching. Removed ${removedCount} oldest tweets from queue`);
+      }
     }
     
     // Log the current queue state
-    logger.info(`Current tweet queue length: ${this.queue.length}`);
+    logger.info(`Current tweet queue length: ${this.queue.length}, Daily tweet count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
   }
 
   /**
@@ -92,29 +144,46 @@ class TweetQueueManager {
     try {
       const now = Date.now();
       
+      // Check and reset daily counter if needed
+      this.checkResetDailyCounter();
+      
+      // Check if we've hit the daily limit
+      if (this.dailyTweetCount >= this.maxDailyTweets) {
+        logger.info(`Daily tweet limit (${this.maxDailyTweets}) reached. Waiting until tomorrow to send more tweets.`);
+        this.isProcessing = false;
+        setTimeout(() => this.processQueue(), 60000); // Check again in 1 minute
+        return;
+      }
+      
       // Check if enough time has passed since the last tweet
       if (now - this.lastTweetTime >= this.minTimeBetweenTweets) {
-        // Sort the queue by timestamp (oldest first)
-        this.queue.sort((a, b) => a.timestamp - b.timestamp);
+        // Sort the queue by timestamp (newest first) to prioritize newer games
+        this.queue.sort((a, b) => b.timestamp - a.timestamp);
         
-        // Get the oldest tweet from the queue
+        // Get the newest tweet from the queue
         const tweetToSend = this.queue.shift();
         
         if (tweetToSend) {
-          logger.info(`Processing ${tweetToSend.type} tweet for ID: ${tweetToSend.id}`);
+          logger.info(`Processing tweet for game ID: ${tweetToSend.id}`);
           
           try {
             // Call the tweet function with the appropriate parameters
-            const result = await this.sendTweet(tweetToSend);
+            const result = await tweetToSend.tweetFunction(
+              tweetToSend.id,
+              tweetToSend.payload.whitePlayer,
+              tweetToSend.payload.blackPlayer,
+              tweetToSend.payload.timeControl
+            );
             
             if (result) {
               this.lastTweetTime = Date.now();
-              logger.info(`Successfully sent ${tweetToSend.type} tweet for ID: ${tweetToSend.id}`);
+              this.dailyTweetCount++;
+              logger.info(`Successfully sent tweet for game ID: ${tweetToSend.id}. Daily count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
             } else {
-              logger.warn(`Failed to send ${tweetToSend.type} tweet for ID: ${tweetToSend.id}`);
+              logger.warn(`Failed to send tweet for game ID: ${tweetToSend.id}`);
             }
           } catch (error) {
-            logger.error(`Error sending ${tweetToSend.type} tweet for ID: ${tweetToSend.id}:`, error);
+            logger.error(`Error sending tweet for game ID: ${tweetToSend.id}:`, error);
           }
         }
       } else {
@@ -132,65 +201,32 @@ class TweetQueueManager {
   }
 
   /**
-   * Send a tweet based on its type
-   * @param tweet The queued tweet to send
-   */
-  private async sendTweet(tweet: QueuedTweet): Promise<any> {
-    try {
-      const { id, type, payload, tweetFunction } = tweet;
-      
-      switch (type) {
-        case 'new_game':
-          return await tweetFunction(
-            id,
-            payload.whitePlayer,
-            payload.blackPlayer,
-            payload.timeControl
-          );
-        
-        case 'game_result':
-          return await tweetFunction(
-            id,
-            payload.whitePlayer,
-            payload.blackPlayer,
-            payload.result
-          );
-          
-        case 'betting_event':
-          return await tweetFunction(
-            id,
-            payload.message
-          );
-          
-        default:
-          logger.warn(`Unknown tweet type: ${type}`);
-          return null;
-      }
-    } catch (error) {
-      logger.error('Error sending tweet:', error);
-      return null;
-    }
-  }
-
-  /**
    * Get the current queue status
    */
   public getQueueStatus(): { 
     queueLength: number, 
-    nextTweetIn: number 
+    nextTweetIn: number,
+    dailyTweetCount: number,
+    maxDailyTweets: number,
+    remainingToday: number
   } {
+    this.checkResetDailyCounter();
+    
     const now = Date.now();
     const timeSinceLastTweet = now - this.lastTweetTime;
     const nextTweetIn = Math.max(0, this.minTimeBetweenTweets - timeSinceLastTweet);
     
     return {
       queueLength: this.queue.length,
-      nextTweetIn: Math.ceil(nextTweetIn / 1000) // in seconds
+      nextTweetIn: Math.ceil(nextTweetIn / 1000), // in seconds
+      dailyTweetCount: this.dailyTweetCount,
+      maxDailyTweets: this.maxDailyTweets,
+      remainingToday: Math.max(0, this.maxDailyTweets - this.dailyTweetCount)
     };
   }
 }
 
-// Create a singleton instance with 10 minute spacing between tweets
-const tweetQueue = new TweetQueueManager(10);
+// Create a singleton instance with 30 minute spacing between tweets and 5 max daily tweets
+const tweetQueue = new TweetQueueManager(30, 5);
 
 export default tweetQueue;

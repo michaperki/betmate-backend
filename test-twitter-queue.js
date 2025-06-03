@@ -2,7 +2,7 @@
  * Test script for Twitter queue functionality
  * 
  * This script tests the tweet queue implementation by queuing multiple tweets
- * and checking if they are properly spaced out over time.
+ * and checking if they are properly limited to 5 per day and spaced out.
  * 
  * Usage: 
  * - Set ENABLE_TWITTER=true environment variable
@@ -23,10 +23,10 @@ async function testTweetQueue() {
   // Check if the Twitter service is configured
   console.log('Twitter service configured:', twitterService.isConfigured());
   
-  // Queue a series of test tweets
+  // Queue a series of test tweets (more than the daily limit to test limiting)
   console.log('\nQueuing test tweets...');
   
-  // Game 1 - New game and result
+  // Game 1
   const game1Id = 'test-game-1';
   await twitterService.tweetNewGame(
     game1Id, 
@@ -36,7 +36,7 @@ async function testTweetQueue() {
   );
   console.log(`Queued new game tweet for ${game1Id}`);
   
-  // Game 2 - New game and result  
+  // Game 2  
   const game2Id = 'test-game-2';
   await twitterService.tweetNewGame(
     game2Id, 
@@ -46,30 +46,71 @@ async function testTweetQueue() {
   );
   console.log(`Queued new game tweet for ${game2Id}`);
   
-  // Game 1 result
+  // Game 3
+  const game3Id = 'test-game-3';
+  await twitterService.tweetNewGame(
+    game3Id, 
+    'Player5', 
+    'Player6', 
+    '3+0'
+  );
+  console.log(`Queued new game tweet for ${game3Id}`);
+  
+  // Game 4
+  const game4Id = 'test-game-4';
+  await twitterService.tweetNewGame(
+    game4Id, 
+    'Player7', 
+    'Player8', 
+    '1+0'
+  );
+  console.log(`Queued new game tweet for ${game4Id}`);
+  
+  // Game 5 (at the limit)
+  const game5Id = 'test-game-5';
+  await twitterService.tweetNewGame(
+    game5Id, 
+    'Player9', 
+    'Player10', 
+    '15+0'
+  );
+  console.log(`Queued new game tweet for ${game5Id}`);
+  
+  // Game 6 (beyond the limit, should be prioritized as it's newer)
+  const game6Id = 'test-game-6';
+  await twitterService.tweetNewGame(
+    game6Id, 
+    'Carlsen', 
+    'Nakamura', 
+    '5+0'
+  );
+  console.log(`Queued new game tweet for ${game6Id} (beyond daily limit)`);
+  
+  // Game 7 (beyond the limit, should be prioritized as it's newer)
+  const game7Id = 'test-game-7';
+  await twitterService.tweetNewGame(
+    game7Id, 
+    'Firouzja', 
+    'Ding', 
+    '5+0'
+  );
+  console.log(`Queued new game tweet for ${game7Id} (beyond daily limit)`);
+  
+  // Try game result tweet (should be ignored)
   await twitterService.tweetGameResult(
     game1Id, 
     'Player1', 
     'Player2', 
     '1-0'
   );
-  console.log(`Queued game result tweet for ${game1Id}`);
+  console.log(`Attempted to queue game result tweet for ${game1Id} (should be ignored)`);
   
-  // Betting event
+  // Try betting event tweet (should be ignored)
   await twitterService.tweetBettingEvent(
     game2Id, 
     'Huge 500 token bet placed on white win!'
   );
-  console.log(`Queued betting event tweet for ${game2Id}`);
-  
-  // Game 2 result  
-  await twitterService.tweetGameResult(
-    game2Id, 
-    'Player3', 
-    'Player4', 
-    '0-1'
-  );
-  console.log(`Queued game result tweet for ${game2Id}`);
+  console.log(`Attempted to queue betting event tweet for ${game2Id} (should be ignored)`);
   
   // Monitor the queue status
   console.log('\nMonitoring queue status...');
@@ -81,6 +122,7 @@ async function testTweetQueue() {
   // Initial status
   let status = twitterService.getTweetQueueStatus();
   console.log(`Initial queue status: ${status.queueLength} tweets in queue, next tweet in ${status.nextTweetIn} seconds`);
+  console.log(`Daily tweet count: ${status.dailyTweetCount}/${status.maxDailyTweets}, remaining today: ${status.remainingToday}`);
   
   // Set up monitoring interval
   const intervalId = setInterval(() => {
@@ -88,10 +130,11 @@ async function testTweetQueue() {
     status = twitterService.getTweetQueueStatus();
     
     console.log(`[${elapsedSeconds}s] Queue status: ${status.queueLength} tweets in queue, next tweet in ${status.nextTweetIn} seconds`);
+    console.log(`Daily tweet count: ${status.dailyTweetCount}/${status.maxDailyTweets}, remaining today: ${status.remainingToday}`);
     
     // If queue is empty and we've run for the full duration, end the test
-    if (status.queueLength === 0 && Date.now() - startTime >= monitorDuration) {
-      console.log('\nQueue is empty, test complete!');
+    if (status.queueLength === 0 && status.dailyTweetCount >= status.maxDailyTweets && Date.now() - startTime >= monitorDuration) {
+      console.log('\nQueue is empty and daily limit reached, test complete!');
       clearInterval(intervalId);
       process.exit(0);
     }
@@ -105,6 +148,7 @@ async function testTweetQueue() {
     // Final status check
     status = twitterService.getTweetQueueStatus();
     console.log(`Final queue status: ${status.queueLength} tweets in queue, next tweet in ${status.nextTweetIn} seconds`);
+    console.log(`Daily tweet count: ${status.dailyTweetCount}/${status.maxDailyTweets}, remaining today: ${status.remainingToday}`);
     
     process.exit(0);
   }, monitorDuration);
