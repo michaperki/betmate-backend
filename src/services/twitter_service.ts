@@ -7,6 +7,7 @@
  */
 
 import logger from '../helpers/axiom_logger';
+import tweetQueue from '../helpers/tweet_queue';
 
 // Debug logging for Twitter initialization
 console.log('Twitter Service Initialization:');
@@ -104,14 +105,14 @@ const initializeClient = () => {
 };
 
 /**
- * Posts a tweet about a new game starting
+ * Actually posts a tweet about a new game starting (internal implementation)
  * @param gameId The ID of the game
  * @param whitePlayer Name of white player
  * @param blackPlayer Name of black player
  * @param timeControl Time control of the game
  * @returns Promise resolving to tweet data or null if posting failed
  */
-const tweetNewGame = async (
+const _sendTweetNewGame = async (
   gameId: string,
   whitePlayer: string,
   blackPlayer: string,
@@ -148,14 +149,14 @@ const tweetNewGame = async (
 };
 
 /**
- * Posts a tweet about game results
+ * Actually posts a tweet about game results (internal implementation)
  * @param gameId The ID of the game
  * @param whitePlayer Name of white player
  * @param blackPlayer Name of black player
  * @param result The game result (e.g., "1-0", "0-1", "1/2-1/2")
  * @returns Promise resolving to tweet data or null if posting failed
  */
-const tweetGameResult = async (
+const _sendTweetGameResult = async (
   gameId: string,
   whitePlayer: string,
   blackPlayer: string,
@@ -207,12 +208,12 @@ const tweetGameResult = async (
 };
 
 /**
- * Posts a tweet about a significant betting event
+ * Actually posts a tweet about a significant betting event (internal implementation)
  * @param gameId The ID of the game
  * @param message The message about the betting event
  * @returns Promise resolving to tweet data or null if posting failed
  */
-const tweetBettingEvent = async (gameId: string, message: string) => {
+const _sendTweetBettingEvent = async (gameId: string, message: string) => {
   const client = initializeClient();
   if (!client) return null;
 
@@ -243,11 +244,103 @@ const tweetBettingEvent = async (gameId: string, message: string) => {
   }
 };
 
+/**
+ * Queues a tweet about a new game starting
+ * @param gameId The ID of the game
+ * @param whitePlayer Name of white player
+ * @param blackPlayer Name of black player
+ * @param timeControl Time control of the game
+ * @returns Promise resolving to true if queued successfully
+ */
+const tweetNewGame = async (
+  gameId: string,
+  whitePlayer: string,
+  blackPlayer: string,
+  timeControl: string
+) => {
+  if (!isConfigured()) return null;
+
+  logger.info(`Queuing new game tweet for game ${gameId}`);
+
+  // Add the tweet to the queue
+  tweetQueue.queueTweet(
+    gameId,
+    'new_game',
+    { whitePlayer, blackPlayer, timeControl },
+    _sendTweetNewGame
+  );
+
+  // Return a mock result since the actual tweet will be sent later
+  return { id: `queued-${Date.now()}` };
+};
+
+/**
+ * Queues a tweet about game results
+ * @param gameId The ID of the game
+ * @param whitePlayer Name of white player
+ * @param blackPlayer Name of black player
+ * @param result The game result (e.g., "1-0", "0-1", "1/2-1/2")
+ * @returns Promise resolving to true if queued successfully
+ */
+const tweetGameResult = async (
+  gameId: string,
+  whitePlayer: string,
+  blackPlayer: string,
+  result: string
+) => {
+  if (!isConfigured()) return null;
+
+  logger.info(`Queuing game result tweet for game ${gameId}`);
+
+  // Add the tweet to the queue
+  tweetQueue.queueTweet(
+    gameId,
+    'game_result',
+    { whitePlayer, blackPlayer, result },
+    _sendTweetGameResult
+  );
+
+  // Return a mock result since the actual tweet will be sent later
+  return { id: `queued-${Date.now()}` };
+};
+
+/**
+ * Queues a tweet about a significant betting event
+ * @param gameId The ID of the game
+ * @param message The message about the betting event
+ * @returns Promise resolving to true if queued successfully
+ */
+const tweetBettingEvent = async (gameId: string, message: string) => {
+  if (!isConfigured()) return null;
+
+  logger.info(`Queuing betting event tweet for game ${gameId}`);
+
+  // Add the tweet to the queue
+  tweetQueue.queueTweet(
+    gameId,
+    'betting_event',
+    { message },
+    _sendTweetBettingEvent
+  );
+
+  // Return a mock result since the actual tweet will be sent later
+  return { id: `queued-${Date.now()}` };
+};
+
+/**
+ * Get current tweet queue status
+ * @returns Queue status information
+ */
+const getTweetQueueStatus = () => {
+  return tweetQueue.getQueueStatus();
+};
+
 const twitterService = {
   isConfigured,
   tweetNewGame,
   tweetGameResult,
-  tweetBettingEvent
+  tweetBettingEvent,
+  getTweetQueueStatus
 };
 
 export default twitterService;
