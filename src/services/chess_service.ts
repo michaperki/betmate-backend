@@ -105,7 +105,8 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
     );
 
     const totalDeleted = (deleteIncomplete.deletedCount || 0) + (deleteInProgress.deletedCount || 0);
-    const totalMarked = markOldGames.modifiedCount || 0;
+    // Use nModified for older MongoDB versions or modifiedCount for newer ones
+    const totalMarked = markOldGames.nModified || (markOldGames as any).modifiedCount || 0;
 
     return {
       success: true,
