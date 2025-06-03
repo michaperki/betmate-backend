@@ -15,6 +15,7 @@ import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
 import { getLichessOutcome } from '../helpers/chess_logic';
+import { twitterService } from '../services';
 
 export const getStream = async (
   id: string,
@@ -25,6 +26,18 @@ export const getStream = async (
   const chessDoc = await chessService.createChessGame(startData);
   socket.emit('new_game', chessDoc as ChessDoc);
   const gameId = String(chessDoc._id);
+
+  // Tweet about the new game if Twitter is configured
+  if (twitterService.isConfigured()) {
+    twitterService.tweetNewGame(
+      gameId,
+      startData.player_white?.name || 'Anonymous',
+      startData.player_black?.name || 'Anonymous',
+      `${Math.floor((startData.time_white || 600)/60)}+0` // Assuming 0 increment
+    ).catch(error => {
+      console.warn(`Failed to tweet about new game ${gameId}:`, error.message);
+    });
+  }
 
   const stream = await lichessService.getGameStream(id);
 
@@ -242,6 +255,23 @@ export const getStream = async (
         resolveWdlWagers(gameId, gameStatus)
           .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
           .catch((e) => console.log('Error:', e.message));
+
+        // Tweet about the game result if Twitter is configured
+        if (twitterService.isConfigured()) {
+          const chessGame = await chessService.getChessGame(gameId);
+          if (chessGame) {
+            twitterService.tweetGameResult(
+              gameId,
+              chessGame.player_white?.name || 'Anonymous',
+              chessGame.player_black?.name || 'Anonymous',
+              gameStatus === GameStatus.WHITE_WIN ? '1-0' :
+                gameStatus === GameStatus.BLACK_WIN ? '0-1' :
+                gameStatus === GameStatus.DRAW ? '1/2-1/2' : 'Unknown'
+            ).catch(error => {
+              console.warn(`Failed to tweet about game ${gameId} result:`, error.message);
+            });
+          }
+        }
       } catch (error) {
         console.log('Error:', error.message);
       }

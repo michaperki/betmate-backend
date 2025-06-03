@@ -29,7 +29,7 @@ import { handleValidationError } from './validation';
 import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
-  analysisRouter, internalRouter, raffleRouter, logRouter,
+  analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -141,6 +141,7 @@ app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
 app.use('/raffle', raffleRouter);
 app.use('/api/log', logRouter); // Frontend logging endpoint
+app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -190,6 +191,7 @@ app.get('/', (req, res) => {
       leaderboard: '/leaderboard',
       analysis: '/analysis',
       raffle: '/raffle',
+      twitter: '/api/twitter',
       websocket: '/chessws'
     }
   });
