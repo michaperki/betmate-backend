@@ -350,15 +350,56 @@ export const getStream = async (
 
 export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
+    // First, check if there are already active games to prevent duplicate streams
+    // This prevents multiple games of the same time control running concurrently
+    const activeGames = await chessService.getActiveGames(0, 10);
+
+    if (activeGames && activeGames.length > 0) {
+      // Filter for games that are still in progress
+      const inProgressGames = activeGames.filter(
+        g => g.game_status === GameStatus.IN_PROGRESS
+      );
+
+      console.log(`Found ${activeGames.length} active games, ${inProgressGames.length} in progress`);
+
+      // Only proceed if there are no in-progress games or if we have too many active games
+      if (inProgressGames.length > 0) {
+        console.log('Games already in progress, skipping new game creation');
+
+        // Check again after a short delay
+        setTimeout(() => streamLoop(socket), 60000); // Check again in 1 minute
+        return;
+      }
+
+      // If we have too many active games (even if not in progress), clean them up
+      if (activeGames.length > 2) {
+        console.log(`Too many active games (${activeGames.length}), cleaning up stale games`);
+
+        // Mark older games as complete to clean them up
+        const oldGames = activeGames.slice(2); // Keep only the 2 newest games
+
+        await Promise.all(oldGames.map(game =>
+          chessService.updateChessGame(game._id.toString(), {
+            complete: true,
+            game_status: GameStatus.ABORTED
+          })
+        ));
+
+        console.log(`Cleaned up ${oldGames.length} stale games`);
+      }
+    }
+
+    // After cleanup, proceed to create a new game
     const selectedGame = await lichessService.getTopGame();
     const sanitizedGame = sanitizeLichessGame(selectedGame); // ✅ sanitize before use
 
     const gameFields = lichessService.createChessModelFields(sanitizedGame, GameSource.LOOP);
 
+    console.log(`Creating new game from Lichess ID: ${selectedGame.id}`);
     getStream(sanitizedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
-    console.log(error);
-    setTimeout(() => streamLoop(socket), 100);
+    console.log('Error in streamLoop:', error);
+    setTimeout(() => streamLoop(socket), 30000); // Longer delay on error to avoid rapid cycling
   }
 };
 
