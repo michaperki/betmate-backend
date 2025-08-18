@@ -7,6 +7,11 @@ declare global {
       MONGODB_URI?: string;
       // ... add other environment variables here
     }
+
+    // Augment NodeJS.Global so `global.serverStartTime` is typed
+    interface Global {
+      serverStartTime: number;
+    }
   }
   
   // Global variables for the server

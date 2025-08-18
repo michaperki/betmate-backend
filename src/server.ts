@@ -38,7 +38,8 @@ import logger from './helpers/axiom_logger';
 
 
 // Record server start time for detecting fresh deployments
-global.serverStartTime = Date.now();
+// Cast to any to appease ts-node when types are not yet merged
+(global as any).serverStartTime = Date.now();
 
 // initialize
 const app = express();

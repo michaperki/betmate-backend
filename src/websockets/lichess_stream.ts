@@ -32,12 +32,13 @@ export const getStream = async (
   // This helps prevent race conditions during deployments and cold starts
 
   // Store deployment/boot timestamp in a global variable if not already set
-  if (!global.serverStartTime) {
-    global.serverStartTime = Date.now();
+  const g: any = global as any;
+  if (!g.serverStartTime) {
+    g.serverStartTime = Date.now();
   }
 
   // Don't tweet during first 30 seconds after server start (deployment/cold boot)
-  const isFreshBoot = Date.now() - global.serverStartTime < 30000;
+  const isFreshBoot = Date.now() - g.serverStartTime < 30000;
 
   if (twitterService.isConfigured() && !isFreshBoot) {
     // Delay the tweet to ensure game is available in frontend and stored in DB
