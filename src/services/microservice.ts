@@ -7,6 +7,7 @@ import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/micr
 import { validate } from '../validation';
 import { generateCorrelationId } from '../helpers/utils';
 import logger from '../helpers/axiom_logger';
+import { logDebug } from '../helpers/dev_logger';
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
 /**
@@ -248,7 +249,7 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
         is_best_move: false
       } as MoveAnalysisData;
 
-      console.log(`Returning fallback analysis for ${move}:`, fallback);
+      logDebug(`Returning fallback analysis for ${move}:`, fallback);
       return fallback;
     });
 };

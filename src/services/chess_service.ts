@@ -4,6 +4,7 @@ import {
 } from 'mongoose';
 import { ChessDoc, CreateChessQuery, GameStatus } from '../types/models/chess';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
+import { logDebug, logError } from '../helpers/dev_logger';
 import { getViewerCount } from '../websockets/chess_websocket';
 
 /**
@@ -81,7 +82,7 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
       game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] }
     });
 
-    console.log(`Found ${incompleteCount} incomplete games and ${inProgressCount} in-progress/not-started games`);
+    logDebug(`Found ${incompleteCount} incomplete games and ${inProgressCount} in-progress/not-started games`);
 
     // Perform deletion operations
     const deleteIncomplete = await Chess.deleteMany({ complete: false });
@@ -114,7 +115,7 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
       details: `Deleted ${totalDeleted} stale games and marked ${totalMarked} old games as complete.`
     };
   } catch (error) {
-    console.error('Error purging stale games:', error);
+    logError('Error purging stale games:', error);
     return {
       success: false,
       deletedCount: 0,

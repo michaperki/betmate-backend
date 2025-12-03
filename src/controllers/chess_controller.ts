@@ -4,6 +4,7 @@ import { ValidatedRequest } from 'express-joi-validation';
 import { chessService } from '../services';
 import { GetManyGamesRequest } from '../validation/chess';
 import { handleSuccess, handleFailure } from './utils';
+import { logDebug, logError } from '../helpers/dev_logger';
 
 /**
  * Get game from request.
@@ -43,10 +44,10 @@ const getManyChessGamesRequest: RequestHandler = (req: ValidatedRequest<GetManyG
 const getGameStatsRequest: RequestHandler = async (req, res) => {
   try {
     const stats = await chessService.getGameStats(req.params.id);
-    console.log('[STATS DEBUG]', { gameId: req.params.id, stats });
+    logDebug('[STATS DEBUG]', { gameId: req.params.id, stats });
     return handleSuccess(res)(stats);
   } catch (error) {
-    console.error('[STATS ERROR]', { gameId: req.params.id, error: error.message, stack: error.stack });
+    logError('[STATS ERROR]', { gameId: req.params.id, error: error.message, stack: error.stack });
     return handleFailure(res)(error);
   }
 };

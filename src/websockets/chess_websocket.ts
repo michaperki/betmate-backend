@@ -10,6 +10,7 @@ import {
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
 } from '../validation/websocket';
 import { validate } from '../validation';
+import { logDebug, logWarn } from '../helpers/dev_logger';
 
 const filter = new Filter();
 
@@ -29,7 +30,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     address: socket.handshake.address
   };
 
-  console.log(`New websocket connection: ${socket.id}`, { clientInfo });
+  logDebug(`New websocket connection: ${socket.id}`, { clientInfo });
 
   // Set up heartbeat to detect silent disconnections
   let heartbeatInterval: NodeJS.Timeout;
@@ -43,7 +44,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     heartbeatInterval = setInterval(() => {
       if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
         // Too many missed heartbeats, consider connection dead
-        console.log(`Client ${socket.id} missed ${MAX_MISSED_HEARTBEATS} heartbeats - closing connection`);
+        logWarn(`Client ${socket.id} missed ${MAX_MISSED_HEARTBEATS} heartbeats - closing connection`);
         socket.disconnect(true);
         clearInterval(heartbeatInterval);
         return;
@@ -237,7 +238,7 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       address: socket.handshake.address
     };
 
-    console.log(`Client ${socket.id} disconnected: ${reason}`, { clientInfo });
+    logDebug(`Client ${socket.id} disconnected: ${reason}`, { clientInfo });
 
     // In production, log additional connection details for debugging
     if (process.env.NODE_ENV === 'production') {
@@ -248,9 +249,9 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
           rooms: Array.from(socket.rooms),
           reason
         };
-        console.log(`[PROD] Socket connection details:`, connDetails);
+        logDebug('[PROD] Socket connection details:', connDetails);
       } catch (err) {
-        console.error("Error logging socket details:", err);
+        logWarn('Error logging socket details:', err);
       }
     }
 

@@ -4,6 +4,7 @@ import { ChessEmitEvents } from '../types/websocket';
 import { userService } from '.';
 import seedBot from '../agents/seedBot';
 import logger from '../helpers/axiom_logger';
+import { logDebug, logWarn } from '../helpers/dev_logger';
 
 // Track empty move bars and when they became empty
 const emptyMoveBars: Record<string, number> = {};
@@ -30,17 +31,17 @@ export const initializeBots = async (): Promise<void> => {
   try {
     // Check if bots already exist
     if (process.env.NODE_ENV !== 'test') {
-      console.log('Checking for existing bots...');
+      logDebug('Checking for existing bots...');
     }
     const existingBots = await userService.getBotUsers();
 
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Found ${existingBots.length} existing bots`);
+      logDebug(`Found ${existingBots.length} existing bots`);
     }
 
     if (existingBots.length >= 4) {
       if (process.env.NODE_ENV !== 'test') {
-        console.log('Seed bots already exist');
+        logDebug('Seed bots already exist');
       }
       return;
     }
@@ -116,25 +117,25 @@ export const initializeBots = async (): Promise<void> => {
     // Create bot accounts
     for (const botConfig of botConfigs) {
       if (process.env.NODE_ENV !== 'test') {
-        console.log(`Checking for bot: ${botConfig.email}`);
+        logDebug(`Checking for bot: ${botConfig.email}`);
       }
 
       const existingBot = await userService.getUserByEmail(botConfig.email);
 
       if (!existingBot) {
         if (process.env.NODE_ENV !== 'test') {
-          console.log(`Creating new bot: ${botConfig.first_name} ${botConfig.last_name}`);
+          logDebug(`Creating new bot: ${botConfig.first_name} ${botConfig.last_name}`);
         }
         const newBot = await userService.createUser(botConfig);
         if (process.env.NODE_ENV !== 'test') {
-          console.log(`Created bot: ${botConfig.first_name} ${botConfig.last_name}`);
+          logDebug(`Created bot: ${botConfig.first_name} ${botConfig.last_name}`);
         }
 
         // Register bot with the seedBot service
         seedBot.registerBot(newBot._id.toString(), botConfig.botConfig);
       } else {
         if (process.env.NODE_ENV !== 'test') {
-          console.log(`Bot already exists: ${botConfig.first_name} ${botConfig.last_name}`);
+          logDebug(`Bot already exists: ${botConfig.first_name} ${botConfig.last_name}`);
         }
         // Register existing bot with the seedBot service
         seedBot.registerBot(existingBot._id.toString(), botConfig.botConfig);
@@ -142,7 +143,7 @@ export const initializeBots = async (): Promise<void> => {
     }
   } catch (error) {
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Failed to initialize bots: ${error.message}`);
+      logWarn(`Failed to initialize bots: ${error.message}`);
     }
   }
 };
@@ -236,19 +237,19 @@ export const processEmptyMoveBars = async (io: any): Promise<void> => {
     }
 
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Bot Service] Processing ${gameIds.length} games with empty move bars`);
+      logDebug(`[Bot Service] Processing ${gameIds.length} games with empty move bars`);
     }
 
     // Get bot users
     const bots = await userService.getBotUsers();
 
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Bot Service] Found ${bots.length} bots available`);
+      logDebug(`[Bot Service] Found ${bots.length} bots available`);
     }
 
     if (bots.length === 0) {
       if (process.env.NODE_ENV !== 'test') {
-        console.log('No bot users found');
+        logDebug('No bot users found');
       }
       return;
     }
@@ -295,7 +296,7 @@ export const processEmptyMoveBars = async (io: any): Promise<void> => {
     }
   } catch (error) {
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Failed to process empty move bars: ${error.message}`);
+      logWarn(`Failed to process empty move bars: ${error.message}`);
     }
   }
 };
@@ -311,7 +312,7 @@ export const scheduleRefreshBankrolls = (): NodeJS.Timeout => {
       seedBot.refreshBotBankrolls()
         .catch(err => {
           if (process.env.NODE_ENV !== 'test') {
-            console.log(`Failed to refresh bot bankrolls: ${err.message}`);
+            logWarn(`Failed to refresh bot bankrolls: ${err.message}`);
           }
         });
     }

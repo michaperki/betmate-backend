@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import logger from '../helpers/axiom_logger';
+import { logError } from '../helpers/dev_logger';
 
 /**
  * Handle client-side log events from the frontend
@@ -48,7 +49,7 @@ const clientLogRequest: RequestHandler = async (req, res) => {
 
     return res.status(200).json({ message: 'Log recorded successfully' });
   } catch (error) {
-    console.error('Error processing client log:', error);
+    logError('Error processing client log:', error);
     // Always return 200 even on error to prevent frontend issues
     return res.status(200).json({ message: 'Log request received' });
   }

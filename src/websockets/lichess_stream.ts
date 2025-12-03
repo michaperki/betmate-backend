@@ -17,6 +17,7 @@ import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
 import { getLichessOutcome } from '../helpers/chess_logic';
 import { twitterService } from '../services';
+import { logDebug, logWarn, logError, logInfo } from '../helpers/dev_logger';
 
 export const getStream = async (
   id: string,
@@ -52,29 +53,29 @@ export const getStream = async (
         const latestGame = latestGames && latestGames.length > 0 ? latestGames[0] : null;
 
         if (gameExists && latestGame && latestGame._id.toString() === gameId) {
-          console.log(`Verified game ${gameId} exists and is latest active game, proceeding with tweet`);
+          logDebug(`Verified game ${gameId} exists and is latest active game, proceeding with tweet`);
           twitterService.tweetNewGame(
             gameId,
             startData.player_white?.name || 'Anonymous',
             startData.player_black?.name || 'Anonymous',
             `${Math.floor((startData.time_white || 600)/60)}+0` // Assuming 0 increment
           ).catch(error => {
-            console.warn(`Failed to tweet about new game ${gameId}:`, error.message);
+            logWarn(`Failed to tweet about new game ${gameId}:`, error.message);
           });
         } else if (!gameExists) {
-          console.warn(`Skipping tweet: game ${gameId} not found`);
+          logWarn(`Skipping tweet: game ${gameId} not found`);
         } else if (!latestGame || latestGame._id.toString() !== gameId) {
-          console.warn(`Skipping tweet: game ${gameId} is not the latest active game (latest is ${latestGame?._id})`);
-          console.log(`Game creation race condition detected - tweet target: ${gameId}, latest game: ${latestGame?._id}`);
+          logWarn(`Skipping tweet: game ${gameId} is not the latest active game (latest is ${latestGame?._id})`);
+          logDebug(`Game creation race condition detected - tweet target: ${gameId}, latest game: ${latestGame?._id}`);
         } else {
-          console.warn(`Skipping tweet: game ${gameId} validation failed for unknown reason`);
+          logWarn(`Skipping tweet: game ${gameId} validation failed for unknown reason`);
         }
       } catch (error) {
-        console.warn(`Failed to verify game ${gameId} before tweeting:`, error.message);
+        logWarn(`Failed to verify game ${gameId} before tweeting:`, error.message);
       }
     }, 5000); // 5 second delay to ensure game is persisted and available
   } else if (isFreshBoot) {
-    console.log(`Skipping tweet for game ${gameId}: server recently started/deployed`);
+    logDebug(`Skipping tweet for game ${gameId}: server recently started/deployed`);
   }
 
   const stream = await lichessService.getGameStream(id);
@@ -90,7 +91,7 @@ export const getStream = async (
   // Set timeout to 10 minutes (600000ms) instead of 5 minutes for longer games
   const STALE_GAME_TIMEOUT = 600000; // 10 minutes in milliseconds
   const staleGameTime = setTimeout(async () => {
-    console.log(`Game ${gameId} stale, terminating stream after ${STALE_GAME_TIMEOUT/60000} minutes of inactivity`);
+    logDebug(`Game ${gameId} stale, terminating stream after ${STALE_GAME_TIMEOUT/60000} minutes of inactivity`);
     stream.destroy();
   }, STALE_GAME_TIMEOUT);
 
@@ -115,7 +116,7 @@ export const getStream = async (
 
           // If move fails, check if it's a castling move and try alternative notation
           if (!move) {
-            console.warn(`[Move Failed] gameId=${gameId} move="${moveData.lm}" fen="${moveData.fen}"`);
+            logWarn(`[Move Failed] gameId=${gameId} move="${moveData.lm}" fen="${moveData.fen}"`);
 
             // Map of UCI castling moves to algebraic notation
             const castlingMap: {[key: string]: string} = {
@@ -127,16 +128,16 @@ export const getStream = async (
 
             // Check if it's a castling move and try the algebraic notation
             if (castlingMap[moveData.lm]) {
-              console.log(`[Castling] Attempting to process castling move using algebraic notation: ${castlingMap[moveData.lm]}`);
+              logDebug(`[Castling] Attempting to process castling move using algebraic notation: ${castlingMap[moveData.lm]}`);
               try {
                 move = game.move(castlingMap[moveData.lm]);
                 if (move) {
-                  console.log(`[Castling] Successfully processed castling move`);
+                  logDebug('[Castling] Successfully processed castling move');
                 } else {
-                  console.warn(`[Castling] Failed to process with algebraic notation`);
+                  logWarn('[Castling] Failed to process with algebraic notation');
                 }
               } catch (e) {
-                console.warn(`[Castling] Error processing castling move: ${e.message}`);
+                logWarn(`[Castling] Error processing castling move: ${e.message}`);
               }
             }
 
@@ -145,7 +146,7 @@ export const getStream = async (
               // Use the full FEN string from Lichess instead of appending incomplete data
               // Lichess FEN strings include all needed information including castling rights
               game.load(moveData.fen);
-              console.log(`[FEN Loaded] Using Lichess FEN: ${moveData.fen}`);
+              logDebug(`[FEN Loaded] Using Lichess FEN: ${moveData.fen}`);
               return;
             }
           }
@@ -180,7 +181,7 @@ export const getStream = async (
           const actualMove = history[history.length - 1];
 
           if (process.env.NODE_ENV !== 'test') {
-            console.log(`[Move Resolution] Game ${gameId} move ${history.length}: ${actualMove}, available options: [${liveTopMoves.join(', ')}]`);
+            logDebug(`[Move Resolution] Game ${gameId} move ${history.length}: ${actualMove}, available options: [${liveTopMoves.join(', ')}]`);
           }
 
           chessService.updateChessGame(gameId, update);
@@ -192,7 +193,7 @@ export const getStream = async (
           // Trigger bot wagers for the new position
           agentService.processBotWagersForGame(gameId, socket).catch(err => {
             if (process.env.NODE_ENV !== 'test') {
-              console.log(`Bot wager processing error: ${err.message}`);
+              logWarn(`Bot wager processing error: ${err.message}`);
             }
           });
 
@@ -201,14 +202,14 @@ export const getStream = async (
             : cancelCriticalMoveWagers(gameId, history))
             .then((wagerResults) => {
               if (process.env.NODE_ENV !== 'test') {
-                console.log(`[Wager Resolution] Game ${gameId} - ${Object.keys(wagerResults).length} users affected, topMoves: ${previousMoveOptions.length > 0 ? previousMoveOptions.join(',') : 'none'}`);
+                logDebug(`[Wager Resolution] Game ${gameId} - ${Object.keys(wagerResults).length} users affected, topMoves: ${previousMoveOptions.length > 0 ? previousMoveOptions.join(',') : 'none'}`);
                 Object.entries(wagerResults).forEach(([uid, wagers]) => {
-                  console.log(`[Wager Resolution] Sending to user ${uid}: ${wagers.length} wagers, statuses: ${wagers.map(w => w.status).join(',')}`);
+                  logDebug(`[Wager Resolution] Sending to user ${uid}: ${wagers.length} wagers, statuses: ${wagers.map(w => w.status).join(',')}`);
                 });
               }
               Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers }));
             })
-            .catch((e) => console.log('Error:', e.message));
+            .catch((e) => logError('Error resolving wagers:', e.message));
 
           liveTopMoves = [];
 
@@ -252,10 +253,10 @@ export const getStream = async (
           // Handle status events like "resign", "mate", or "started"
           if (statusEvent.status.name === 'resign') {
             // Game has ended by resignation, will be handled by .on('end')
-            console.log(`Game ${gameId} ended by resignation`);
+            logInfo(`Game ${gameId} ended by resignation`);
           } else if (statusEvent.status.name === 'mate') {
             // Game has ended by checkmate, will be handled by .on('end')
-            console.log(`Game ${gameId} ended by checkmate, winner: ${statusEvent.winner}`);
+            logInfo(`Game ${gameId} ended by checkmate, winner: ${statusEvent.winner}`);
           } else if (statusEvent.status.name === 'started') {
             // Game has started
             startFen = statusEvent.fen.split(' ').slice(0, 2).join(' ');
@@ -263,13 +264,13 @@ export const getStream = async (
             socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
           } else {
             // Log other status events for debugging
-            console.log(`Game ${gameId} status event: ${statusEvent.status.name}`);
+            logDebug(`Game ${gameId} status event: ${statusEvent.status.name}`);
           }
         } else {
-          console.warn('FAIL: Unrecognized Lichess stream event', JSON.stringify(d, null, 2));
+          logWarn('FAIL: Unrecognized Lichess stream event', JSON.stringify(d, null, 2));
         }
       } catch (error) {
-        console.log('Error:', error.message);
+        logError('Error handling stream data:', error.message);
         socket.emit('game_error', { gameId, message: error.message });
       }
     })
@@ -292,13 +293,13 @@ export const getStream = async (
 
         resolveWdlWagers(gameId, gameStatus)
           .then((wagerResults) => Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers })))
-          .catch((e) => console.log('Error:', e.message));
+          .catch((e) => logError('Error resolving WDL wagers:', e.message));
 
         // Game-ended tweets have been disabled
         // We only tweet about new games (limited to 5 per day)
-        console.log(`Game ${gameId} completed with result: ${gameStatus}`);
+        logInfo(`Game ${gameId} completed with result: ${gameStatus}`);
       } catch (error) {
-        console.log('Error:', error.message);
+        logError('Error finalizing game:', error.message);
       }
     });
 
@@ -311,7 +312,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
     const activeGames = await chessService.getActiveGames(0, 10);
     const inProgressGames = activeGames.filter(game => game.game_status === GameStatus.IN_PROGRESS);
 
-    console.log(`Found ${activeGames.length} active games, ${inProgressGames.length} in progress`);
+    logDebug(`Found ${activeGames.length} active games, ${inProgressGames.length} in progress`);
 
     // Check for stale games - games that haven't been updated in more than 10 minutes
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -322,7 +323,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
     // If there are stale games, mark them as complete so they don't block new game creation
     if (staleGames.length > 0) {
-      console.log(`Found ${staleGames.length} stale games that haven't been updated in over 10 minutes`);
+      logDebug(`Found ${staleGames.length} stale games that haven't been updated in over 10 minutes`);
 
       // Mark stale games as complete with ABORTED status
       await Promise.all(staleGames.map(game =>
@@ -332,7 +333,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
         })
       ));
 
-      console.log(`Marked ${staleGames.length} stale games as complete with ABORTED status`);
+      logDebug(`Marked ${staleGames.length} stale games as complete with ABORTED status`);
 
       // Re-fetch the active games after cleanup
       const updatedActiveGames = await chessService.getActiveGames(0, 10);
@@ -340,14 +341,14 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
       // If we still have non-stale in-progress games, respect them
       if (updatedInProgressGames.length > 0) {
-        console.log(`Still have ${updatedInProgressGames.length} non-stale games in progress, skipping new game creation`);
+        logDebug(`Still have ${updatedInProgressGames.length} non-stale games in progress, skipping new game creation`);
         // Check again after a delay
         setTimeout(() => streamLoop(socket), 30000); // Check again in 30 seconds
         return;
       }
     } else if (inProgressGames.length > 0) {
       // If there are active non-stale games in progress, don't create a new one
-      console.log(`Games already in progress, skipping new game creation`);
+      logDebug('Games already in progress, skipping new game creation');
       // Check again after a delay
       setTimeout(() => streamLoop(socket), 30000); // Check again in 30 seconds
       return;
@@ -355,7 +356,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
     // If we have too many active games (even if not in progress), clean them up
     if (activeGames.length > 2) {
-      console.log(`Too many active games (${activeGames.length}), cleaning up stale games`);
+      logDebug(`Too many active games (${activeGames.length}), cleaning up stale games`);
 
       // Mark older games as complete to clean them up
       const oldGames = activeGames.slice(2); // Keep only the 2 newest games
@@ -367,7 +368,7 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
         })
       ));
 
-      console.log(`Cleaned up ${oldGames.length} stale games`);
+      logDebug(`Cleaned up ${oldGames.length} stale games`);
     }
 
     // Proceed with creating a new game
@@ -376,11 +377,10 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
     const gameFields = lichessService.createChessModelFields(sanitizedGame, GameSource.LOOP);
 
-    console.log(`Creating new game from Lichess ID: ${selectedGame.id}`);
+    logInfo(`Creating new game from Lichess ID: ${selectedGame.id}`);
     getStream(sanitizedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
-    console.log(error);
+    logError('streamLoop error:', error);
     setTimeout(() => streamLoop(socket), 100);
   }
 };
-

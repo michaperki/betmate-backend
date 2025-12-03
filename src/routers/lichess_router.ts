@@ -7,6 +7,7 @@ import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { CreateGameIDSchema, CreateGameURLSchema, CreateStreamerGameSchema } from '../validation/lichess';
 import { lichessController } from '../controllers';
 import { requireAuth } from '../authentication';
+import { logDebug } from '../helpers/dev_logger';
 
 const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Express => {
   const router = express();
@@ -41,7 +42,7 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
     .get(lichessController.getStreamers)
     .post(
       requireAuth,
-      (req, res, next) => { console.log(req.body); next(); },
+      (req, res, next) => { logDebug(req.body); next(); },
       validator.body(CreateStreamerGameSchema),
       lichessController.getStreamerGame,
       validator.body(CreateGameIDSchema),

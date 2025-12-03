@@ -8,6 +8,7 @@ import mongoose, { Types } from 'mongoose';
 import { ChessEmitEvents } from '../types/websocket';
 import { AxiosError } from 'axios';
 import { TopMoveData } from '../types/microservice';
+import { logDebug, logWarn } from '../helpers/dev_logger';
 
 // Bot personas
 export enum BotPersona {
@@ -151,7 +152,7 @@ export async function processBotWager(
     const moveNumber = game.move_hist.length + 1; // Bet on the NEXT move that will be played
 
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`[Bot ${bot.botConfig.persona}] Placing wager for game ${game._id} move ${moveNumber} (${game.move_hist.length} moves played)`);
+      logDebug(`[Bot ${bot.botConfig.persona}] Placing wager for game ${game._id} move ${moveNumber} (${game.move_hist.length} moves played)`);
     }
 
     // Get position evaluation and best moves
@@ -220,12 +221,12 @@ export async function processBotWager(
     io.to(game._id.toString()).emit('pool_wager', wagerEvent);
     
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Bot ${bot.botConfig.persona} placed wager on game ${game._id}`);
+      logDebug(`Bot ${bot.botConfig.persona} placed wager on game ${game._id}`);
     }
   } catch (error) {
     const err = error as Error | AxiosError;
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Bot wager error: ${err.message}`);
+      logWarn(`Bot wager error: ${err.message}`);
     }
   }
 }
@@ -244,14 +245,14 @@ export async function refreshBotBankrolls(): Promise<void> {
       if (bot.account < config.maxBankroll) {
         await userService.updateUser(bot._id, { account: config.maxBankroll });
         if (process.env.NODE_ENV !== 'test') {
-          console.log(`Refreshed bankroll for bot ${bot._id} to ${config.maxBankroll}`);
+          logDebug(`Refreshed bankroll for bot ${bot._id} to ${config.maxBankroll}`);
         }
       }
     }
   } catch (error) {
     const err = error as Error;
     if (process.env.NODE_ENV !== 'test') {
-      console.log(`Failed to refresh bot bankrolls: ${err.message}`);
+      logWarn(`Failed to refresh bot bankrolls: ${err.message}`);
     }
   }
 }

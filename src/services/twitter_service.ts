@@ -10,30 +10,31 @@
 
 import logger from '../helpers/axiom_logger';
 import tweetQueue from '../helpers/tweet_queue';
+import { logDebug, logWarn, logInfo, logError } from '../helpers/dev_logger';
 
 // Debug logging for Twitter initialization
-console.log('Twitter Service Initialization:');
-console.log('- ENABLE_TWITTER environment variable:', process.env.ENABLE_TWITTER);
-console.log('- NODE_ENV:', process.env.NODE_ENV);
+logDebug('Twitter Service Initialization:');
+logDebug('- ENABLE_TWITTER environment variable:', process.env.ENABLE_TWITTER);
+logDebug('- NODE_ENV:', process.env.NODE_ENV);
 
 // Only import the Twitter API if enabled
 let TwitterApi: any;
 const ENABLE_TWITTER = process.env.ENABLE_TWITTER === 'true';
-console.log('- ENABLE_TWITTER parsed value:', ENABLE_TWITTER);
+logDebug('- ENABLE_TWITTER parsed value:', ENABLE_TWITTER);
 
 if (ENABLE_TWITTER) {
   try {
     // Dynamic import to avoid errors when package isn't available
     // Will only execute if ENABLE_TWITTER is true
-    console.log('- Attempting to import twitter-api-v2 package');
+    logDebug('- Attempting to import twitter-api-v2 package');
     ({ TwitterApi } = require('twitter-api-v2'));
-    console.log('- Successfully imported TwitterApi');
+    logDebug('- Successfully imported TwitterApi');
   } catch (error) {
-    console.log('- Failed to import twitter-api-v2 package:', error);
+    logWarn('- Failed to import twitter-api-v2 package:', error);
     logger.warn('Failed to import twitter-api-v2 package:', error);
   }
 } else {
-  console.log('- Skipping Twitter API import (disabled by environment variable)');
+  logDebug('- Skipping Twitter API import (disabled by environment variable)');
 }
 
 // Environment variable names
@@ -46,31 +47,31 @@ const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET || '';
 
 // Check if Twitter credentials are configured
 const isConfigured = () => {
-  console.log('Twitter isConfigured check:');
+  logDebug('Twitter isConfigured check:');
   if (!ENABLE_TWITTER) {
-    console.log('- Twitter integration is disabled by environment variable');
+    logDebug('- Twitter integration is disabled by environment variable');
     logger.info('Twitter integration is disabled by environment variable');
     return false;
   }
 
   const hasOAuth1Credentials = TWITTER_API_KEY && TWITTER_API_SECRET &&
                             TWITTER_ACCESS_TOKEN && TWITTER_ACCESS_SECRET;
-  console.log('- Has OAuth1 credentials:', hasOAuth1Credentials);
+  logDebug('- Has OAuth1 credentials:', hasOAuth1Credentials);
 
   const hasOAuth2Credentials = TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET;
-  console.log('- Has OAuth2 credentials:', hasOAuth2Credentials);
+  logDebug('- Has OAuth2 credentials:', hasOAuth2Credentials);
 
   const hasCredentials = hasOAuth1Credentials || hasOAuth2Credentials;
-  console.log('- Has any credentials:', hasCredentials);
-  console.log('- TwitterApi loaded:', TwitterApi !== undefined);
+  logDebug('- Has any credentials:', hasCredentials);
+  logDebug('- TwitterApi loaded:', TwitterApi !== undefined);
 
   if (!hasCredentials) {
-    console.log('- Twitter API credentials not configured');
+    logWarn('- Twitter API credentials not configured');
     logger.warn('Twitter API credentials not configured');
   }
 
   const result = hasCredentials && TwitterApi !== undefined;
-  console.log('- isConfigured result:', result);
+  logDebug('- isConfigured result:', result);
   return result;
 };
 
@@ -130,13 +131,13 @@ const _sendTweet = async (
     // Use the Twitter API if available
     let result;
     if (TwitterApi) {
-      console.log(`Sending new game tweet via Twitter API: "${tweetText}"`);
+      logDebug(`Sending new game tweet via Twitter API: "${tweetText}"`);
       const v2Client = client.v2;
       result = await v2Client.tweet(tweetText);
-      console.log(`Twitter API response for new game:`, result);
+      logDebug('Twitter API response for new game:', result);
     } else {
       // Mock result if Twitter API is not available
-      console.log(`Would tweet new game (mock): "${tweetText}"`);
+      logInfo(`Would tweet new game (mock): "${tweetText}"`);
       logger.info(`Would tweet (mock): ${tweetText}`);
       result = { data: { id: `mock-${Date.now()}` } };
     }
@@ -144,7 +145,7 @@ const _sendTweet = async (
     logger.info(`Tweet posted for new game ${gameId}`, { tweetId: result.data.id });
     return result.data;
   } catch (error) {
-    console.error(`Failed to tweet about new game ${gameId}:`, error);
+    logError(`Failed to tweet about new game ${gameId}:`, error);
     logger.error(`Failed to tweet about new game ${gameId}:`, error);
     return null;
   }
@@ -166,7 +167,7 @@ const tweetNewGame = async (
 ) => {
   if (!isConfigured()) return null;
 
-  logger.info(`Queuing new game tweet for game ${gameId}`);
+  logger.debug(`Queuing new game tweet for game ${gameId}`);
 
   // Add the tweet to the queue
   tweetQueue.queueTweet(
@@ -189,7 +190,7 @@ const tweetGameResult = async (
   blackPlayer: string,
   result: string
 ) => {
-  logger.info(`Game result tweets are disabled, ignoring request for game ${gameId}`);
+  logger.debug(`Game result tweets are disabled, ignoring request for game ${gameId}`);
   return { id: `disabled-${Date.now()}` };
 };
 

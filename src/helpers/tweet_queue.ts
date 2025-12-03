@@ -44,7 +44,7 @@ class TweetQueueManager {
     // Start the queue processing loop
     this.processQueue();
     
-    logger.info(`Tweet queue manager initialized with ${minTimeInMinutes} minute spacing and ${maxTweetsPerDay} max daily tweets`);
+    logger.debug(`Tweet queue manager initialized with ${minTimeInMinutes} minute spacing and ${maxTweetsPerDay} max daily tweets`);
   }
 
   /**
@@ -62,7 +62,7 @@ class TweetQueueManager {
     const currentDate = this.getCurrentDate();
     
     if (currentDate !== this.lastResetDate) {
-      logger.info(`Resetting daily tweet counter. Previous: ${this.dailyTweetCount} tweets on ${this.lastResetDate}`);
+      logger.debug(`Resetting daily tweet counter. Previous: ${this.dailyTweetCount} tweets on ${this.lastResetDate}`);
       this.dailyTweetCount = 0;
       this.lastResetDate = currentDate;
     }
@@ -83,7 +83,7 @@ class TweetQueueManager {
     
     // If we already reached our daily limit, don't add more tweets to the queue
     if (this.dailyTweetCount >= this.maxDailyTweets) {
-      logger.info(`Daily tweet limit (${this.maxDailyTweets}) reached. Not queuing tweet for game ${id}`);
+      logger.warn(`Daily tweet limit (${this.maxDailyTweets}) reached. Not queuing tweet for game ${id}`);
       return;
     }
     
@@ -98,7 +98,7 @@ class TweetQueueManager {
         timestamp: Date.now(),
         tweetFunction
       };
-      logger.info(`Updated queued tweet for game ID: ${id}`);
+      logger.debug(`Updated queued tweet for game ID: ${id}`);
     } else {
       // Add a new entry to the queue
       this.queue.push({
@@ -107,7 +107,7 @@ class TweetQueueManager {
         timestamp: Date.now(),
         tweetFunction
       });
-      logger.info(`Queued new tweet for game ID: ${id}`);
+      logger.debug(`Queued new tweet for game ID: ${id}`);
     }
     
     // Limit queue size to the number of remaining daily tweets
@@ -121,12 +121,12 @@ class TweetQueueManager {
       const removedCount = this.queue.length - remainingDailyTweets;
       if (removedCount > 0) {
         this.queue = this.queue.slice(0, remainingDailyTweets);
-        logger.info(`Daily tweet limit approaching. Removed ${removedCount} oldest tweets from queue`);
+        logger.debug(`Daily tweet limit approaching. Removed ${removedCount} oldest tweets from queue`);
       }
     }
     
     // Log the current queue state
-    logger.info(`Current tweet queue length: ${this.queue.length}, Daily tweet count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
+    logger.debug(`Current tweet queue length: ${this.queue.length}, Daily tweet count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
   }
 
   /**
@@ -149,7 +149,7 @@ class TweetQueueManager {
       
       // Check if we've hit the daily limit
       if (this.dailyTweetCount >= this.maxDailyTweets) {
-        logger.info(`Daily tweet limit (${this.maxDailyTweets}) reached. Waiting until tomorrow to send more tweets.`);
+        logger.warn(`Daily tweet limit (${this.maxDailyTweets}) reached. Waiting until tomorrow to send more tweets.`);
         this.isProcessing = false;
         setTimeout(() => this.processQueue(), 60000); // Check again in 1 minute
         return;
@@ -164,7 +164,7 @@ class TweetQueueManager {
         const tweetToSend = this.queue.shift();
         
         if (tweetToSend) {
-          logger.info(`Processing tweet for game ID: ${tweetToSend.id}`);
+          logger.debug(`Processing tweet for game ID: ${tweetToSend.id}`);
           
           try {
             // Call the tweet function with the appropriate parameters
@@ -178,7 +178,7 @@ class TweetQueueManager {
             if (result) {
               this.lastTweetTime = Date.now();
               this.dailyTweetCount++;
-              logger.info(`Successfully sent tweet for game ID: ${tweetToSend.id}. Daily count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
+              logger.debug(`Successfully sent tweet for game ID: ${tweetToSend.id}. Daily count: ${this.dailyTweetCount}/${this.maxDailyTweets}`);
             } else {
               logger.warn(`Failed to send tweet for game ID: ${tweetToSend.id}`);
             }
@@ -188,7 +188,7 @@ class TweetQueueManager {
         }
       } else {
         const waitTime = this.minTimeBetweenTweets - (now - this.lastTweetTime);
-        logger.info(`Waiting ${Math.ceil(waitTime / 1000)} seconds before sending next tweet`);
+        logger.debug(`Waiting ${Math.ceil(waitTime / 1000)} seconds before sending next tweet`);
       }
     } catch (error) {
       logger.error('Error processing tweet queue:', error);

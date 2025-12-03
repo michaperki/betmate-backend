@@ -3,6 +3,7 @@ import { RequestWithJWT } from '../types/requests';
 import { RaffleDraw, RaffleTicket, Prize } from '../models/raffle_model';
 import User from '../models/user_model';
 import mongoose from 'mongoose';
+import { logDebug, logError } from '../helpers/dev_logger';
 
 export const getCurrentRaffle = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -17,7 +18,7 @@ export const getCurrentRaffle = async (req: Request, res: Response): Promise<voi
     // Get user's participation status if authenticated
     let userParticipation: Record<string, { tickets: number }> = {};
     const userId = (req as any).user?._id;
-    console.log('getCurrentRaffle - userId:', userId);
+    logDebug('getCurrentRaffle - userId:', userId);
 
     if (userId) {
       const userTickets = await RaffleTicket.find({
@@ -25,9 +26,9 @@ export const getCurrentRaffle = async (req: Request, res: Response): Promise<voi
         drawId: { $in: activeDraws.map(draw => draw._id) }
       }).select('drawId coinBalance');
 
-      console.log('getCurrentRaffle - userTickets found:', userTickets.length);
+      logDebug('getCurrentRaffle - userTickets found:', userTickets.length);
       userTickets.forEach(ticket => {
-        console.log('Ticket:', { drawId: ticket.drawId, coinBalance: ticket.coinBalance });
+        logDebug('Ticket:', { drawId: ticket.drawId, coinBalance: ticket.coinBalance });
       });
 
       userParticipation = userTickets.reduce((acc, ticket) => {
@@ -35,7 +36,7 @@ export const getCurrentRaffle = async (req: Request, res: Response): Promise<voi
         return acc;
       }, {} as Record<string, { tickets: number }>);
 
-      console.log('getCurrentRaffle - userParticipation:', userParticipation);
+      logDebug('getCurrentRaffle - userParticipation:', userParticipation);
     }
 
     // Count participants for each draw
@@ -82,7 +83,7 @@ export const getCurrentRaffle = async (req: Request, res: Response): Promise<voi
       currentRaffles: raffleInfo
     });
   } catch (error) {
-    console.error('Error fetching current raffle:', error);
+    logError('Error fetching current raffle:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -172,7 +173,7 @@ export const optInToRaffle = async (req: RequestWithJWT, res: Response): Promise
       ticketId: ticket._id.toString()
     });
   } catch (error) {
-    console.error('Error opting into raffle:', error);
+    logError('Error opting into raffle:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -250,7 +251,7 @@ export const createTestRaffleData = async (req: Request, res: Response): Promise
       }
     });
   } catch (error) {
-    console.error('Error creating test raffle data:', error);
+    logError('Error creating test raffle data:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -324,7 +325,7 @@ export const getRaffleHistory = async (req: Request, res: Response): Promise<voi
       }
     });
   } catch (error) {
-    console.error('Error fetching raffle history:', error);
+    logError('Error fetching raffle history:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

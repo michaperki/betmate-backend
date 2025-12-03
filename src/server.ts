@@ -36,6 +36,7 @@ import {
 import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
+import { logDebug, logInfo, logError } from './helpers/dev_logger';
 
 // Configure mongoose global options to silence legacy warnings
 configureMongoose();
@@ -56,7 +57,7 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
 
 // Log the allowed origins
-console.log('🌐 CORS allowed origins:', allowedOrigins);
+logDebug('🌐 CORS allowed origins:', allowedOrigins);
 
 // Enable CORS with allowed origins
 app.use(cors({
@@ -171,29 +172,29 @@ const mongooseOptions: mongoose.ConnectOptions = {
 
 // Handle successful MongoDB connection
 const connectSuccess = () => {
-  console.log('✅ MongoDB connected successfully');
+  logInfo('✅ MongoDB connected successfully');
   
   // Axiom logging is initialized automatically on first use
 
   // Initialize bots
-  console.log('Checking for existing bots...');
+  logDebug('Checking for existing bots...');
   agentService.initializeBots().catch((error) => {
-    console.error('Error initializing bots:', error);
+    logError('Error initializing bots:', error);
   });
   
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {
-    console.log('Purging stale games before starting Lichess stream...');
+    logDebug('Purging stale games before starting Lichess stream...');
     chessService.purgeStaleGames()
       .then(result => {
-        console.log(`✅ Stale games purged successfully: ${result}`);
+        logInfo(`✅ Stale games purged successfully: ${result}`);
         // Start listening for Lichess games after purging stale games
-        streamLoop(chessWebsocket).catch(console.error);
+        streamLoop(chessWebsocket).catch((err) => logError(err));
       })
       .catch(error => {
-        console.error('❌ Error purging stale games:', error);
+        logError('❌ Error purging stale games:', error);
         // Continue with Lichess stream anyway
-        streamLoop(chessWebsocket).catch(console.error);
+        streamLoop(chessWebsocket).catch((err) => logError(err));
       });
   }
 };
@@ -201,34 +202,34 @@ const connectSuccess = () => {
 // Connect to MongoDB with proper error handling
 const mongoUri = process.env.MONGODB_URI || '';
 const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
-console.log('Connecting to MongoDB...', sanitizedUri);
-console.log('NODE_ENV:', process.env.NODE_ENV);
+logDebug('Connecting to MongoDB...', sanitizedUri);
+logDebug('NODE_ENV:', process.env.NODE_ENV);
 
 // Log environment variables availability (no values, just presence)
-console.log('Environment variables availability:');
-console.log('- MONGODB_URI:', !!process.env.MONGODB_URI);
-console.log('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
-console.log('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
+logDebug('Environment variables availability:');
+logDebug('- MONGODB_URI:', !!process.env.MONGODB_URI);
+logDebug('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
+logDebug('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
 
 // Attempt to connect to MongoDB with the URI
 mongoose.connect(mongoUri, mongooseOptions)
   .then(connectSuccess)
   .catch(error => {
-    console.error('❌ MongoDB connection error:', error.message);
+    logError('❌ MongoDB connection error:', error.message);
     
     // Try constructing the URI differently
     if (mongoUri.includes('mongodb+srv')) {
       try {
         const formattedUri = constructSrvUri(mongoUri);
-        console.log('Trying with reformatted URI...');
+        logDebug('Trying with reformatted URI...');
         
         mongoose.connect(formattedUri, mongooseOptions)
           .then(connectSuccess)
           .catch(err => {
-            console.error('❌ MongoDB connection error with reformatted URI:', err.message);
+            logError('❌ MongoDB connection error with reformatted URI:', err.message);
           });
       } catch (error) {
-        console.error('❌ Error constructing MongoDB URI:', error);
+        logError('❌ Error constructing MongoDB URI:', error);
         // No more retries, just exit
         process.exit(1);
       }
@@ -266,7 +267,7 @@ function constructSrvUri(mongoUri) {
     // Build SRV URI with proper format
     return `mongodb+srv://${encodedUsername}:${encodedPassword}@${hostname}${pathname}${searchParams}`;
   } catch (error) {
-    console.error('Failed to parse MongoDB URI:', error.message);
+    logError('Failed to parse MongoDB URI:', error.message);
     throw error;
   }
 }
@@ -274,7 +275,7 @@ function constructSrvUri(mongoUri) {
 // Start the server
 const port = process.env.PORT || 9000;
 httpServer.listen(port, () => {
-  console.log(`Express server running on port ${port}`);
+  logInfo(`Express server running on port ${port}`);
 });
 
 export { app, httpServer };
