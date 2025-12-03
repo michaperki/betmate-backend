@@ -26,6 +26,14 @@ You must have `Node.js` and `Yarn` installed to run this project
 
 If you also want to run the microservice locally, follow the setup instructions in the [microservice README](https://github.com/dali-lab/betmate-model-microservice) and change line 11 in `src/helpers/constants.ts` accordingly.
 
+### Logging configuration
+
+The backend logger supports a few env vars to trim noisy local output:
+
+- `LOG_LEVEL` (`debug`, `info`, `warn`, `error`): defaults to `info` in development and `warn` elsewhere. Only logs at or above this level are emitted.
+- `LOG_HTTP`: set to `true`, `1`, or `debug` to include successful HTTP request logs; errors and slow requests are always logged.
+- `ENABLE_AXIOM_LOGGING`: still opt-in outside production; set to `true` when you want to test Axiom ingestion with a valid API key.
+
 ### Heroku Deployment
 
 To deploy the backend to Heroku:

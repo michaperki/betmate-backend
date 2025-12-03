@@ -11,6 +11,9 @@ import { randomBytes } from 'crypto';
 import mongoose from 'mongoose';
 import { RaffleDraw, RaffleTicket, Prize } from '../models/raffle_model';
 import User from '../models/user_model';
+import { configureMongoose, DEFAULT_MONGOOSE_OPTIONS } from '../helpers/mongoose_config';
+
+configureMongoose();
 
 interface RunRaffleDrawRequest {
   drawPeriod: 'weekly' | 'monthly';
@@ -45,7 +48,7 @@ export const handler = async (
   try {
     // Connect to MongoDB if not already connected
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI || '');
+      await mongoose.connect(process.env.MONGODB_URI || '', DEFAULT_MONGOOSE_OPTIONS);
     }
 
     const { drawPeriod }: RunRaffleDrawRequest = JSON.parse(event.body || '{}');

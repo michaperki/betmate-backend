@@ -22,6 +22,7 @@ import { Server } from 'socket.io';
 
 // Import MongoDB caching plugin
 import './helpers/mongo_cache';
+import { configureMongoose, DEFAULT_MONGOOSE_OPTIONS } from './helpers/mongoose_config';
 
 import { chessService, agentService } from './services';
 import leaderboardService from './services/leaderboard_service';
@@ -36,6 +37,8 @@ import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
 
+// Configure mongoose global options to silence legacy warnings
+configureMongoose();
 
 // Record server start time for detecting fresh deployments
 // Cast to any to appease ts-node when types are not yet merged
@@ -162,9 +165,8 @@ app.use(errorHandler);
 // mongoose setup
 const MONGODB_URI = env.get('MONGODB_URI').required().asString();
 // Add a 10 second timeout for MongoDB connection
-const mongooseOptions = { 
-  serverSelectionTimeoutMS: 10000,
-  connectTimeoutMS: 10000,
+const mongooseOptions: mongoose.ConnectOptions = {
+  ...DEFAULT_MONGOOSE_OPTIONS,
 };
 
 // Handle successful MongoDB connection

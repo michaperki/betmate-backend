@@ -71,6 +71,8 @@ const isPollingRequest = (req: Request): boolean => {
   return false;
 };
 
+const successHttpLoggingEnabled = ['1', 'true', 'debug'].includes((process.env.LOG_HTTP || '').toLowerCase());
+
 /**
  * Express middleware for logging HTTP requests to Axiom with enhanced context
  */
@@ -139,10 +141,17 @@ export const axiomLoggerMiddleware = (req: Request, res: Response, next: NextFun
         context: logData
       });
     } else {
-      // For successful requests, only log if it's not a polling request or if it's slow
-      if (!isPolling || duration > 1000) {
+      // Always warn on slow requests
+      if (duration > 2000) {
         logger.log({
-          level: duration > 2000 ? 'warn' : 'debug',
+          level: 'warn',
+          event: 'request_slow',
+          trace_id: req.trace_id,
+          context: { ...logData, warning: 'slow_request' }
+        });
+      } else if (successHttpLoggingEnabled && (!isPolling || duration > 1000)) {
+        logger.log({
+          level: 'debug',
           event: 'request_completed',
           trace_id: req.trace_id,
           context: logData

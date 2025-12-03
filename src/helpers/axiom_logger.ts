@@ -8,8 +8,10 @@ import * as axiom from '@axiomhq/axiom-node';
  * Uses lazy initialization to ensure environment variables are loaded first.
  */
 
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
 export interface LogEvent {
-  level: 'info' | 'warn' | 'error' | 'debug';
+  level: LogLevel;
   message?: string;
   event: string;
   service?: string;
@@ -24,11 +26,36 @@ class AxiomLogger {
   private isInitialized: boolean = false;
   private service: string;
   private env: string;
+  private minLevel: number;
 
   constructor(dataset: string = 'betmate-logs', service: string = 'backend') {
     this.dataset = dataset;
     this.service = service;
     this.env = process.env.NODE_ENV || 'development';
+    const configuredLevel = (process.env.LOG_LEVEL || (this.env === 'development' ? 'info' : 'warn')).toLowerCase();
+    this.minLevel = this.getLevelWeight(this.normalizeLevel(configuredLevel));
+  }
+
+  private levelWeights: Record<LogLevel, number> = {
+    debug: 10,
+    info: 20,
+    warn: 30,
+    error: 40,
+  };
+
+  private normalizeLevel(level: string): LogLevel {
+    if (['debug', 'info', 'warn', 'error'].includes(level)) {
+      return level as LogLevel;
+    }
+    return 'info';
+  }
+
+  private getLevelWeight(level: LogLevel): number {
+    return this.levelWeights[level] ?? this.levelWeights.info;
+  }
+
+  private shouldLog(level: LogLevel): boolean {
+    return this.getLevelWeight(level) >= this.minLevel;
   }
   
   /**
@@ -59,6 +86,10 @@ class AxiomLogger {
    * Log an event to Axiom
    */
   async log(event: LogEvent): Promise<void> {
+    if (!this.shouldLog(event.level)) {
+      return;
+    }
+
     // Initialize on first use
     if (!this.isInitialized) {
       this.initialize();
@@ -79,10 +110,11 @@ class AxiomLogger {
     if (!this.client) {
       // Fall back to structured console logging if Axiom is not configured
       // Only show debug logs in development
-      if (event.level === 'debug' && this.env === 'production') {
-        return;
+      if (typeof console[event.level] === 'function') {
+        console[event.level](JSON.stringify(logEntry));
+      } else {
+        console.log(JSON.stringify(logEntry));
       }
-      console[event.level](JSON.stringify(logEntry));
       return;
     }
 
@@ -91,7 +123,11 @@ class AxiomLogger {
     } catch (error) {
       console.error('Failed to log to Axiom:', error);
       // Fall back to console logging
-      console[event.level](JSON.stringify(logEntry));
+      if (typeof console[event.level] === 'function') {
+        console[event.level](JSON.stringify(logEntry));
+      } else {
+        console.log(JSON.stringify(logEntry));
+      }
     }
   }
 
