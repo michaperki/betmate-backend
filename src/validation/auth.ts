@@ -23,3 +23,15 @@ export const SignUpUserSchema = joi.object<SignUpUserBody>({
 export interface SignUpUserRequest extends ValidatedRequestSchema {
   [ContainerTypes.Body]: SignUpUserBody
 }
+
+interface UpdateOnboardingBody {
+  version: number
+}
+
+export const UpdateOnboardingSchema = joi.object<UpdateOnboardingBody>({
+  version: joi.number().integer().min(0).required(),
+});
+
+export interface UpdateOnboardingRequest extends ValidatedRequestSchema {
+  [ContainerTypes.Body]: UpdateOnboardingBody
+}

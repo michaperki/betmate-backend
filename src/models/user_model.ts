@@ -19,6 +19,7 @@ const UserSchema = new Schema({
   first_name: { type: String, default: '' },
   last_name: { type: String, default: '' },
   account: { type: Number, default: 1000 },
+  onboarding_version_seen: { type: Number, default: 0, min: 0 },
   role: {
     type: String,
     default: UserRole.USER,

@@ -1,12 +1,15 @@
 import { Request, RequestHandler, Response } from 'express';
-import { ValidatedRequest } from 'express-joi-validation';
+import { ValidatedRequest, ValidatedRequestSchema } from 'express-joi-validation';
 import { v4 as uuidv4 } from 'uuid';
 
 import { RequestWithJWT } from '../types/requests';
 import { userService, refreshTokenService } from '../services';
 import { tokenForUser } from '../helpers/utils';
-import { SignUpUserRequest } from '../validation/auth';
+import { SignUpUserRequest, UpdateOnboardingRequest } from '../validation/auth';
 import { handleFailure } from './utils';
+import { CURRENT_ONBOARDING_VERSION } from '../helpers/constants';
+
+type AuthenticatedRequest<T extends ValidatedRequestSchema> = RequestWithJWT & ValidatedRequest<T>;
 
 /**
  * Sign up user from request
@@ -227,6 +230,41 @@ const logout: RequestHandler = async (req: RequestWithJWT, res) => {
   }
 };
 
+const getOnboardingStatus: RequestHandler = (req: RequestWithJWT, res) => {
+  if (!req.user?._id) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+
+  return res.json({
+    versionSeen: req.user.onboarding_version_seen ?? 0,
+    currentVersion: CURRENT_ONBOARDING_VERSION,
+  });
+};
+
+const updateOnboardingStatus = async (
+  req: AuthenticatedRequest<UpdateOnboardingRequest>,
+  res: Response
+): Promise<Response | void> => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+
+    const requestedVersion = req.body.version ?? CURRENT_ONBOARDING_VERSION;
+    const normalizedVersion = Math.max(0, requestedVersion);
+
+    const updatedUser = await userService.updateUser(userId, { onboarding_version_seen: normalizedVersion });
+
+    return res.json({
+      versionSeen: updatedUser.onboarding_version_seen ?? normalizedVersion,
+      currentVersion: CURRENT_ONBOARDING_VERSION,
+    });
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
+};
+
 const authController = {
   signUpUserRequest,
   signInUser,
@@ -234,6 +272,8 @@ const authController = {
   getBalanceHistory,
   refreshToken,
   logout,
+  getOnboardingStatus,
+  updateOnboardingStatus,
 };
 
 export default authController;

@@ -8,7 +8,7 @@ import { requireSignin, requireAuth } from '../authentication';
 import { authLimiter, sensitiveActionLimiter } from '../middleware/rate_limiter';
 
 import { authController } from '../controllers';
-import { SignUpUserSchema } from '../validation/auth';
+import { SignUpUserSchema, UpdateOnboardingSchema } from '../validation/auth';
 import { handleValidationError } from '../validation';
 
 const router = express();
@@ -58,6 +58,14 @@ router.route('/logout')
 
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
+
+router.route('/onboarding')
+  .get(requireAuth, authController.getOnboardingStatus)
+  .put(
+    requireAuth,
+    validator.body(UpdateOnboardingSchema),
+    authController.updateOnboardingStatus
+  );
 
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);

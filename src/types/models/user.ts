@@ -29,6 +29,7 @@ export interface UserDoc extends Document {
   last_name: string,
   full_name: string,
   account: number,
+  onboarding_version_seen?: number,
   role?: UserRole,
   is_bot: boolean,
   botConfig?: BotConfig,

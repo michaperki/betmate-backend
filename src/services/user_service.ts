@@ -13,6 +13,7 @@ interface CreateUserRequest {
   is_bot?: boolean;
   account?: number;
   botConfig?: BotConfig;
+  onboarding_version_seen?: number;
 }
 
 /**
@@ -28,7 +29,8 @@ const createUser = (userData: CreateUserRequest): Promise<UserDoc> => {
     last_name = '',
     is_bot = false,
     account,
-    botConfig
+    botConfig,
+    onboarding_version_seen
   } = userData;
 
   return new Users({
@@ -38,7 +40,8 @@ const createUser = (userData: CreateUserRequest): Promise<UserDoc> => {
     last_name,
     is_bot,
     account,
-    botConfig
+    botConfig,
+    onboarding_version_seen
   })
     .save()
     .catch(dbErrorHandler);
