@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import cors from 'cors';
 import { logController } from '../controllers';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
 
@@ -18,6 +19,14 @@ const logCorsOptions = {
   maxAge: 86400 // Cache preflight for 24 hours
 };
 
+// Apply a modest rate limit specifically to the client log proxy
+const logLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60, // 60 log events per minute per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 /**
  * POST /api/log
  *
@@ -25,7 +34,7 @@ const logCorsOptions = {
  * Acts as a proxy to avoid exposing Axiom API key to client
  */
 router.options('/', cors(logCorsOptions)); // Handle OPTIONS preflight
-router.post('/', cors(logCorsOptions), logController.clientLogRequest);
+router.post('/', logLimiter, cors(logCorsOptions), logController.clientLogRequest);
 
 // Add a fallback handler for other methods to prevent 404s
 router.all('/', (req, res) => {

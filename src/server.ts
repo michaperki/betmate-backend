@@ -82,7 +82,9 @@ const io = new Server(httpServer, {
     origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
-  }
+  },
+  // Prefer WebSocket to avoid HTTP long-poll bursts counted by rate limiter
+  transports: ['websocket']
 });
 
 // Set limits for request body
@@ -101,13 +103,26 @@ import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
 if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
   const apiLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 500, // limit each IP to 500 requests per windowMs (increased from 100)
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
-    message: "Too many requests from this IP, please try again after 15 minutes"
+    max: 1000, // relaxed global cap; use stricter per-route limits as needed
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: 'Too many requests from this IP, please try again after 15 minutes',
+    skip: (req) => {
+      const p = req.path || '';
+      const m = req.method || 'GET';
+      // Do not count CORS preflight
+      if (m === 'OPTIONS') return true;
+      // Exempt auth (routes have their own limiter)
+      if (p.startsWith('/auth')) return true;
+      // Exempt client logging (route will apply its own limiter)
+      if (p.startsWith('/api/log')) return true;
+      // Exempt Socket.IO engine and namespace
+      if (p.startsWith('/socket.io') || p.startsWith('/chessws')) return true;
+      return false;
+    }
   });
-  
-  // Apply to all requests
+
+  // Apply to all requests (with skip rules above)
   app.use(apiLimiter);
 }
 
