@@ -30,7 +30,7 @@ import { handleValidationError } from './validation';
 import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
-  analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter,
+  analysisRouter, internalRouter, logRouter, twitterRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -121,7 +121,7 @@ app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
 app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
-app.use('/raffle', raffleRouter);
+// Raffles removed
 app.use('/api/log', logRouter); // Frontend logging endpoint
 app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 
@@ -144,7 +144,6 @@ app.get('/', (req, res) => {
       wager: '/wager',
       leaderboard: '/leaderboard',
       analysis: '/analysis',
-      raffle: '/raffle',
       twitter: '/api/twitter',
       websocket: '/chessws'
     }
