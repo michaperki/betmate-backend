@@ -180,11 +180,15 @@ const connectSuccess = () => {
   
   // Axiom logging is initialized automatically on first use
 
-  // Initialize bots
-  console.log('Checking for existing bots...');
-  agentService.initializeBots().catch((error) => {
-    console.error('Error initializing bots:', error);
-  });
+  // Initialize bots (optional via ENABLE_BOTS)
+  if (process.env.ENABLE_BOTS === 'true') {
+    console.log('Initializing seed bots...');
+    agentService.initializeBots().catch((error) => {
+      console.error('Error initializing bots:', error);
+    });
+  } else {
+    console.log('Bots disabled (ENABLE_BOTS != "true").');
+  }
   
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {

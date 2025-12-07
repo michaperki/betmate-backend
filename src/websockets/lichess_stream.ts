@@ -188,12 +188,14 @@ export const getStream = async (
           // Save current betting options before updating to new position
           const previousMoveOptions = [...liveTopMoves];
 
-          // Trigger bot wagers for the new position
-          agentService.processBotWagersForGame(gameId, socket).catch(err => {
-            if (process.env.NODE_ENV !== 'test') {
-              console.log(`Bot wager processing error: ${err.message}`);
-            }
-          });
+          // Trigger bot wagers for the new position (only if bots are enabled)
+          if (process.env.ENABLE_BOTS === 'true') {
+            agentService.processBotWagersForGame(gameId, socket).catch(err => {
+              if (process.env.NODE_ENV !== 'test') {
+                console.log(`Bot wager processing error: ${err.message}`);
+              }
+            });
+          }
 
           (previousMoveOptions.length > 0
             ? resolveCriticalMoveWagers(gameId, history, previousMoveOptions)
@@ -364,4 +366,3 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
     setTimeout(() => streamLoop(socket), 100);
   }
 };
-
