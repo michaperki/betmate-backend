@@ -8,9 +8,9 @@ import { logError } from '../helpers/dev_logger';
  */
 const clientLogRequest: RequestHandler = async (req, res) => {
   try {
-    // Always return 200 in production if AXIOM_TOKEN is not configured
-    // This prevents frontend errors while allowing for local development
-    if (process.env.NODE_ENV === 'production' && !process.env.AXIOM_TOKEN) {
+    // In production, short-circuit if Axiom is not configured
+    // Keep behavior consistent with backend logger which uses AXIOM_API_KEY
+    if (process.env.NODE_ENV === 'production' && !process.env.AXIOM_API_KEY) {
       return res.status(200).json({ message: 'Logging disabled in production' });
     }
 

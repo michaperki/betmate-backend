@@ -72,7 +72,10 @@ class AxiomLogger {
       this.client = new axiom.Client({
         token: apiKey
       });
-      console.log(`Axiom logging initialized successfully for ${env} environment`);
+      // Reduce noise: avoid info logs in production
+      if (env !== 'production') {
+        console.log('Axiom logging initialized');
+      }
     } else if (!apiKey) {
       console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
     } else {
