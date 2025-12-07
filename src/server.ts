@@ -35,6 +35,7 @@ import {
 import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
+import { getVersionInfo } from './helpers/version';
 
 
 // Record server start time for detecting fresh deployments
@@ -148,10 +149,17 @@ app.get('/', (req, res) => {
 
 // Add an API version endpoint for the frontend to check
 app.get('/api/status', (req, res) => {
+  const v = getVersionInfo();
   res.json({ 
     status: 'online',
-    version: process.env.npm_package_version || '1.0.0',
-    environment: process.env.NODE_ENV || 'development'
+    version: v.appVersion,
+    environment: v.environment,
+    build: {
+      appVersion: v.appVersion,
+      releasedAtISO: v.releasedAtISO,
+      commit: v.commit,
+      release: v.release,
+    },
   });
 });
 
@@ -272,6 +280,14 @@ function constructSrvUri(mongoUri) {
 const port = process.env.PORT || 9000;
 httpServer.listen(port, () => {
   console.log(`Express server running on port ${port}`);
+  const v = getVersionInfo();
+  console.log('Startup version info:', {
+    appVersion: v.appVersion,
+    environment: v.environment,
+    release: v.release,
+    releasedAtISO: v.releasedAtISO,
+    commit: v.commit,
+  });
 });
 
 export { app, httpServer };
