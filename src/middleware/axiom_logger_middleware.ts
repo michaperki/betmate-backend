@@ -134,9 +134,12 @@ export const axiomLoggerMiddleware = (req: Request, res: Response, next: NextFun
         context: logData
       });
     } else if (res.statusCode >= 400) {
+      // Downgrade expected client errors to info for specific endpoints
+      const isExpectedNoRank = res.statusCode === 400 && req.path.startsWith('/leaderboard/userrank');
+
       logger.log({
-        level: 'warn',
-        event: 'request_client_error',
+        level: isExpectedNoRank ? 'info' : 'warn',
+        event: isExpectedNoRank ? 'request_expected_empty' : 'request_client_error',
         trace_id: req.trace_id,
         context: logData
       });
