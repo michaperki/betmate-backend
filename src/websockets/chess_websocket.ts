@@ -5,6 +5,7 @@ import { chessService, agentService } from '../services';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { ChessDoc } from '../types/models/chess';
 import { decodeToken } from '../helpers/utils';
+import logger from '../helpers/axiom_logger';
 import {
   GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,
@@ -29,7 +30,9 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     address: socket.handshake.address
   };
 
-  console.log(`New websocket connection: ${socket.id}`, { clientInfo });
+  if (process.env.LOG_WS_DEBUG === 'true') {
+    logger.log({ level: 'debug', event: 'ws_connected', context: { clientInfo } });
+  }
 
   // Set up heartbeat to detect silent disconnections
   let heartbeatInterval: NodeJS.Timeout;
@@ -43,7 +46,9 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
     heartbeatInterval = setInterval(() => {
       if (missedHeartbeats >= MAX_MISSED_HEARTBEATS) {
         // Too many missed heartbeats, consider connection dead
-        console.log(`Client ${socket.id} missed ${MAX_MISSED_HEARTBEATS} heartbeats - closing connection`);
+        if (process.env.LOG_WS_DEBUG === 'true') {
+          logger.log({ level: 'debug', event: 'ws_heartbeat_miss', context: { socketId: socket.id, maxMissed: MAX_MISSED_HEARTBEATS } });
+        }
         socket.disconnect(true);
         clearInterval(heartbeatInterval);
         return;
@@ -237,7 +242,9 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
       address: socket.handshake.address
     };
 
-    console.log(`Client ${socket.id} disconnected: ${reason}`, { clientInfo });
+    if (process.env.LOG_WS_DEBUG === 'true') {
+      logger.log({ level: 'debug', event: 'ws_disconnected', context: { socketId: socket.id, reason, clientInfo } });
+    }
 
     // In production, log additional connection details for debugging
     if (process.env.NODE_ENV === 'production') {
@@ -248,9 +255,9 @@ const websocket = (socket: Socket<ChessListenEvents, ChessEmitEvents>): void => 
           rooms: Array.from(socket.rooms),
           reason
         };
-        console.log(`[PROD] Socket connection details:`, connDetails);
+        logger.log({ level: 'debug', event: 'ws_prod_conn_details', context: connDetails });
       } catch (err) {
-        console.error("Error logging socket details:", err);
+        logger.log({ level: 'error', event: 'ws_log_details_error', context: { error: (err as any).message } });
       }
     }
 

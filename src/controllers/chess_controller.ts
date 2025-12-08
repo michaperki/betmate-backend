@@ -2,6 +2,7 @@ import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
 import { chessService } from '../services';
+import logger from '../helpers/axiom_logger';
 import { GetManyGamesRequest } from '../validation/chess';
 import { handleSuccess, handleFailure } from './utils';
 
@@ -43,10 +44,18 @@ const getManyChessGamesRequest: RequestHandler = (req: ValidatedRequest<GetManyG
 const getGameStatsRequest: RequestHandler = async (req, res) => {
   try {
     const stats = await chessService.getGameStats(req.params.id);
-    console.log('[STATS DEBUG]', { gameId: req.params.id, stats });
+    if (process.env.LOG_GAME_EVENTS === 'true') {
+      const summary = {
+        gameId: req.params.id,
+        viewerCount: (stats as any)?.viewerCount,
+        currentMoveNumber: (stats as any)?.currentMoveNumber,
+        gameStatus: (stats as any)?.gameStatus
+      };
+      logger.log({ level: 'debug', event: 'stats_debug', context: summary });
+    }
     return handleSuccess(res)(stats);
   } catch (error) {
-    console.error('[STATS ERROR]', { gameId: req.params.id, error: error.message, stack: error.stack });
+    logger.log({ level: 'error', event: 'stats_error', context: { gameId: req.params.id, error: (error as any).message } });
     return handleFailure(res)(error);
   }
 };

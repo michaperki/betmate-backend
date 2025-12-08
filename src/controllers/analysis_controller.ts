@@ -3,6 +3,7 @@ import { ValidatedRequest } from 'express-joi-validation';
 import { microserviceService } from '../services';
 import { GetMoveAnalysisRequest } from '../validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
+import logger from '../helpers/axiom_logger';
 
 /**
  * Get move analysis data from request.
@@ -16,7 +17,10 @@ import { handleSuccess, handleFailure } from './utils';
 const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAnalysisRequest>, res) => {
   const { fen, move } = req.query;
 
-  console.log(`[ANALYSIS CONTROLLER] Move analysis request for FEN: ${fen}, move: ${move}`);
+  // Optional debug for troubleshooting
+  if (process.env.LOG_ANALYSIS_DEBUG === 'true') {
+    logger.log({ level: 'debug', event: 'analysis_move_request', context: { fen, move } });
+  }
 
   // Flag to track if timeout already responded
   let hasResponded = false;
@@ -25,7 +29,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
       hasResponded = true;
-      console.log(`[ANALYSIS CONTROLLER] Request timed out for move: ${move}`);
+      logger.log({ level: 'warn', event: 'analysis_timeout', context: { move, timeout_ms: 5000 } });
       res.status(503).json({ message: 'Engine analysis timed out' });
     }
   }, 5000);
@@ -34,7 +38,9 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
     .getMoveAnalysis(fen, move)
     .then(result => {
       clearTimeout(timeout);
-      console.log(`[ANALYSIS CONTROLLER] Got move analysis result for ${move}:`, result);
+      if (process.env.LOG_ANALYSIS_DEBUG === 'true') {
+        logger.log({ level: 'debug', event: 'analysis_move_result', context: { move, resultSummary: { score: (result as any)?.score, percentile: (result as any)?.percentile, is_best_move: (result as any)?.is_best_move } } });
+      }
 
       if (!hasResponded && !res.headersSent) {
         return res.status(200).json({
@@ -45,7 +51,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
     })
     .catch(error => {
       clearTimeout(timeout);
-      console.log(`[ANALYSIS CONTROLLER] Move analysis error for ${move}:`, error.message);
+      logger.log({ level: 'warn', event: 'analysis_move_error', context: { move, error: error.message } });
 
       // Return a 200 with a specific error message to avoid breaking the frontend
       if (!hasResponded && !res.headersSent) {
@@ -74,6 +80,7 @@ const getTopMovesRequest: RequestHandler = (req, res) => {
   const timeout = setTimeout(() => {
     if (!res.headersSent) {
       hasResponded = true;
+      logger.log({ level: 'warn', event: 'top_moves_timeout', context: { timeout_ms: 5000 } });
       res.status(503).json({ message: 'Top moves analysis timed out' });
     }
   }, 5000);
@@ -91,7 +98,7 @@ const getTopMovesRequest: RequestHandler = (req, res) => {
     })
     .catch(error => {
       clearTimeout(timeout);
-      console.log('Top moves error:', error.message);
+      logger.log({ level: 'warn', event: 'top_moves_error', context: { error: error.message } });
       // Return a 200 with a specific error message to avoid breaking the frontend
       if (!hasResponded && !res.headersSent) {
         return res.status(200).json({

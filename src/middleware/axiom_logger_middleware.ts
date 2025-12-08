@@ -139,11 +139,23 @@ export const axiomLoggerMiddleware = (req: Request, res: Response, next: NextFun
         context: logData
       });
     } else {
-      // For successful requests, only log if it's not a polling request or if it's slow
-      if (!isPolling || duration > 1000) {
+      // For successful requests, sample or log only when slow
+      const sampleRate = Math.max(0, Math.min(1, parseFloat(process.env.LOG_REQUEST_SAMPLE_RATE || '0.05')));
+      const defaultSlow = parseInt(process.env.LOG_SLOW_MS || '1000', 10);
+      const pollingSlow = parseInt(process.env.LOG_SLOW_MS_POLLING || '500', 10);
+      const slowThreshold = isPolling ? pollingSlow : defaultSlow;
+
+      if (duration > slowThreshold) {
         logger.log({
-          level: duration > 2000 ? 'warn' : 'debug',
-          event: 'request_completed',
+          level: 'warn',
+          event: 'slow_request',
+          trace_id: req.trace_id,
+          context: { ...logData, slow_threshold_ms: slowThreshold }
+        });
+      } else if (Math.random() < sampleRate) {
+        logger.log({
+          level: 'debug',
+          event: 'request_sampled',
           trace_id: req.trace_id,
           context: logData
         });

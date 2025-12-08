@@ -6,6 +6,7 @@ import {
 } from 'mongoose';
 import { CreateWagerQuery, PopulatedWagerDoc, WagerDoc } from '../types/models/wager';
 import chessService from './chess_service';
+import logger from '../helpers/axiom_logger';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**
@@ -132,13 +133,17 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
     const oddsCorrect = relativeDiff < ODDS_TOLERANCE;
 
     // Logging to debug draw bet issues
-    console.log(`Validating ${fields.data} wager: game odds=${gameOdds}, calculated=${calculatedOdds}, sent=${fields.odds}, diff=${Math.abs(calculatedOdds - Number(fields.odds))}, relative diff=${relativeDiff.toFixed(4)} (${(relativeDiff * 100).toFixed(2)}%), tolerance=${ODDS_TOLERANCE * 100}%`);
+    if (process.env.LOG_GAME_EVENTS === 'true') {
+      logger.log({ level: 'debug', event: 'wager_validate_debug', context: { data: fields.data, gameOdds, calculatedOdds, sent: fields.odds, relativeDiff: Number(relativeDiff.toFixed(4)), tolerancePct: ODDS_TOLERANCE * 100 } });
+    }
 
     // Special handling for extremely small draw odds
     let specialDrawCase = false;
     if (fields.wdl && fields.data === 'draw' && gameOdds && gameOdds < 0.02) {
       specialDrawCase = true;
-      console.log(`Special handling for very low draw probability (${gameOdds}): accepting bet regardless of odds`);
+      if (process.env.LOG_GAME_EVENTS === 'true') {
+        logger.log({ level: 'debug', event: 'wager_special_draw', context: { gameOdds } });
+      }
     }
 
     // Different validation rules for move-specific wagers vs. game outcome (WDL) wagers
@@ -149,7 +154,9 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
       : (fields.move_number === currentMove + 1);
 
     // Additional logging to debug validation
-    console.log(`Wager validation: type=${fields.wdl ? 'WDL' : 'move'}, data=${fields.data}, valid=${wagerValid}, move_check=${fields.move_number === currentMove + 1}, odds_check=${oddsCorrect}`);
+    if (process.env.LOG_GAME_EVENTS === 'true') {
+      logger.log({ level: 'debug', event: 'wager_validation', context: { type: fields.wdl ? 'WDL' : 'move', data: fields.data, valid: wagerValid, move_check: fields.move_number === currentMove + 1, odds_check: oddsCorrect } });
+    }
 
     if (!wagerValid) throw new HttpError(400, ['Wager not valid']);
   } catch (error) {

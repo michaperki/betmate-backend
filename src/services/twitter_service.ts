@@ -11,29 +11,31 @@
 import logger from '../helpers/axiom_logger';
 import tweetQueue from '../helpers/tweet_queue';
 
-// Debug logging for Twitter initialization
-console.log('Twitter Service Initialization:');
-console.log('- ENABLE_TWITTER environment variable:', process.env.ENABLE_TWITTER);
-console.log('- NODE_ENV:', process.env.NODE_ENV);
+const twitterDebug = process.env.LOG_TWITTER_DEBUG === 'true';
+if (twitterDebug) {
+  logger.log({ level: 'debug', event: 'twitter_init', context: { ENABLE_TWITTER_ENV: process.env.ENABLE_TWITTER, NODE_ENV: process.env.NODE_ENV } });
+}
 
 // Only import the Twitter API if enabled
 let TwitterApi: any;
 const ENABLE_TWITTER = process.env.ENABLE_TWITTER === 'true';
-console.log('- ENABLE_TWITTER parsed value:', ENABLE_TWITTER);
+if (twitterDebug) {
+  logger.log({ level: 'debug', event: 'twitter_flag', context: { ENABLE_TWITTER } });
+}
 
 if (ENABLE_TWITTER) {
   try {
     // Dynamic import to avoid errors when package isn't available
     // Will only execute if ENABLE_TWITTER is true
-    console.log('- Attempting to import twitter-api-v2 package');
+    if (twitterDebug) logger.log({ level: 'debug', event: 'twitter_pkg_import_attempt' });
     ({ TwitterApi } = require('twitter-api-v2'));
-    console.log('- Successfully imported TwitterApi');
+    if (twitterDebug) logger.log({ level: 'debug', event: 'twitter_pkg_import_success' });
   } catch (error) {
-    console.log('- Failed to import twitter-api-v2 package:', error);
-    logger.warn('Failed to import twitter-api-v2 package:', error);
+    if (twitterDebug) logger.log({ level: 'debug', event: 'twitter_pkg_import_failed', context: { error: (error as any).message } });
+    logger.log({ level: 'warn', event: 'twitter_pkg_import_failed', context: { error: (error as any).message } });
   }
 } else {
-  console.log('- Skipping Twitter API import (disabled by environment variable)');
+  if (twitterDebug) logger.log({ level: 'debug', event: 'twitter_pkg_import_skipped' });
 }
 
 // Environment variable names
@@ -46,31 +48,24 @@ const TWITTER_CLIENT_SECRET = process.env.TWITTER_CLIENT_SECRET || '';
 
 // Check if Twitter credentials are configured
 const isConfigured = () => {
-  console.log('Twitter isConfigured check:');
   if (!ENABLE_TWITTER) {
-    console.log('- Twitter integration is disabled by environment variable');
-    logger.info('Twitter integration is disabled by environment variable');
+    logger.log({ level: 'info', event: 'twitter_disabled' });
     return false;
   }
 
   const hasOAuth1Credentials = TWITTER_API_KEY && TWITTER_API_SECRET &&
                             TWITTER_ACCESS_TOKEN && TWITTER_ACCESS_SECRET;
-  console.log('- Has OAuth1 credentials:', hasOAuth1Credentials);
-
   const hasOAuth2Credentials = TWITTER_CLIENT_ID && TWITTER_CLIENT_SECRET;
-  console.log('- Has OAuth2 credentials:', hasOAuth2Credentials);
-
   const hasCredentials = hasOAuth1Credentials || hasOAuth2Credentials;
-  console.log('- Has any credentials:', hasCredentials);
-  console.log('- TwitterApi loaded:', TwitterApi !== undefined);
 
   if (!hasCredentials) {
-    console.log('- Twitter API credentials not configured');
-    logger.warn('Twitter API credentials not configured');
+    logger.log({ level: 'warn', event: 'twitter_missing_credentials' });
   }
 
   const result = hasCredentials && TwitterApi !== undefined;
-  console.log('- isConfigured result:', result);
+  if (twitterDebug) {
+    logger.log({ level: 'debug', event: 'twitter_config_check', context: { hasOAuth1Credentials, hasOAuth2Credentials, hasCredentials, TwitterApiLoaded: TwitterApi !== undefined, result } });
+  }
   return result;
 };
 

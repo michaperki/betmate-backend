@@ -36,10 +36,12 @@ import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
+// Ensure global type augmentations are included for type-checking only
+import type {} from './types/global';
 
 
 // Record server start time for detecting fresh deployments
-global.serverStartTime = Date.now();
+(global as any).serverStartTime = Date.now();
 
 // initialize
 const app = express();
@@ -52,8 +54,8 @@ const allowedOrigins = process.env.NODE_ENV === 'production'
   ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
   : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
 
-// Log the allowed origins
-console.log('🌐 CORS allowed origins:', allowedOrigins);
+// Log the allowed origins (debug-level)
+logger.log({ level: 'debug', event: 'startup_cors', context: { allowedOrigins } });
 
 // Enable CORS with allowed origins
 app.use(cors({
@@ -85,8 +87,10 @@ const io = new Server(httpServer, {
 app.use(bodyParser.json({ limit: '5mb' }));
 app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
 
-// Setup common middleware
-app.use(morgan('dev')); // logging
+// Setup common HTTP logging (opt-in)
+if (process.env.LOG_HTTP_DEBUG === 'true') {
+  app.use(morgan('dev'));
+}
 
 // Configure rate limiting middleware
 import { rateLimit } from 'express-rate-limit';
@@ -176,31 +180,31 @@ const mongooseOptions = {
 
 // Handle successful MongoDB connection
 const connectSuccess = () => {
-  console.log('✅ MongoDB connected successfully');
+  logger.log({ level: 'info', event: 'mongo_connected' });
   
   // Axiom logging is initialized automatically on first use
 
   // Initialize bots (optional via ENABLE_BOTS)
   if (process.env.ENABLE_BOTS === 'true') {
-    console.log('Initializing seed bots...');
+    logger.log({ level: 'info', event: 'bots_init' });
     agentService.initializeBots().catch((error) => {
-      console.error('Error initializing bots:', error);
+      logger.log({ level: 'error', event: 'bots_init_error', context: { error: error.message } });
     });
   } else {
-    console.log('Bots disabled (ENABLE_BOTS != "true").');
+    logger.log({ level: 'debug', event: 'bots_disabled' });
   }
   
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {
-    console.log('Purging stale games before starting Lichess stream...');
+    logger.log({ level: 'info', event: 'purge_stale_games_start' });
     chessService.purgeStaleGames()
       .then(result => {
-        console.log(`✅ Stale games purged successfully: ${result}`);
+        logger.log({ level: 'info', event: 'purge_stale_games_done', context: { result } });
         // Start listening for Lichess games after purging stale games
         streamLoop(chessWebsocket).catch(console.error);
       })
       .catch(error => {
-        console.error('❌ Error purging stale games:', error);
+        logger.log({ level: 'error', event: 'purge_stale_games_error', context: { error: error.message } });
         // Continue with Lichess stream anyway
         streamLoop(chessWebsocket).catch(console.error);
       });
@@ -210,34 +214,32 @@ const connectSuccess = () => {
 // Connect to MongoDB with proper error handling
 const mongoUri = process.env.MONGODB_URI || '';
 const sanitizedUri = mongoUri.replace(/\/\/([^:]+):([^@]+)@/, '//***@');
-console.log('Connecting to MongoDB...', sanitizedUri);
-console.log('NODE_ENV:', process.env.NODE_ENV);
-
-// Log environment variables availability (no values, just presence)
-console.log('Environment variables availability:');
-console.log('- MONGODB_URI:', !!process.env.MONGODB_URI);
-console.log('- MONGODB_USERNAME:', !!process.env.MONGODB_USERNAME);
-console.log('- MONGODB_PASSWORD:', !!process.env.MONGODB_PASSWORD);
+logger.log({ level: 'debug', event: 'mongo_connecting', context: { uri: sanitizedUri, node_env: process.env.NODE_ENV } });
+logger.log({ level: 'debug', event: 'env_presence', context: {
+  MONGODB_URI: !!process.env.MONGODB_URI,
+  MONGODB_USERNAME: !!process.env.MONGODB_USERNAME,
+  MONGODB_PASSWORD: !!process.env.MONGODB_PASSWORD
+}});
 
 // Attempt to connect to MongoDB with the URI
 mongoose.connect(mongoUri, mongooseOptions)
   .then(connectSuccess)
   .catch(error => {
-    console.error('❌ MongoDB connection error:', error.message);
+    logger.log({ level: 'error', event: 'mongo_connect_error', context: { error: error.message } });
     
     // Try constructing the URI differently
     if (mongoUri.includes('mongodb+srv')) {
       try {
         const formattedUri = constructSrvUri(mongoUri);
-        console.log('Trying with reformatted URI...');
+        logger.log({ level: 'debug', event: 'mongo_uri_reformat_attempt' });
         
         mongoose.connect(formattedUri, mongooseOptions)
           .then(connectSuccess)
           .catch(err => {
-            console.error('❌ MongoDB connection error with reformatted URI:', err.message);
+            logger.log({ level: 'error', event: 'mongo_connect_error_reformatted', context: { error: err.message } });
           });
       } catch (error) {
-        console.error('❌ Error constructing MongoDB URI:', error);
+        logger.log({ level: 'error', event: 'mongo_uri_construct_error', context: { error: (error as any).message } });
         // No more retries, just exit
         process.exit(1);
       }
@@ -283,14 +285,18 @@ function constructSrvUri(mongoUri) {
 // Start the server
 const port = process.env.PORT || 9000;
 httpServer.listen(port, () => {
-  console.log(`Express server running on port ${port}`);
   const v = getVersionInfo();
-  console.log('Startup version info:', {
-    appVersion: v.appVersion,
-    environment: v.environment,
-    release: v.release,
-    releasedAtISO: v.releasedAtISO,
-    commit: v.commit,
+  logger.log({
+    level: 'info',
+    event: 'startup',
+    context: {
+      port,
+      appVersion: v.appVersion,
+      environment: v.environment,
+      release: v.release,
+      releasedAtISO: v.releasedAtISO,
+      commit: v.commit,
+    }
   });
 });
 

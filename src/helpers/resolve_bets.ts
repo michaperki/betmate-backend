@@ -6,6 +6,9 @@ import {
 } from '../types/models/wager';
 
 import { delay, generateCorrelationId } from './utils';
+import logger from '../helpers/axiom_logger';
+
+const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 
 /**
  * Construct function to process `WagerDoc` into `ProcessedWager`
@@ -170,9 +173,9 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
   const cid = correlationId || generateCorrelationId();
   const userCount = new Set(wagers.map(w => w.better_id)).size;
 
-  // Only log if there are actual users affected
-  if (userCount > 0) {
-    console.log(`[${cid}] Resolving ${wagers.length} wagers for ${userCount} users`);
+  // Only log if there are actual users affected (or verbose mode)
+  if (userCount > 0 && verboseGameLogs) {
+    logger.log({ level: 'debug', event: 'resolve_wagers_start', context: { cid, wagers: wagers.length, userCount } });
   }
 
   const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
@@ -184,7 +187,9 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
   const updatedWagers = await updateWagerResults(wagerResults, winningPoolShare);
 
   if (userCount > 0) {
-    console.log(`[${cid}] Resolution complete: ${userCount} users affected`);
+    logger.log({ level: 'info', event: 'resolve_wagers_complete', context: { cid, userCount } });
+  } else if (verboseGameLogs) {
+    logger.log({ level: 'debug', event: 'resolve_wagers_complete', context: { cid, userCount } });
   }
 
   return getUserWagers(updatedWagers);
@@ -204,8 +209,9 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
   // The correct move is always the actual move played, regardless of predictions
   const correctMove = lastMove;
 
-  console.log(`[${correlationId}] Starting critical move resolution for game ${gameId}, move ${moveNum}`);
-  console.log(`[${correlationId}] Actual move played: "${lastMove}", Top moves were: [${topMoves.join(', ')}]`);
+  if (verboseGameLogs) {
+    logger.log({ level: 'debug', event: 'critical_move_resolution_start', context: { correlationId, gameId, moveNum, lastMove, topMoves } });
+  }
 
   await delay(500); // ensures all wagers are present in database
 
@@ -227,7 +233,9 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
  */
 export const resolveWdlWagers = async (gameId: string, gameStatus: string): Promise<UserWagers> => {
   const correlationId = generateCorrelationId();
-  console.log(`[${correlationId}] Starting WDL resolution for game ${gameId} with outcome: ${gameStatus}`);
+  if (verboseGameLogs) {
+    logger.log({ level: 'debug', event: 'wdl_resolution_start', context: { correlationId, gameId, gameStatus } });
+  }
 
   await delay(500); // ensures all wagers are present in database
 
@@ -249,8 +257,9 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
 export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: string[]): Promise<UserWagers> => {
   const correlationId = generateCorrelationId();
   const moveNum = chessHistory.length;
-
-  console.log(`[${correlationId}] Cancelling critical move wagers for game ${gameId}, move ${moveNum}`);
+  if (verboseGameLogs) {
+    logger.log({ level: 'debug', event: 'critical_move_cancel_all', context: { correlationId, gameId, moveNum } });
+  }
 
   await delay(500); // ensures all wagers are present in database
 

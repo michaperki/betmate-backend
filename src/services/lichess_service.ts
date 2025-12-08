@@ -1,6 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import env from 'env-var';
 import { LICHESS_URL } from '../helpers/constants';
+import logger from '../helpers/axiom_logger';
 import { Readable } from 'stream';
 import { LichessGame, LichessStreamer } from '../types/lichess';
 import {
@@ -21,7 +22,7 @@ const getGame = (id: string): Promise<LichessGame> => (
     .then((d: AxiosResponse<LichessGame>) => d.data)
     .then((game) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(game)))
     .catch((error) => {
-      console.log('Lichess error:', error.message);
+      logger.log({ level: 'warn', event: 'lichess_error', context: { error: error.message } });
       throw error;
     })
 );
@@ -66,7 +67,7 @@ const getTopGame = (): Promise<LichessGame> => (
       .reduce(takeLess(numMoves))
   ))
     .catch((error) => {
-      console.log('Lichess error:', error.message);
+      logger.log({ level: 'warn', event: 'lichess_error', context: { error: error.message } });
       throw error;
     })
 );
@@ -86,7 +87,7 @@ const getActiveStreamers = (): Promise<LichessStreamer[]> => (
     .then((d) => d.data)
     .then((d) => d.map(passiveValidate(StreamerSchema)))
     .catch((error) => {
-      console.log('Lichess error:', error.message);
+      logger.log({ level: 'warn', event: 'lichess_error', context: { error: error.message } });
       throw error;
     })
 );
@@ -101,7 +102,7 @@ const getUserGame = (userID: string): Promise<LichessGame> => (
     .then((d) => d.data)
     .then((game) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(game)))
     .catch((error) => {
-      console.log('Lichess error:', error.message);
+      logger.log({ level: 'warn', event: 'lichess_error', context: { error: error.message } });
       throw error;
     })
 );

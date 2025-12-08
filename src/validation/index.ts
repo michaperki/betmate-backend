@@ -2,6 +2,7 @@ import joi from 'joi';
 import { ExpressJoiError } from 'express-joi-validation';
 import { ErrorRequestHandler } from 'express';
 import HttpError from '../helpers/errors';
+import logger from '../helpers/axiom_logger';
 
 export const handleValidationError: ErrorRequestHandler = (err: ExpressJoiError, req, res, next) => {
   if (err.error?.isJoi) {
@@ -25,8 +26,9 @@ export const passiveValidate = <D>(schema: joi.Schema<D>) => (d: unknown): D => 
   try {
     validate(schema)(d);
   } catch (error) {
-    console.log('Validation error:', error.message);
-    console.log('Schema:', d);
+    if (process.env.LOG_VALIDATION_DEBUG === 'true') {
+      logger.log({ level: 'debug', event: 'validation_error', context: { error: (error as any).message, schema: d } });
+    }
   }
   return d as D;
 };

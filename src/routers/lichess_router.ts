@@ -41,7 +41,6 @@ const routerWithSocket = (socket: Namespace<ChessListenEvents, ChessEmitEvents>)
     .get(lichessController.getStreamers)
     .post(
       requireAuth,
-      (req, res, next) => { console.log(req.body); next(); },
       validator.body(CreateStreamerGameSchema),
       lichessController.getStreamerGame,
       validator.body(CreateGameIDSchema),

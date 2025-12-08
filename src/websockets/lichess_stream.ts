@@ -17,6 +17,9 @@ import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
 import { getLichessOutcome } from '../helpers/chess_logic';
 import { twitterService } from '../services';
+import logger from '../helpers/axiom_logger';
+
+const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 
 export const getStream = async (
   id: string,
@@ -126,16 +129,22 @@ export const getStream = async (
 
             // Check if it's a castling move and try the algebraic notation
             if (castlingMap[moveData.lm]) {
-              console.log(`[Castling] Attempting to process castling move using algebraic notation: ${castlingMap[moveData.lm]}`);
+            if (verboseGameLogs) {
+              logger.log({ level: 'debug', event: 'castling_attempt', context: { gameId, move: castlingMap[moveData.lm] } });
+            }
               try {
                 move = game.move(castlingMap[moveData.lm]);
                 if (move) {
-                  console.log(`[Castling] Successfully processed castling move`);
+                  if (verboseGameLogs) {
+                    logger.log({ level: 'debug', event: 'castling_success', context: { gameId } });
+                  }
                 } else {
-                  console.warn(`[Castling] Failed to process with algebraic notation`);
+                  if (verboseGameLogs) {
+                    logger.log({ level: 'debug', event: 'castling_failed_algebraic', context: { gameId } });
+                  }
                 }
               } catch (e) {
-                console.warn(`[Castling] Error processing castling move: ${e.message}`);
+                logger.log({ level: 'warn', event: 'castling_error', context: { gameId, error: (e as Error).message } });
               }
             }
 
@@ -144,7 +153,9 @@ export const getStream = async (
               // Use the full FEN string from Lichess instead of appending incomplete data
               // Lichess FEN strings include all needed information including castling rights
               game.load(moveData.fen);
-              console.log(`[FEN Loaded] Using Lichess FEN: ${moveData.fen}`);
+              if (verboseGameLogs) {
+                logger.log({ level: 'debug', event: 'fen_loaded', context: { gameId } });
+              }
               return;
             }
           }
@@ -178,8 +189,12 @@ export const getStream = async (
           const history = moveHist.map((m) => m.san);
           const actualMove = history[history.length - 1];
 
-          if (process.env.NODE_ENV !== 'test') {
-            console.log(`[Move Resolution] Game ${gameId} move ${history.length}: ${actualMove}, available options: [${liveTopMoves.join(', ')}]`);
+          if (verboseGameLogs) {
+            logger.log({
+              level: 'debug',
+              event: 'move_resolution',
+              context: { gameId, moveNumber: history.length, actualMove, topMoves: liveTopMoves }
+            });
           }
 
           chessService.updateChessGame(gameId, update);
@@ -201,10 +216,18 @@ export const getStream = async (
             ? resolveCriticalMoveWagers(gameId, history, previousMoveOptions)
             : cancelCriticalMoveWagers(gameId, history))
             .then((wagerResults) => {
-              if (process.env.NODE_ENV !== 'test') {
-                console.log(`[Wager Resolution] Game ${gameId} - ${Object.keys(wagerResults).length} users affected, topMoves: ${previousMoveOptions.length > 0 ? previousMoveOptions.join(',') : 'none'}`);
-                Object.entries(wagerResults).forEach(([uid, wagers]) => {
-                  console.log(`[Wager Resolution] Sending to user ${uid}: ${wagers.length} wagers, statuses: ${wagers.map(w => w.status).join(',')}`);
+              const affectedUsers = Object.keys(wagerResults).length;
+              if (affectedUsers > 0 || verboseGameLogs) {
+                logger.log({
+                  level: affectedUsers > 0 ? 'info' : 'debug',
+                  event: 'wager_resolution',
+                  context: {
+                    gameId,
+                    affectedUsers,
+                    topMoves: previousMoveOptions,
+                    moveNumber: history.length,
+                    actualMove
+                  }
                 });
               }
               Object.entries(wagerResults).forEach(([uid, wagers]) => socket.to(uid).emit('wager_result', { gameId, wagers }));

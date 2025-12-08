@@ -24,11 +24,19 @@ class AxiomLogger {
   private isInitialized: boolean = false;
   private service: string;
   private env: string;
+  private minLevel: 'debug' | 'info' | 'warn' | 'error';
 
   constructor(dataset: string = 'betmate-logs', service: string = 'backend') {
     this.dataset = dataset;
     this.service = service;
     this.env = process.env.NODE_ENV || 'development';
+    // Configure minimum log level via env (defaults to info)
+    const configured = (process.env.LOG_LEVEL || 'info').toLowerCase();
+    if (configured === 'debug' || configured === 'info' || configured === 'warn' || configured === 'error') {
+      this.minLevel = configured;
+    } else {
+      this.minLevel = 'info';
+    }
   }
   
   /**
@@ -78,20 +86,22 @@ class AxiomLogger {
 
     if (!this.client) {
       // Fall back to structured console logging if Axiom is not configured
-      // Only show debug logs in development
-      if (event.level === 'debug' && this.env === 'production') {
-        return;
-      }
+      // Filter by configured level even in development
+      if (!this.shouldLog(event.level)) return;
       console[event.level](JSON.stringify(logEntry));
       return;
     }
 
     try {
+      // Respect level filter even when using Axiom client
+      if (!this.shouldLog(event.level)) return;
       await this.client.ingestEvents(this.dataset, [logEntry]);
     } catch (error) {
       console.error('Failed to log to Axiom:', error);
       // Fall back to console logging
-      console[event.level](JSON.stringify(logEntry));
+      if (this.shouldLog(event.level)) {
+        console[event.level](JSON.stringify(logEntry));
+      }
     }
   }
 
@@ -128,6 +138,14 @@ class AxiomLogger {
    */
   generateTraceId(): string {
     return Math.random().toString(36).substring(2, 10);
+  }
+
+  /**
+   * Determine if a log of given level should be emitted based on configured min level
+   */
+  private shouldLog(level: 'debug' | 'info' | 'warn' | 'error'): boolean {
+    const order = { debug: 10, info: 20, warn: 30, error: 40 } as const;
+    return order[level] >= order[this.minLevel];
   }
 }
 
