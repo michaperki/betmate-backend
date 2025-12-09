@@ -54,10 +54,15 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
     const returnReal = winReal === 0;
     const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
 
-    return [
+    const list = [
       ...arcade.map(processWager(correctOutcome)),
       ...real.map(processWager(correctOutcome, shareReal, returnReal)),
     ];
+    try {
+      const rakeCollected = returnReal ? 0 : (totalReal * rake);
+      logger.log({ level: 'info', event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    } catch {}
+    return list;
   })(),
 });
 
@@ -91,6 +96,11 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
     ...arcade.map(processWager(correctMove, shareArcade, returnArcade)),
     ...real.map(processWager(correctMove, shareReal, returnReal)),
   );
+
+  try {
+    const rakeCollected = returnReal ? 0 : (totalReal * rake);
+    logger.log({ level: 'info', event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+  } catch {}
 
   return { processedWagers };
 };

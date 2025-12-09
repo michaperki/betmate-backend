@@ -166,6 +166,12 @@ app.get('/api/status', (req, res) => {
   const pricing = {
     pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
   };
+  const limits = {
+    arcadeMaxStakeMove: Number(process.env.ARCADE_MAX_STAKE_MOVE || 25),
+    arcadeMaxStakeWdl: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),
+    arcadeMoveMargin: Number(process.env.ARCADE_MOVE_MARGIN || 0.08),
+    poolRake: Number(process.env.POOL_RAKE || 0.05),
+  };
 
   res.json({
     status: 'online',
@@ -179,6 +185,7 @@ app.get('/api/status', (req, res) => {
     },
     features,
     pricing,
+    limits,
   });
 });
 
