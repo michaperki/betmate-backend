@@ -19,7 +19,10 @@ const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
   (wager: WagerDoc): ProcessedWager => {
     const baseWager = { _id: wager._id, better_id: wager.better_id, mode: wager.mode, currency: wager.currency } as Partial<ProcessedWager>;
-    const odds = wager.wdl ? wager.odds : winningPoolShare;
+    // For move bets: Arcade uses stored fixed odds; Real uses pool share
+    const odds = wager.wdl
+      ? wager.odds
+      : (wager.mode === 'real' ? winningPoolShare : wager.odds);
 
     switch (true) {
       case returnWagers:
@@ -71,10 +74,12 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
   const arcade = wagers.filter(w => w.mode !== 'real');
   const real = wagers.filter(w => w.mode === 'real');
 
+  // Arcade is house-priced fixed odds: never refund due to "no winners"
+  // Winners are paid by stored odds; losers lose stakes. No parimutuel share used.
   const totalArcade = arcade.reduce((sum, w) => sum + w.amount, 0);
   const winArcade = arcade.filter(w => w.data === correctMove).reduce((s, w) => s + w.amount, 0);
-  const returnArcade = winArcade === 0;
-  const shareArcade = returnArcade ? Number.MAX_SAFE_INTEGER : (totalArcade / winArcade);
+  const returnArcade = false;
+  const shareArcade = 1; // ignored for Arcade move bets (fixed odds used instead)
 
   const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
   const winReal = real.filter(w => w.data === correctMove).reduce((s, w) => s + w.amount, 0);
@@ -136,11 +141,21 @@ export const getUserWagers = (wagers: WagerDoc[]): UserWagers => (
  * @param pw array of processed wagers
  * @returns JSON mapping wager outcomes to an array of wagers IDs with that outcome
  */
-export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
-  [WagerStatus.WON]: pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id),
-  [WagerStatus.LOST]: pw.filter((w) => w.outcome === WagerStatus.LOST).map((w) => w._id),
-  [WagerStatus.CANCELLED]: pw.filter((w) => w.outcome === WagerStatus.CANCELLED).map((w) => w._id),
-});
+export const getWagerResults = (pw: ProcessedWager[]): WagerResults => {
+  // Treat Arcade move wagers as win/lose only — never cancelled
+  const winners = pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id);
+  const lost = pw
+    .filter((w) => w.outcome === WagerStatus.LOST || (w.outcome === WagerStatus.CANCELLED && w.mode !== 'real'))
+    .map((w) => w._id);
+  const cancelled = pw
+    .filter((w) => w.outcome === WagerStatus.CANCELLED && w.mode === 'real')
+    .map((w) => w._id);
+  return {
+    [WagerStatus.WON]: winners,
+    [WagerStatus.LOST]: lost,
+    [WagerStatus.CANCELLED]: cancelled,
+  };
+};
 
 /**
  * Update `User` accounts with their winnings

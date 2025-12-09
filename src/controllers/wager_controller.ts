@@ -3,7 +3,7 @@ import { RequestHandler } from 'express';
 import { Types } from 'mongoose';
 
 import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
-import { chessService, userService, wagerService } from '../services';
+import { chessService, userService, wagerService, microserviceService } from '../services';
 import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';
 import { WagerStatus } from '../types/models/wager';
@@ -46,9 +46,16 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       return;
     }
 
-    // Determine which balance to check based on mode
+    // Determine requested mode and gate Real mode via feature flag
     const mode = req.body.mode === 'real' ? 'real' : 'arcade';
-    const currency = req.body.currency === 'USDT' ? 'USDT' : 'BET';
+    const realAllowed = (process.env.FEATURE_REAL_MODE === 'true') || (process.env.NODE_ENV === 'development');
+    if (mode === 'real' && !realAllowed) {
+      res.status(403).json({ error: 'Real mode is currently disabled' });
+      return;
+    }
+
+    // Enforce currency by mode: Arcade=BET, Real=USDT (ignore client override)
+    const currency = mode === 'real' ? 'USDT' : 'BET';
     const effectiveBalance = mode === 'real' ? (req.user as any).cash_balance : req.user.account;
 
     // check user has enough money to place bet
@@ -71,13 +78,59 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       }
     }
 
+    // If Arcade move bet, compute house-priced odds from engine deltas (Level-0)
+    let computedOdds = odds;
+    if (!wdl && mode === 'arcade') {
+      try {
+        const fen = game.state;
+        const offered = (game.pool_wagers?.move?.options || []) as string[];
+        const top = await microserviceService.getTopMoves(fen, Math.max(12, offered.length || 3));
+
+        const scoreByMove = new Map<string, number>();
+        let bestScore = -Infinity;
+        for (const item of top || []) {
+          const mv = String((item as any)?.move || '');
+          const sc = Number((item as any)?.score || 0);
+          if (!mv) continue;
+          scoreByMove.set(mv, sc);
+          if (sc > bestScore) bestScore = sc;
+        }
+        if (!Number.isFinite(bestScore)) bestScore = 0;
+
+        // Bucketed raw probabilities based on delta from best
+        const rawP = (mv: string): number => {
+          const sc = scoreByMove.has(mv) ? (scoreByMove.get(mv) as number) : (bestScore - 250);
+          const delta = bestScore - sc; // worse moves have larger delta
+          if (delta <= 30) return 0.5;
+          if (delta <= 80) return 0.3;
+          if (delta <= 200) return 0.15;
+          return 0.05;
+        };
+
+        // Work over the currently offered moves if available; otherwise use top list
+        const universe = (offered && offered.length ? offered : (top || []).map((t: any) => String(t.move))).filter(Boolean);
+        const baseList = universe.length ? universe : [data];
+        const raws = baseList.map(rawP);
+        const sum = raws.reduce((a, b) => a + b, 0) || 1;
+        const targetRaw = rawP(data);
+        const p = Math.max(1e-6, targetRaw / sum);
+
+        const margin = Math.max(0, Math.min(0.25, Number(process.env.ARCADE_MOVE_MARGIN || 0.08)));
+        const houseOdds = (1 - margin) / p;
+        computedOdds = Math.max(1, Number(houseOdds.toFixed(2)));
+      } catch (e) {
+        // Fall back to client-provided odds if pricing fails
+        computedOdds = Math.max(1, Number(odds) || 1);
+      }
+    }
+
     const doc = await wagerService.createWager({
       game_id,
       better_id,
       wdl,
       data,
       amount,
-      odds,
+      odds: computedOdds,
       move_number,
       is_bot: false,
       mode,

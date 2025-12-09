@@ -157,9 +157,12 @@ app.get('/', (req, res) => {
 // Add an API version endpoint for the frontend to check
 app.get('/api/status', (req, res) => {
   const v = getVersionInfo();
-  const features = {
-    realModeEnabled: process.env.FEATURE_REAL_MODE === 'true',
-  };
+  // Enable Real mode by default in development to allow UI toggle while building.
+  const realModeEnabled = (
+    process.env.FEATURE_REAL_MODE === 'true'
+    || process.env.NODE_ENV === 'development'
+  );
+  const features = { realModeEnabled };
   const pricing = {
     pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
   };
