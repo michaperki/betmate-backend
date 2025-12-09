@@ -97,18 +97,21 @@ import { rateLimit } from 'express-rate-limit';
 import errorHandler from './middleware/error_handler';
 import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
 
-// Enable if in production or if a specific env var is set
+// Enable if in production or if a specific env var is set.
+// Apply selectively to avoid throttling core dashboard endpoints like /leaderboard and /wager.
 if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
-  const apiLimiter = rateLimit({
+  const selectiveLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
-    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    standardHeaders: true,
+    legacyHeaders: false,
     message: "Too many requests from this IP, please try again after 15 minutes"
   });
-  
-  // Apply to all requests
-  app.use(apiLimiter);
+
+  // Narrow scope: heavy/expensive or auth-centric endpoints
+  app.use('/analysis', selectiveLimiter);
+  app.use('/auth', selectiveLimiter);
+  // Note: /leaderboard and /wager are intentionally left unrestricted by the global limiter here.
 }
 
 // Add Axiom logging middleware
