@@ -3,7 +3,7 @@ import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
 import { analysisController } from '../controllers';
-import { GetMoveAnalysisSchema } from '../validation/analysis';
+import { GetMoveAnalysisSchema, BatchMoveAnalysisSchema } from '../validation/analysis';
 import { handleValidationError } from '../validation';
 
 const router = express();
@@ -27,6 +27,13 @@ router
   .route('/top-moves')
   .get(
     analysisController.getTopMovesRequest,
+  );
+
+router
+  .route('/moves')
+  .post(
+    validator.body(BatchMoveAnalysisSchema),
+    analysisController.getBatchMoveAnalysisRequest,
   );
 
 if (process.env.NODE_ENV === 'test') {
