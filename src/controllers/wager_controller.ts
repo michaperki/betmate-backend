@@ -46,6 +46,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       return;
     }
 
+<<<<<<< Updated upstream
     // Determine which balance to check based on mode
     const requestMode = req.body.mode === 'real' ? 'real' : 'arcade';
     // Server-side real-mode gating (defense-in-depth)
@@ -55,6 +56,17 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
     const mode = requestMode;
     // Enforce currency by mode: Real=USDT, Arcade=BET
+=======
+    // Determine requested mode and gate Real mode via feature flag
+    const mode = req.body.mode === 'real' ? 'real' : 'arcade';
+    const realAllowed = (process.env.FEATURE_REAL_MODE === 'true') || (process.env.NODE_ENV === 'development');
+    if (mode === 'real' && !realAllowed) {
+      res.status(403).json({ error: 'Real mode is currently disabled' });
+      return;
+    }
+
+    // Enforce currency by mode: Arcade=BET, Real=USDT (ignore client override)
+>>>>>>> Stashed changes
     const currency = mode === 'real' ? 'USDT' : 'BET';
     const effectiveBalance = mode === 'real' ? (req.user as any).cash_balance : req.user.account;
 
