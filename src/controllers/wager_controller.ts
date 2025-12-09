@@ -56,7 +56,9 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
     // Enforce currency by mode: Arcade=BET, Real=USDT (ignore client override)
     const currency = mode === 'real' ? 'USDT' : 'BET';
-    const effectiveBalance = mode === 'real' ? (req.user as any).cash_balance : req.user.account;
+    // Prefer token_balance for Arcade; fall back to legacy account if undefined
+    const arcadeBalance = Number((req.user as any).token_balance ?? (req.user as any).account ?? 0);
+    const effectiveBalance = mode === 'real' ? Number((req.user as any).cash_balance || 0) : arcadeBalance;
 
     // check user has enough money to place bet
     if (!effectiveBalance || amount > effectiveBalance) {
@@ -143,7 +145,14 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     if (mode === 'real') {
       await userService.updateUserData(req.user._id, { $inc: { cash_balance: -amount } });
     } else {
-      await userService.updateUserData(req.user._id, { $inc: { account: -amount, token_balance: -amount } });
+      // Initialize token_balance to legacy account if missing, then debit.
+      const update: any = { $inc: { token_balance: -amount } };
+      if ((req.user as any).token_balance == null) {
+        update.$set = { token_balance: arcadeBalance };
+      }
+      // Keep legacy account in sync during migration to avoid UI discrepancies
+      update.$inc.account = -amount;
+      await userService.updateUserData(req.user._id, update);
     }
 
     // Record balance history
