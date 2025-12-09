@@ -34,6 +34,9 @@ export interface WagerDoc extends Document {
   created_at: Date,
   updated_at: Date,
   is_bot?: boolean,
+  mode?: 'arcade' | 'real',
+  currency?: 'BET' | 'USDT',
+  pricing_model_version?: string,
 }
 
 export interface PopulatedWagerDoc extends Omit<WagerDoc, 'better_id' | 'game_id'> {
@@ -49,7 +52,10 @@ export interface ProcessedWager {
   _id: Types.ObjectId,
   better_id: Types.ObjectId,
   winnings: number,
-  outcome: WagerOutcomes
+  outcome: WagerOutcomes,
+  mode?: 'arcade' | 'real',
+  currency?: 'BET' | 'USDT',
+  applied_share?: number,
 }
 
   type WagerProcessorOutput = {

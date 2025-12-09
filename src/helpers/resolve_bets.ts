@@ -18,16 +18,16 @@ const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
  */
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
   (wager: WagerDoc): ProcessedWager => {
-    const baseWager = { _id: wager._id, better_id: wager.better_id };
+    const baseWager = { _id: wager._id, better_id: wager.better_id, mode: wager.mode, currency: wager.currency } as Partial<ProcessedWager>;
     const odds = wager.wdl ? wager.odds : winningPoolShare;
 
     switch (true) {
       case returnWagers:
-        return { ...baseWager, outcome: WagerStatus.CANCELLED, winnings: wager.amount };
+        return { ...(baseWager as any), outcome: WagerStatus.CANCELLED, winnings: wager.amount } as ProcessedWager;
       case wager.data === correctWager:
-        return { ...baseWager, outcome: WagerStatus.WON, winnings: wager.amount * odds };
+        return { ...(baseWager as any), outcome: WagerStatus.WON, winnings: wager.amount * odds, ...(wager.wdl ? {} : { applied_share: odds }) } as ProcessedWager;
       default:
-        return { ...baseWager, outcome: WagerStatus.LOST, winnings: 0 };
+        return { ...(baseWager as any), outcome: WagerStatus.LOST, winnings: 0 } as ProcessedWager;
     }
   }
 );
@@ -39,7 +39,23 @@ export const processWager = (correctWager: string, winningPoolShare = 1, returnW
  * @returns Processed `wagers`
  */
 export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
-  processedWagers: wagers.map(processWager(correctOutcome)),
+  // Split Arcade vs Real; Arcade uses fixed odds; Real uses parimutuel with rake
+  processedWagers: (() => {
+    const rake = Math.max(0, Math.min(0.25, Number(process.env.POOL_RAKE || 0.05)));
+
+    const arcade = wagers.filter(w => w.mode !== 'real');
+    const real = wagers.filter(w => w.mode === 'real');
+
+    const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
+    const winReal = real.filter(w => w.data === correctOutcome).reduce((s, w) => s + w.amount, 0);
+    const returnReal = winReal === 0;
+    const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
+
+    return [
+      ...arcade.map(processWager(correctOutcome)),
+      ...real.map(processWager(correctOutcome, shareReal, returnReal)),
+    ];
+  })(),
 });
 
 /**
@@ -49,21 +65,29 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
  * @returns Processed `wagers`, and share of the pool that the winners get
  */
 export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) => {
-  const totalPool = wagers
-    .reduce((sum, w) => sum + w.amount, 0);
-  const winningPool = wagers
-    .filter((w) => w.data === correctMove)
-    .reduce((sum, w) => sum + w.amount, 0);
+  // Apply rake for Real mode only
+  const rake = Math.max(0, Math.min(0.25, Number(process.env.POOL_RAKE || 0.05)));
 
-  const returnBets = winningPool === 0;
-  const winningPoolShare = returnBets
-    ? Number.MAX_SAFE_INTEGER
-    : totalPool / winningPool;
+  const arcade = wagers.filter(w => w.mode !== 'real');
+  const real = wagers.filter(w => w.mode === 'real');
 
-  return {
-    processedWagers: wagers.map(processWager(correctMove, winningPoolShare, returnBets)),
-    winningPoolShare,
-  };
+  const totalArcade = arcade.reduce((sum, w) => sum + w.amount, 0);
+  const winArcade = arcade.filter(w => w.data === correctMove).reduce((s, w) => s + w.amount, 0);
+  const returnArcade = winArcade === 0;
+  const shareArcade = returnArcade ? Number.MAX_SAFE_INTEGER : (totalArcade / winArcade);
+
+  const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
+  const winReal = real.filter(w => w.data === correctMove).reduce((s, w) => s + w.amount, 0);
+  const returnReal = winReal === 0;
+  const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
+
+  const processedWagers: ProcessedWager[] = [];
+  processedWagers.push(
+    ...arcade.map(processWager(correctMove, shareArcade, returnArcade)),
+    ...real.map(processWager(correctMove, shareReal, returnReal)),
+  );
+
+  return { processedWagers };
 };
 
 /**
@@ -79,6 +103,17 @@ export const getUserWinnings = (pw: ProcessedWager[]): UserWinnings => (
       [userID]: (uw[userID] || 0) + w.winnings,
     };
   }, {})
+);
+
+// Compute wallet-credits per user by currency (BET vs USDT)
+const getUserWalletCredits = (pw: ProcessedWager[]): Record<string, { BET?: number; USDT?: number }> => (
+  pw.reduce((map, w) => {
+    if (!w.winnings || w.winnings <= 0) return map;
+    const userID = String(w.better_id);
+    const curr = (w.currency === 'USDT') ? 'USDT' : 'BET';
+    const prev = map[userID] || {};
+    return { ...map, [userID]: { ...prev, [curr]: (prev[curr as 'BET' | 'USDT'] || 0) + w.winnings } };
+  }, {} as Record<string, { BET?: number; USDT?: number }>)
 );
 
 /**
@@ -112,29 +147,35 @@ export const getWagerResults = (pw: ProcessedWager[]): WagerResults => ({
  * @param userWinnings JSON mapping user IDs to their wagers
  * @returns Array of updated `UserDoc`
  */
-const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]> => {
-  const usersToUpdate = Object
-    .entries(userWinnings)
-    .map(async ([id, winnings]) => {
-      // Update user account
-      const updatedUser = await userService.updateUserData(id, { $inc: { account: winnings } });
+const updateUserWinnings = async (processedWagers: ProcessedWager[]): Promise<UserDoc[]> => {
+  const credits = getUserWalletCredits(processedWagers);
+  const updates = Object.entries(credits).map(async ([id, amounts]) => {
+    const inc: any = {};
+    if (amounts.BET && amounts.BET > 0) {
+      inc.account = (inc.account || 0) + amounts.BET;
+      inc.token_balance = (inc.token_balance || 0) + amounts.BET;
+    }
+    if (amounts.USDT && amounts.USDT > 0) {
+      inc.cash_balance = (inc.cash_balance || 0) + amounts.USDT;
+    }
 
-      // Record balance history
-      if (updatedUser && winnings > 0) {
-        await userService.recordBalanceChange(
-          id,
-          winnings,
-          'Wager winnings',
-          undefined,
-          'Wager'
-        );
+    const updatedUser = Object.keys(inc).length
+      ? await userService.updateUserData(id, { $inc: inc })
+      : null;
+
+    if (updatedUser) {
+      if (amounts.BET && amounts.BET > 0) {
+        await userService.recordBalanceChange(id, amounts.BET, 'Wager winnings', undefined, 'Wager');
       }
+      if (amounts.USDT && amounts.USDT > 0) {
+        await userService.recordBalanceChange(id, amounts.USDT, 'Wager winnings', undefined, 'Wager');
+      }
+    }
+    return updatedUser;
+  });
 
-      return updatedUser;
-    });
-
-  const updatedUsers = await Promise.all(usersToUpdate);
-  return updatedUsers.filter((u): u is UserDoc => u !== null);
+  const result = await Promise.all(updates);
+  return result.filter((u): u is UserDoc => u !== null);
 };
 
 /**
@@ -143,21 +184,32 @@ const updateUserWinnings = async (userWinnings: UserWinnings): Promise<UserDoc[]
  * @param winningPoolShare For pool wagers, share of the pool that the winners get
  * @returns Array of updated `WagerDoc`
  */
-const updateWagerResults = async (wagerResults: WagerResults, winningPoolShare?: number): Promise<WagerDoc[]> => {
-  const wagersToUpdate = Object
-    .entries(wagerResults)
-    .map(async ([outcome, ids]) => {
-      const updateQuery: UpdateQuery<WagerDoc> = {
-        resolved: true,
-        status: outcome as WagerOutcomes,
-        ...(winningPoolShare && { winning_pool_share: winningPoolShare }),
-      };
-
+const updateWagerResults = async (processedWagers: ProcessedWager[], wagerResults: WagerResults): Promise<WagerDoc[]> => {
+  // Update resolved + status
+  const outcomeUpdates = await Promise.all(
+    Object.entries(wagerResults).map(async ([outcome, ids]) => {
+      const updateQuery: UpdateQuery<WagerDoc> = { resolved: true, status: outcome as WagerOutcomes };
       const res = await wagerService.updateManyWagers({ _id: { $in: ids } }, updateQuery);
       return res && wagerService.getWagers({ _id: { $in: ids } });
-    });
+    })
+  );
 
-  const updatedWagers = await Promise.all(wagersToUpdate);
+  // Set winning_pool_share per winner group (by applied_share)
+  const winners = processedWagers.filter(w => w.outcome === WagerStatus.WON && typeof w.applied_share === 'number');
+  const byShare = winners.reduce((map, w) => {
+    const key = String(w.applied_share);
+    const arr = map[key] || [] as Types.ObjectId[];
+    arr.push(w._id);
+    map[key] = arr;
+    return map;
+  }, {} as Record<string, Types.ObjectId[]>);
+
+  await Promise.all(Object.entries(byShare).map(([shareStr, ids]) => {
+    const share = Number(shareStr);
+    return wagerService.updateManyWagers({ _id: { $in: ids } }, { winning_pool_share: share });
+  }));
+
+  const updatedWagers = await Promise.all(outcomeUpdates);
   return updatedWagers.filter((w): w is WagerDoc[] => w !== null).flat();
 };
 
@@ -178,13 +230,13 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
     logger.log({ level: 'debug', event: 'resolve_wagers_start', context: { cid, wagers: wagers.length, userCount } });
   }
 
-  const { processedWagers, winningPoolShare } = processWagers(wagers, correctWager);
+  const { processedWagers } = processWagers(wagers, correctWager);
 
   const userWinnings = getUserWinnings(processedWagers);
   const wagerResults = getWagerResults(processedWagers);
 
-  updateUserWinnings(userWinnings);
-  const updatedWagers = await updateWagerResults(wagerResults, winningPoolShare);
+  await updateUserWinnings(processedWagers);
+  const updatedWagers = await updateWagerResults(processedWagers, wagerResults);
 
   if (userCount > 0) {
     logger.log({ level: 'info', event: 'resolve_wagers_complete', context: { cid, userCount } });

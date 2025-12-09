@@ -59,6 +59,12 @@ router.route('/logout')
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
 
+// Minimal onboarding status endpoint to quiet frontend polling
+router.route('/onboarding')
+  .get(requireAuth, (req, res) => {
+    res.status(200).json({ needsOnboarding: false, version: 1 });
+  });
+
 if (process.env.NODE_ENV === 'test') {
   router.use(handleValidationError);
 }

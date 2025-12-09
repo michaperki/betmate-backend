@@ -50,6 +50,19 @@ const WagerSchema = new Schema({
     required: true,
     immutable: true,
   },
+  mode: {
+    type: String,
+    enum: ['arcade', 'real'],
+    default: 'arcade',
+    immutable: true,
+  },
+  currency: {
+    type: String,
+    enum: ['BET', 'USDT'],
+    default: 'BET',
+    immutable: true,
+  },
+  pricing_model_version: { type: String, default: undefined },
   resolved: { type: Boolean, default: false },
   status: {
     type: String,
