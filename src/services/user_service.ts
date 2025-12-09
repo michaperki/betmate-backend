@@ -338,6 +338,26 @@ const getUserBalanceHistory = async (
   }
 };
 
+/**
+ * Backfill token_balance for users where it's missing or negative.
+ * Initializes token_balance from legacy account (clamped >= 0).
+ */
+const backfillTokenBalance = async (): Promise<{ scanned: number; updated: number }> => {
+  try {
+    const candidates = await Users.find({ $or: [ { token_balance: { $exists: false } }, { token_balance: { $lt: 0 } } ] })
+      .select(['_id', 'account', 'token_balance']) as any[];
+    let updated = 0;
+    for (const u of candidates) {
+      const fallback = Math.max(0, Number(u?.account || 0));
+      await Users.updateOne({ _id: u._id }, { $set: { token_balance: fallback } });
+      updated += 1;
+    }
+    return { scanned: candidates.length, updated };
+  } catch (error) {
+    return { scanned: 0, updated: 0 };
+  }
+};
+
 const userService = {
   createUser,
   emailAvailable,
@@ -355,7 +375,8 @@ const userService = {
   getUserActiveWagers,
   getUserWagerHistory,
   recordBalanceChange,
-  getUserBalanceHistory
+  getUserBalanceHistory,
+  backfillTokenBalance,
 };
 
 export default userService;
