@@ -1,12 +1,10 @@
 import bodyParser from 'body-parser';
 import express from 'express';
-import { createValidator } from 'express-joi-validation';
 import { requireAuth } from '../authentication';
 import billingController from '../controllers/billing_controller';
+import bodyParserRaw from 'body-parser';
 
 const router = express();
-const validator = createValidator({ passError: true });
-
 // JSON body
 router.use(bodyParser.json());
 
@@ -16,8 +14,11 @@ router.post('/deposit/intent', requireAuth, billingController.createDepositInten
 // List user deposits
 router.get('/deposits', requireAuth, billingController.listDeposits);
 
-// Provider webhook stub (no auth; signature verification TBD)
-router.post('/webhook', billingController.providerWebhook);
+// CoinPayments IPN needs raw body for HMAC
+router.post('/webhook/coinpayments', bodyParserRaw.raw({ type: '*/*' }), (req: any, _res, next) => {
+  req.rawBody = req.body?.toString?.() || req.rawBody || '';
+  try { req.body = JSON.parse(req.rawBody); } catch { /* leave raw */ }
+  next();
+}, billingController.coinpaymentsWebhook);
 
 export default router;
-
