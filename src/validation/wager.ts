@@ -21,7 +21,10 @@ const wagerStatusValidator = (value: any, helpers: joi.CustomHelpers) => {
     : helpers.message({ custom: `The values '${sanitizedValue.filter((v) => !isWagerStatus(v))}' are not wager statuses` });
 };
 
-type CreateWagerBody = Pick<WagerDoc, 'wdl' | 'data' | 'amount' | 'odds' | 'move_number' | 'is_bot'>;
+type CreateWagerBody = Pick<WagerDoc, 'wdl' | 'data' | 'amount' | 'odds' | 'move_number' | 'is_bot'> & {
+  mode?: 'arcade' | 'real';
+  currency?: 'BET' | 'USDT';
+};
 interface GetWagersQuery {
   resolved?: boolean
   wdl?: boolean
@@ -37,6 +40,8 @@ export const CreateWagerSchema = joi.object<CreateWagerBody>({
   move_number: joi.number().min(0).required(),
   // Allow but don't require is_bot field
   is_bot: joi.boolean().optional(),
+  mode: joi.string().valid('arcade', 'real').optional(),
+  currency: joi.string().valid('BET', 'USDT').optional(),
 });
 
 export const GetWagersSchema = joi.object<GetWagersQuery>({

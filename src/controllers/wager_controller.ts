@@ -14,6 +14,8 @@ type WagerRequestBody = {
   data: string,
   odds: number,
   move_number: number,
+  mode?: 'arcade' | 'real',
+  currency?: 'BET' | 'USDT',
 };
 
 /**
@@ -44,14 +46,30 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       return;
     }
 
+    // Determine which balance to check based on mode
+    const mode = req.body.mode === 'real' ? 'real' : 'arcade';
+    const currency = req.body.currency === 'USDT' ? 'USDT' : 'BET';
+    const effectiveBalance = mode === 'real' ? (req.user as any).cash_balance : req.user.account;
+
     // check user has enough money to place bet
-    if (!req.user.account || amount > req.user.account) {
+    if (!effectiveBalance || amount > effectiveBalance) {
       res.status(401).json({ error: 'Insufficient funds' });
       return;
     }
 
     // Extract only the fields we need for a user wager (ensure is_bot is false)
     const { wdl, data, odds, move_number } = req.body;
+
+    // Enforce simple Arcade stake caps (configurable via env)
+    if (mode === 'arcade') {
+      const maxMove = Number(process.env.ARCADE_MAX_STAKE_MOVE || 25);
+      const maxWdl = Number(process.env.ARCADE_MAX_STAKE_WDL || 50);
+      const maxAllowed = wdl ? maxWdl : maxMove;
+      if (amount > maxAllowed) {
+        res.status(400).json({ error: `Stake exceeds maximum for this bet (${maxAllowed})` });
+        return;
+      }
+    }
 
     const doc = await wagerService.createWager({
       game_id,
@@ -61,11 +79,19 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       amount,
       odds,
       move_number,
-      is_bot: false
+      is_bot: false,
+      mode,
+      currency,
+      pricing_model_version: process.env.PRICING_MODEL_VERSION || 'v0',
     });
 
     // Update user balance
-    await userService.updateUserData(req.user._id, { $inc: { account: -amount } });
+    // Debit the appropriate wallet and leave others untouched.
+    if (mode === 'real') {
+      await userService.updateUserData(req.user._id, { $inc: { cash_balance: -amount } });
+    } else {
+      await userService.updateUserData(req.user._id, { $inc: { account: -amount, token_balance: -amount } });
+    }
 
     // Record balance history
     await userService.recordBalanceChange(
@@ -73,7 +99,8 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       -amount,
       'Wager placed',
       doc._id,
-      'Wager'
+      'Wager',
+      currency
     );
 
     res.status(200).json(doc);

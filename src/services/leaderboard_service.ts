@@ -33,7 +33,8 @@ const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId |
     .catch(dbErrorHandler)
 );
 
-const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | string): Promise<Rank> => (
+// Return user's rank or a clear { has_rank:false } payload
+const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | string): Promise<any> => (
   Leaderboard
     .findOne(id ? { _id: id } : undefined)
     .sort({ created_at: -1 })
@@ -41,8 +42,8 @@ const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | s
     .then(dbNullDocHandler)
     .then((doc) => {
       const rank = doc.user_ranks.get(String(userID));
-      if (!rank) throw new HttpError(400, ['User not found in rankings']);
-      return rank;
+      if (!rank) return { has_rank: false };
+      return rank as Rank;
     })
     .catch(dbErrorHandler)
 );

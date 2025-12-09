@@ -154,7 +154,14 @@ app.get('/', (req, res) => {
 // Add an API version endpoint for the frontend to check
 app.get('/api/status', (req, res) => {
   const v = getVersionInfo();
-  res.json({ 
+  const features = {
+    realModeEnabled: process.env.FEATURE_REAL_MODE === 'true',
+  };
+  const pricing = {
+    pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
+  };
+
+  res.json({
     status: 'online',
     version: v.appVersion,
     environment: v.environment,
@@ -164,6 +171,8 @@ app.get('/api/status', (req, res) => {
       commit: v.commit,
       release: v.release,
     },
+    features,
+    pricing,
   });
 });
 

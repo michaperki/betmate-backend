@@ -288,7 +288,8 @@ const recordBalanceChange = async (
   amount: number,
   reason: string,
   referenceId?: string | Types.ObjectId,
-  referenceType?: string
+  referenceType?: string,
+  currency?: 'BET' | 'USDT'
 ): Promise<BalanceHistoryDoc> => {
   try {
     // Find user to get current balance
@@ -301,7 +302,8 @@ const recordBalanceChange = async (
     const balanceHistory = new BalanceHistory({
       user_id: userId,
       amount: amount,
-      balance: user.account,
+      balance: currency === 'USDT' ? (user as any).cash_balance : user.account,
+      currency: currency || 'BET',
       reason: reason,
       ...(referenceId && { reference_id: referenceId }),
       ...(referenceType && { reference_type: referenceType })

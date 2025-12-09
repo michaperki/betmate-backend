@@ -149,7 +149,7 @@ const getGameStats = async (gameId: string | Types.ObjectId) => {
     }); // Cache temporarily disabled
 
     if (!game) {
-      throw new Error('Game not found');
+      throw new (require('../helpers/errors').default)(404, ['Game not found']);
     }
 
     // Run both aggregations in parallel for better performance
