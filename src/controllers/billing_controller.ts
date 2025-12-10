@@ -3,7 +3,7 @@ import { ValidatedRequestWithJWT } from '../types/requests';
 import { Users, Deposit } from '../models';
 import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
-import { createPayment as createNowPayment, verifyWebhookSignature as verifyNowpSig } from '../services/providers/nowpayments';
+import { createPayment as createNowPayment, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
 import logger from '../helpers/axiom_logger';
 
@@ -180,10 +180,90 @@ export const nowpaymentsWebhookMock: RequestHandler = async (req, res) => {
   }
 };
 
+// Admin-only: reconcile NOWPayments pending deposits by polling provider
+export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+    const items = await Deposit.find({ provider: 'nowpayments', status: 'pending' }).sort({ created_at: 1 }).limit(limit);
+    const results: any[] = [];
+    for (const dep of items) {
+      const ref = dep.provider_ref;
+      if (!ref) { results.push({ id: String(dep._id), action: 'skip_no_ref' }); continue; }
+      try {
+        const info = await getNowPayment(ref);
+        const status = String(info?.payment_status || info?.status || '').toLowerCase();
+        const confirmed = status === 'confirmed' || status === 'finished' || status === 'completed' || status === 'paid';
+        const failed = status === 'failed' || status === 'cancelled';
+        if (confirmed && dep.status !== 'confirmed') {
+          dep.status = 'confirmed';
+          await dep.save();
+          try {
+            await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
+            await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
+          } catch (creditErr) {
+            logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
+          }
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'confirmed' });
+        } else if (failed && dep.status !== 'confirmed') {
+          dep.status = 'failed';
+          await dep.save();
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'failed' });
+        } else {
+          results.push({ id: String(dep._id), provider_ref: ref, status: dep.status });
+        }
+      } catch (e) {
+        results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+      }
+    }
+    return res.status(200).json({ ok: true, count: results.length, results });
+  } catch (e) {
+    return res.status(500).json({ error: 'Reconciliation error' });
+  }
+};
+
+// Admin-only: reissue a NOWPayments invoice for a deposit missing provider_ref
+export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
+  try {
+    const id = String(req.params.id || '');
+    const dep = await Deposit.findById(id);
+    if (!dep) return res.status(404).json({ error: 'Deposit not found' });
+    if (dep.provider !== 'nowpayments') return res.status(400).json({ error: 'Not a NOWPayments deposit' });
+    if (dep.status === 'confirmed') return res.status(400).json({ error: 'Already confirmed' });
+    if (dep.provider_ref && !req.query.force) {
+      return res.status(400).json({ error: 'Already has provider_ref; add ?force=true to overwrite' });
+    }
+    const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+    const ipnUrl = `${base}/billing/webhook/nowpayments`;
+    const successUrl = process.env.NOWPAYMENTS_SUCCESS_URL;
+    const cancelUrl = process.env.NOWPAYMENTS_CANCEL_URL;
+    const payCurrencyEnv = process.env.NOWPAYMENTS_PAY_CURRENCY;
+    const payload: any = {
+      price_amount: dep.amount,
+      price_currency: 'USD',
+      order_id: String(dep._id),
+      order_description: `BetMate Deposit (${dep.currency})`,
+      ipn_callback_url: ipnUrl,
+      ...(successUrl ? { success_url: successUrl } : {}),
+      ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
+    };
+    if (payCurrencyEnv) payload.pay_currency = payCurrencyEnv;
+    const payment = await createNowPayment(payload);
+    dep.provider_ref = payment.payment_id;
+    dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+    dep.status = 'pending';
+    await dep.save();
+    return res.status(200).json({ ok: true, deposit_id: String(dep._id), provider_ref: dep.provider_ref, payment_url: payment.payment_url });
+  } catch (e) {
+    return res.status(500).json({ error: 'Reissue error' });
+  }
+};
+
 export default {
   createDepositIntent,
   listDeposits,
   coinpaymentsWebhook,
   nowpaymentsWebhook,
   nowpaymentsWebhookMock,
+  reconcileNowpaymentsPending,
+  reissueNowpaymentsInvoice,
 };

@@ -45,3 +45,12 @@ export function verifyWebhookSignature(rawBody: string, signatureHeader?: string
   }
 }
 
+export async function getPayment(paymentId: string): Promise<any> {
+  const apiKey = process.env.NOWPAYMENTS_API_KEY;
+  if (!apiKey) throw new Error('NOWPAYMENTS_API_KEY missing');
+  const res = await axios.get(`${API_BASE}/payment/${encodeURIComponent(paymentId)}`, {
+    headers: { 'x-api-key': apiKey },
+    timeout: 15000,
+  });
+  return res?.data || {};
+}

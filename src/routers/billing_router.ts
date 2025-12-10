@@ -1,6 +1,6 @@
 import bodyParser from 'body-parser';
 import express from 'express';
-import { requireAuth } from '../authentication';
+import { requireAuth, requireAdminKey } from '../authentication';
 import billingController from '../controllers/billing_controller';
 import bodyParserRaw from 'body-parser';
 
@@ -30,5 +30,9 @@ router.post('/webhook/nowpayments', bodyParserRaw.raw({ type: '*/*' }), (req: an
 
 // Dev-only mock webhook for NOWPayments
 router.post('/webhook/nowpayments/mock', billingController.nowpaymentsWebhookMock);
+
+// Admin-only operational helpers (remove/disable for prod as needed)
+router.post('/reconcile/nowpayments', requireAdminKey, billingController.reconcileNowpaymentsPending);
+router.post('/reissue/nowpayments/:id', requireAdminKey, billingController.reissueNowpaymentsInvoice);
 
 export default router;

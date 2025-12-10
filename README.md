@@ -77,6 +77,8 @@ Environment variables (server):
   - `NOWPAYMENTS_CANCEL_URL=https://your-frontend/wallet?status=cancel`
 - Dev-only mock webhook key:
   - `DEV_WEBHOOK_KEY=<random_string>`
+ - Admin-only ops routes (staging/dev only):
+   - `ADMIN_API_KEY=<random_string>`
 
 Routes:
 - Create deposit intent (auth): `POST /billing/deposit/intent { amount, currency="USDT" }`
@@ -85,6 +87,11 @@ Routes:
 - Dev mock webhook: `POST /billing/webhook/nowpayments/mock`
   - Headers: `x-dev-webhook-key: <DEV_WEBHOOK_KEY>`
   - Body: `{ "deposit_id": "...", "status": "confirmed" | "failed" }`
+- Admin ops (requires header `X-Admin-Key: <ADMIN_API_KEY>`):
+  - Reconcile pending: `POST /billing/reconcile/nowpayments?limit=20`
+    - Polls provider for up to `limit` pending deposits, confirms or marks failed, credits on confirm.
+  - Reissue missing invoice: `POST /billing/reissue/nowpayments/:id`
+    - For deposits missing `provider_ref`, creates a new NOWPayments payment and stores `payment_url`.
 
 NOWPayments dashboard setup:
 - Set the IPN/Webhook URL to: `<PUBLIC_BACKEND_URL>/billing/webhook/nowpayments`
