@@ -101,7 +101,19 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
 export const listDeposits: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
     const items = await Deposit.find({ user_id: req.user._id }).sort({ created_at: -1 }).limit(50);
-    return res.status(200).json({ deposits: items });
+    // Sanitize metadata to only expose safe fields
+    const safe = items.map((d) => ({
+      _id: d._id,
+      amount: d.amount,
+      currency: d.currency,
+      provider: d.provider,
+      provider_ref: d.provider_ref,
+      status: d.status,
+      metadata: { payment_url: (d as any)?.metadata?.payment_url },
+      created_at: (d as any).created_at,
+      updated_at: (d as any).updated_at,
+    }));
+    return res.status(200).json({ deposits: safe });
   } catch (e) {
     return res.status(500).json({ error: 'Failed to fetch deposits' });
   }
