@@ -90,8 +90,8 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
     }
 
     // Fallback: Coinbase Commerce
-    const charge = await createCharge({ name: `BetMate Deposit (${currency})`, pricing_type: 'fixed_price', local_price: { amount: String(num), currency: 'USD' }, metadata: { user_id: String(req.user._id), currency } });
-    const dep = await new Deposit({ user_id: req.user._id, amount: num, currency, provider: 'coinbase', provider_ref: charge.id, status: 'pending' }).save();
+    const charge = await createCharge({ name: `BetMate Deposit (${currency})`, pricing_type: 'fixed_price', local_price: { amount: String(desiredUSD), currency: 'USD' }, metadata: { user_id: String(req.user._id), currency } });
+    const dep = await new Deposit({ user_id: req.user._id, amount: desiredUSD, currency, provider: 'coinbase', provider_ref: charge.id, status: 'pending' }).save();
     return res.status(200).json({ hosted_url: charge.hosted_url, deposit_id: String(dep._id) });
   } catch (e) {
     return res.status(500).json({ error: 'Failed to create deposit intent' });
