@@ -48,11 +48,20 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
         await dep.save();
         return res.status(200).json({ hosted_url: payment.payment_url, deposit_id: String(dep._id) });
       } catch (err) {
+        // Extract axios error details if present
+        const anyErr: any = err;
+        const status = anyErr?.response?.status;
+        const data = anyErr?.response?.data;
+        const message = anyErr?.message || 'create_payment_failed';
         // Mark deposit failed and log error for observability
         dep.status = 'failed';
-        dep.metadata = { ...(dep.metadata || {}), error: (err as any)?.message || 'create_payment_failed' } as any;
+        dep.metadata = { ...(dep.metadata || {}), error: message, provider_status: status, provider_data: data } as any;
         await dep.save();
-        logger.log({ level: 'error', event: 'nowpayments_create_payment_error', context: { deposit_id: orderId, message: (err as any)?.message } });
+        logger.log({ level: 'error', event: 'nowpayments_create_payment_error', context: { deposit_id: orderId, message, status, data } });
+        const debug = process.env.DEBUG_PROVIDER_ERRORS === 'true';
+        if (debug) {
+          return res.status(500).json({ error: 'Failed to create deposit intent', provider_error: { message, status, data } });
+        }
         return res.status(500).json({ error: 'Failed to create deposit intent' });
       }
     }
