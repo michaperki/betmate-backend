@@ -16,32 +16,45 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
     }
     const provider = (process.env.PAYMENTS_PROVIDER || 'coinpayments').toLowerCase();
     if (provider === 'coinpayments') {
-      const ipnUrl = `${process.env.PUBLIC_BACKEND_URL || ''}/billing/webhook/coinpayments`;
+      const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+      const ipnUrl = `${base}/billing/webhook/coinpayments`;
       const tx = await createTransaction({ amount: num, currency1: currency, currency2: currency, item_name: 'BetMate Deposit', ipn_url: ipnUrl });
       const dep = await new Deposit({ user_id: req.user._id, amount: num, currency, provider: 'coinpayments', provider_ref: tx.txn_id, status: 'pending' }).save();
       return res.status(200).json({ hosted_url: tx.checkout_url, deposit_id: String(dep._id) });
     }
 
     if (provider === 'nowpayments') {
-      const ipnUrl = `${process.env.PUBLIC_BACKEND_URL || ''}/billing/webhook/nowpayments`;
+      const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
+      const ipnUrl = `${base}/billing/webhook/nowpayments`;
       const dep = await new Deposit({ user_id: req.user._id, amount: num, currency, provider: 'nowpayments', status: 'pending' }).save();
       const orderId = String(dep._id);
       const successUrl = process.env.NOWPAYMENTS_SUCCESS_URL;
       const cancelUrl = process.env.NOWPAYMENTS_CANCEL_URL;
-      const payment = await createNowPayment({
+      const payCurrencyEnv = process.env.NOWPAYMENTS_PAY_CURRENCY; // e.g., 'USDTTRC20' or 'USDC'
+      const payload: any = {
         price_amount: num,
         price_currency: 'USD',
-        pay_currency: currency,
         order_id: orderId,
         order_description: `BetMate Deposit (${currency})`,
         ipn_callback_url: ipnUrl,
         ...(successUrl ? { success_url: successUrl } : {}),
         ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
-      } as any);
-      dep.provider_ref = payment.payment_id;
-      dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
-      await dep.save();
-      return res.status(200).json({ hosted_url: payment.payment_url, deposit_id: String(dep._id) });
+      };
+      if (payCurrencyEnv) payload.pay_currency = payCurrencyEnv;
+      try {
+        const payment = await createNowPayment(payload);
+        dep.provider_ref = payment.payment_id;
+        dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+        await dep.save();
+        return res.status(200).json({ hosted_url: payment.payment_url, deposit_id: String(dep._id) });
+      } catch (err) {
+        // Mark deposit failed and log error for observability
+        dep.status = 'failed';
+        dep.metadata = { ...(dep.metadata || {}), error: (err as any)?.message || 'create_payment_failed' } as any;
+        await dep.save();
+        logger.log({ level: 'error', event: 'nowpayments_create_payment_error', context: { deposit_id: orderId, message: (err as any)?.message } });
+        return res.status(500).json({ error: 'Failed to create deposit intent' });
+      }
     }
 
     // Fallback: Coinbase Commerce
