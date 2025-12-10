@@ -84,8 +84,15 @@ const io = new Server(httpServer, {
 });
 
 // Set limits for request body
-app.use(bodyParser.json({ limit: '5mb' }));
-app.use(bodyParser.urlencoded({ limit: '5mb', extended: true }));
+// Capture raw body for HMAC verification on provider webhooks
+app.use(bodyParser.json({
+  limit: '5mb',
+  verify: (req: any, _res, buf) => { req.rawBody = buf?.toString?.('utf8') || ''; }
+}));
+app.use(bodyParser.urlencoded({
+  limit: '5mb', extended: true,
+  verify: (req: any, _res, buf) => { req.rawBody = buf?.toString?.('utf8') || ''; }
+}));
 
 // Setup common HTTP logging (opt-in)
 if (process.env.LOG_HTTP_DEBUG === 'true') {
