@@ -21,4 +21,14 @@ router.post('/webhook/coinpayments', bodyParserRaw.raw({ type: '*/*' }), (req: a
   next();
 }, billingController.coinpaymentsWebhook);
 
+// NOWPayments webhook (raw body for signature)
+router.post('/webhook/nowpayments', bodyParserRaw.raw({ type: '*/*' }), (req: any, _res, next) => {
+  req.rawBody = req.body?.toString?.() || req.rawBody || '';
+  try { req.body = JSON.parse(req.rawBody); } catch { /* leave raw */ }
+  next();
+}, billingController.nowpaymentsWebhook);
+
+// Dev-only mock webhook for NOWPayments
+router.post('/webhook/nowpayments/mock', billingController.nowpaymentsWebhookMock);
+
 export default router;
