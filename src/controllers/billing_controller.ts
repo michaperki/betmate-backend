@@ -3,7 +3,7 @@ import { ValidatedRequestWithJWT } from '../types/requests';
 import { Users, Deposit } from '../models';
 import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
-import { createPayment as createNowPayment, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
+import { createPayment as createNowPayment, createInvoice as createNowInvoice, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
 import logger from '../helpers/axiom_logger';
 
@@ -40,13 +40,21 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
         ...(successUrl ? { success_url: successUrl } : {}),
         ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
       };
-      if (payCurrencyEnv) payload.pay_currency = payCurrencyEnv;
+      // Always supply a pay_currency: prefer explicit env, fallback to requested currency
+      payload.pay_currency = payCurrencyEnv || currency;
       try {
-        const payment = await createNowPayment(payload);
-        dep.provider_ref = payment.payment_id;
-        dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+        const mode = (process.env.NOWPAYMENTS_CREATE_MODE || 'invoice').toLowerCase();
+        if (mode === 'invoice') {
+          const inv = await createNowInvoice(payload);
+          dep.provider_ref = inv.id;
+          dep.metadata = { ...(dep.metadata || {}), payment_url: inv.invoice_url } as any;
+        } else {
+          const payment = await createNowPayment(payload);
+          dep.provider_ref = payment.payment_id;
+          dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+        }
         await dep.save();
-        return res.status(200).json({ hosted_url: payment.payment_url, deposit_id: String(dep._id) });
+        return res.status(200).json({ hosted_url: (dep.metadata as any)?.payment_url || '#', deposit_id: String(dep._id) });
       } catch (err) {
         // Extract axios error details if present
         const anyErr: any = err;
@@ -255,13 +263,21 @@ export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
       ...(successUrl ? { success_url: successUrl } : {}),
       ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
     };
-    if (payCurrencyEnv) payload.pay_currency = payCurrencyEnv;
-    const payment = await createNowPayment(payload);
-    dep.provider_ref = payment.payment_id;
-    dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+    payload.pay_currency = payCurrencyEnv || dep.currency;
+    const mode = (process.env.NOWPAYMENTS_CREATE_MODE || 'invoice').toLowerCase();
+    if (mode === 'invoice') {
+      const inv = await createNowInvoice(payload);
+      dep.provider_ref = inv.id;
+      dep.metadata = { ...(dep.metadata || {}), payment_url: inv.invoice_url } as any;
+    } else {
+      const payment = await createNowPayment(payload);
+      dep.provider_ref = payment.payment_id;
+      dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
+    }
     dep.status = 'pending';
     await dep.save();
-    return res.status(200).json({ ok: true, deposit_id: String(dep._id), provider_ref: dep.provider_ref, payment_url: payment.payment_url });
+    const url = (dep.metadata as any)?.payment_url || '#';
+    return res.status(200).json({ ok: true, deposit_id: String(dep._id), provider_ref: dep.provider_ref, payment_url: url });
   } catch (e) {
     return res.status(500).json({ error: 'Reissue error' });
   }

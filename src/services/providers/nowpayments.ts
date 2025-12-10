@@ -54,3 +54,22 @@ export async function getPayment(paymentId: string): Promise<any> {
   });
   return res?.data || {};
 }
+
+// In many cases, a hosted checkout URL is only returned by the Invoice API.
+type CreateInvoiceInput = CreatePaymentInput;
+export interface CreateInvoiceResult { id: string; invoice_url: string; }
+
+export async function createInvoice(input: CreateInvoiceInput): Promise<CreateInvoiceResult> {
+  const apiKey = process.env.NOWPAYMENTS_API_KEY;
+  if (!apiKey) {
+    return { id: 'stub-invoice', invoice_url: '#' };
+  }
+  const res = await axios.post(`${API_BASE}/invoice`, { ...input }, {
+    headers: { 'x-api-key': apiKey },
+    timeout: 15000,
+  });
+  const data = res?.data || {};
+  const id = data?.id || data?.invoice_id || 'unknown';
+  const url = data?.invoice_url || data?.payment_url || '#';
+  return { id: String(id), invoice_url: String(url) } as CreateInvoiceResult;
+}
