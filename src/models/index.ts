@@ -3,6 +3,7 @@ import ChessModel from './chess_model';
 import WagerModel from './wager_model';
 import LeaderboardModel from './leaderboard_model';
 import BalanceHistoryModel from './balance_history_model';
+import DepositModel from './deposit_model';
 import RefreshTokenModel from './refresh_token_model';
 
 export {
@@ -12,4 +13,5 @@ export {
   LeaderboardModel as Leaderboard,
   BalanceHistoryModel as BalanceHistory,
   RefreshTokenModel as RefreshToken,
+  DepositModel as Deposit,
 };

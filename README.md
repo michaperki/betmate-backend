@@ -63,6 +63,45 @@ Note: Heroku automatically sets the `PORT` and `MONGODB_URI` environment variabl
 
 Run `yarn test`.
 
+## Payments (NOWPayments) — Dev and Prod
+
+This backend can accept crypto deposits via NOWPayments using hosted payment pages and webhooks.
+
+Environment variables (server):
+- `PAYMENTS_PROVIDER=nowpayments`
+- `NOWPAYMENTS_API_KEY=<your_nowpayments_api_key>`
+- `NOWPAYMENTS_IPN_SECRET=<your_ipn_secret_for_webhook_validation>`
+- `PUBLIC_BACKEND_URL=https://your-api-domain` (used to build IPN callback URL)
+- Optional redirect UX:
+  - `NOWPAYMENTS_SUCCESS_URL=https://your-frontend/wallet?status=success`
+  - `NOWPAYMENTS_CANCEL_URL=https://your-frontend/wallet?status=cancel`
+- Dev-only mock webhook key:
+  - `DEV_WEBHOOK_KEY=<random_string>`
+
+Routes:
+- Create deposit intent (auth): `POST /billing/deposit/intent { amount, currency="USDT" }`
+  - Responds `{ hosted_url, deposit_id }`; open `hosted_url` in a new tab.
+- Webhook (NOWPayments): `POST /billing/webhook/nowpayments` (send raw JSON body; HMAC verified)
+- Dev mock webhook: `POST /billing/webhook/nowpayments/mock`
+  - Headers: `x-dev-webhook-key: <DEV_WEBHOOK_KEY>`
+  - Body: `{ "deposit_id": "...", "status": "confirmed" | "failed" }`
+
+NOWPayments dashboard setup:
+- Set the IPN/Webhook URL to: `<PUBLIC_BACKEND_URL>/billing/webhook/nowpayments`
+- Use a small test amount initially (e.g., $1–$2) to verify the flow end-to-end.
+
+Local/dev testing without real funds:
+1) Create an intent via FE Wallet or API; capture `deposit_id`.
+2) Call the dev mock webhook to simulate confirmation:
+   - `curl -X POST "$BACKEND/billing/webhook/nowpayments/mock" \`
+   - `  -H "Content-Type: application/json" -H "x-dev-webhook-key: $DEV_WEBHOOK_KEY" \`
+   - `  -d '{ "deposit_id": "<id>", "status": "confirmed" }'`
+3) Verify `GET /billing/deposits` shows `confirmed`, and user `cash_balance` increased.
+
+Notes:
+- The server credits `cash_balance` in USD-equivalent amounts (e.g., USDT) and records a BalanceHistory item (`reason: "Deposit"`).
+- Coinbase Commerce and CoinPayments clients are present; select via `PAYMENTS_PROVIDER`.
+
 ## Repository Structure
 
 ```

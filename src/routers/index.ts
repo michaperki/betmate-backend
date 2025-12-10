@@ -8,6 +8,7 @@ import internalRouter from './internal_router';
 import raffleRouter from './raffle_router';
 import logRouter from './log_router';
 import twitterRouter from './twitter_router';
+import billingRouter from './billing_router';
 
 export {
   authRouter,
@@ -20,4 +21,5 @@ export {
   raffleRouter,
   logRouter,
   twitterRouter,
+  billingRouter,
 };
