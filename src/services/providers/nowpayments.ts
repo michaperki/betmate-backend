@@ -73,3 +73,16 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<CreateIn
   const url = data?.invoice_url || data?.payment_url || '#';
   return { id: String(id), invoice_url: String(url) } as CreateInvoiceResult;
 }
+
+export async function estimatePayAmountUSD(amountUSD: number, payCurrency: string): Promise<{ pay_amount: number }> {
+  const apiKey = process.env.NOWPAYMENTS_API_KEY;
+  if (!apiKey) return { pay_amount: 0 };
+  const params = new URLSearchParams({ amount: String(amountUSD), currency_from: 'usd', currency_to: String(payCurrency) });
+  const res = await axios.get(`${API_BASE}/estimate?${params.toString()}`, {
+    headers: { 'x-api-key': apiKey },
+    timeout: 10000,
+  });
+  const data = res?.data || {};
+  const est = Number(data?.estimated_amount || data?.amount || 0);
+  return { pay_amount: Number.isFinite(est) ? est : 0 };
+}

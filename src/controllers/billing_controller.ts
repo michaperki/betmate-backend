@@ -3,16 +3,21 @@ import { ValidatedRequestWithJWT } from '../types/requests';
 import { Users, Deposit } from '../models';
 import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
-import { createPayment as createNowPayment, createInvoice as createNowInvoice, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
+import { createPayment as createNowPayment, createInvoice as createNowInvoice, estimatePayAmountUSD, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
 import logger from '../helpers/axiom_logger';
 
 export const createDepositIntent: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
     const { amount, currency = 'USDT', payCurrency } = req.body || {};
-    const num = Number(amount);
-    if (!Number.isFinite(num) || num <= 0) {
+    const desiredUSD = Number(amount);
+    if (!Number.isFinite(desiredUSD) || desiredUSD <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
+    }
+    const minUSD = Number(process.env.MIN_DEPOSIT_USD || 1);
+    const maxUSD = Number(process.env.MAX_DEPOSIT_USD || 10000);
+    if (desiredUSD < minUSD || desiredUSD > maxUSD) {
+      return res.status(400).json({ error: `Amount out of bounds (${minUSD} - ${maxUSD})` });
     }
     const provider = (process.env.PAYMENTS_PROVIDER || 'coinpayments').toLowerCase();
     if (provider === 'coinpayments') {
@@ -27,13 +32,17 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
       const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
       const ipnUrl = `${base}/billing/webhook/nowpayments`;
       const selectedPayCurrency: string = (typeof payCurrency === 'string' && payCurrency.trim()) ? String(payCurrency).toUpperCase() : String(currency).toUpperCase();
-      const dep = await new Deposit({ user_id: req.user._id, amount: num, currency: selectedPayCurrency, provider: 'nowpayments', status: 'pending' }).save();
+      const feeRate = Math.max(0, Math.min(0.2, Number(process.env.DEPOSIT_FEE_RATE || 0)));
+      const fixedFee = Math.max(0, Number(process.env.DEPOSIT_FIXED_FEE_USD || 0));
+      const denom = Math.max(0.0001, 1 - feeRate);
+      const chargeUSD = Math.round(((desiredUSD + fixedFee) / denom) * 100) / 100;
+      const dep = await new Deposit({ user_id: req.user._id, amount: desiredUSD, currency: selectedPayCurrency, provider: 'nowpayments', status: 'pending', metadata: { fee_rate: feeRate, fixed_fee_usd: fixedFee, charge_usd: chargeUSD } as any }).save();
       const orderId = String(dep._id);
       const successUrl = process.env.NOWPAYMENTS_SUCCESS_URL;
       const cancelUrl = process.env.NOWPAYMENTS_CANCEL_URL;
       const payCurrencyEnv = process.env.NOWPAYMENTS_PAY_CURRENCY; // e.g., 'USDTTRC20' or 'USDC'
       const payload: any = {
-        price_amount: num,
+        price_amount: chargeUSD,
         price_currency: 'USD',
         order_id: orderId,
         order_description: `BetMate Deposit (${currency})`,
@@ -54,6 +63,11 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
           dep.provider_ref = payment.payment_id;
           dep.metadata = { ...(dep.metadata || {}), payment_url: payment.payment_url } as any;
         }
+        // Optional: fetch estimated crypto pay amount for display/debug
+        try {
+          const est = await estimatePayAmountUSD(chargeUSD, payload.pay_currency);
+          dep.metadata = { ...(dep.metadata || {}), estimated_pay_amount: est.pay_amount } as any;
+        } catch {}
         await dep.save();
         return res.status(200).json({ hosted_url: (dep.metadata as any)?.payment_url || '#', deposit_id: String(dep._id) });
       } catch (err) {
@@ -121,6 +135,37 @@ export const coinpaymentsWebhook: RequestHandler = async (req, res) => {
     return res.status(200).json({ ok: true });
   } catch (e) {
     return res.status(500).json({ error: 'Webhook error' });
+  }
+};
+
+export const quoteDeposit: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
+  try {
+    const desired = Number(req.query.amount || req.body?.amount || 0);
+    const payCurrency = String((req.query.payCurrency || req.body?.payCurrency || 'USDT')).toUpperCase();
+    if (!Number.isFinite(desired) || desired <= 0) return res.status(400).json({ error: 'Invalid amount' });
+    const feeRate = Math.max(0, Math.min(0.2, Number(process.env.DEPOSIT_FEE_RATE || 0)));
+    const fixedFee = Math.max(0, Number(process.env.DEPOSIT_FIXED_FEE_USD || 0));
+    const denom = Math.max(0.0001, 1 - feeRate);
+    const chargeUSD = Math.round(((desired + fixedFee) / denom) * 100) / 100;
+    let payAmount = 0;
+    try {
+      const est = await estimatePayAmountUSD(chargeUSD, payCurrency);
+      payAmount = est.pay_amount;
+    } catch {}
+    const minUSD = Number(process.env.MIN_DEPOSIT_USD || 1);
+    const maxUSD = Number(process.env.MAX_DEPOSIT_USD || 10000);
+    return res.status(200).json({
+      desired_usd: desired,
+      charge_usd: chargeUSD,
+      fee_usd: Math.max(0, Math.round((chargeUSD - desired) * 100) / 100),
+      fee_rate: feeRate,
+      fixed_fee_usd: fixedFee,
+      pay_currency: payCurrency,
+      estimated_pay_amount: payAmount,
+      bounds: { min_usd: minUSD, max_usd: maxUSD },
+    });
+  } catch (e) {
+    return res.status(500).json({ error: 'Quote error' });
   }
 };
 

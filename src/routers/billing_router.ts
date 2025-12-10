@@ -13,6 +13,8 @@ router.post('/deposit/intent', requireAuth, billingController.createDepositInten
 
 // List user deposits
 router.get('/deposits', requireAuth, billingController.listDeposits);
+// Quote deposit (auth): returns charge USD incl. fees and estimated crypto amount
+router.get('/quote', requireAuth, billingController.quoteDeposit);
 
 // CoinPayments IPN needs raw body for HMAC
 router.post('/webhook/coinpayments', bodyParserRaw.raw({ type: '*/*' }), (req: any, _res, next) => {
