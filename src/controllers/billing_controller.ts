@@ -23,8 +23,8 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
     if (provider === 'coinpayments') {
       const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
       const ipnUrl = `${base}/billing/webhook/coinpayments`;
-      const tx = await createTransaction({ amount: num, currency1: currency, currency2: currency, item_name: 'BetMate Deposit', ipn_url: ipnUrl });
-      const dep = await new Deposit({ user_id: req.user._id, amount: num, currency, provider: 'coinpayments', provider_ref: tx.txn_id, status: 'pending' }).save();
+      const tx = await createTransaction({ amount: desiredUSD, currency1: currency, currency2: currency, item_name: 'BetMate Deposit', ipn_url: ipnUrl });
+      const dep = await new Deposit({ user_id: req.user._id, amount: desiredUSD, currency, provider: 'coinpayments', provider_ref: tx.txn_id, status: 'pending' }).save();
       return res.status(200).json({ hosted_url: tx.checkout_url, deposit_id: String(dep._id) });
     }
 
@@ -332,6 +332,7 @@ export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
 export default {
   createDepositIntent,
   listDeposits,
+  quoteDeposit,
   coinpaymentsWebhook,
   nowpaymentsWebhook,
   nowpaymentsWebhookMock,
