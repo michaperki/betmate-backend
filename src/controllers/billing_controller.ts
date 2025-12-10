@@ -9,7 +9,7 @@ import logger from '../helpers/axiom_logger';
 
 export const createDepositIntent: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
-    const { amount, currency = 'USDT' } = req.body || {};
+    const { amount, currency = 'USDT', payCurrency } = req.body || {};
     const num = Number(amount);
     if (!Number.isFinite(num) || num <= 0) {
       return res.status(400).json({ error: 'Invalid amount' });
@@ -26,7 +26,8 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
     if (provider === 'nowpayments') {
       const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
       const ipnUrl = `${base}/billing/webhook/nowpayments`;
-      const dep = await new Deposit({ user_id: req.user._id, amount: num, currency, provider: 'nowpayments', status: 'pending' }).save();
+      const selectedPayCurrency: string = (typeof payCurrency === 'string' && payCurrency.trim()) ? String(payCurrency).toUpperCase() : String(currency).toUpperCase();
+      const dep = await new Deposit({ user_id: req.user._id, amount: num, currency: selectedPayCurrency, provider: 'nowpayments', status: 'pending' }).save();
       const orderId = String(dep._id);
       const successUrl = process.env.NOWPAYMENTS_SUCCESS_URL;
       const cancelUrl = process.env.NOWPAYMENTS_CANCEL_URL;
@@ -40,8 +41,8 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
         ...(successUrl ? { success_url: successUrl } : {}),
         ...(cancelUrl ? { cancel_url: cancelUrl } : {}),
       };
-      // Always supply a pay_currency: prefer explicit env, fallback to requested currency
-      payload.pay_currency = payCurrencyEnv || currency;
+      // Always supply a pay_currency: prefer explicit env, fallback to user-selected
+      payload.pay_currency = (payCurrencyEnv || selectedPayCurrency);
       try {
         const mode = (process.env.NOWPAYMENTS_CREATE_MODE || 'invoice').toLowerCase();
         if (mode === 'invoice') {
