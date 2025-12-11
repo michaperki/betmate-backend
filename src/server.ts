@@ -30,6 +30,7 @@ import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
   analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter, billingRouter,
+  realMarketsRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -118,6 +119,14 @@ if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING ==
   // Narrow scope: heavy/expensive or auth-centric endpoints
   app.use('/analysis', selectiveLimiter);
   app.use('/auth', selectiveLimiter);
+  // Billing: stricter short-window rate limit for creating deposit intents
+  const billingLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 5, // at most 5 intents per minute per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/billing/deposit/intent', billingLimiter);
   // Note: /leaderboard and /wager are intentionally left unrestricted by the global limiter here.
 }
 
@@ -135,6 +144,7 @@ app.use('/raffle', raffleRouter);
 app.use('/api/log', logRouter); // Frontend logging endpoint
 app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 app.use('/billing', billingRouter); // Wallet deposit/withdrawal endpoints (flag‑gated in FE)
+app.use('/real/markets', realMarketsRouter); // Real-mode WDL market prices (Phase 1 read-only)
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');

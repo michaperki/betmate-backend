@@ -102,9 +102,12 @@ WagerSchema.virtual('winnings').get(function () {
   const doc = this as WagerDoc;
   switch (doc.status) {
     case WagerStatus.WON:
-      return doc.wdl
-        ? doc.amount * doc.odds
-        : doc.amount * doc.winning_pool_share;
+      if (doc.wdl) {
+        // Real WDL uses parimutuel pool share; Arcade uses fixed odds
+        const isReal = (doc as any).mode === 'real';
+        return isReal ? (doc.amount * (doc.winning_pool_share || 0)) : (doc.amount * doc.odds);
+      }
+      return doc.amount * doc.winning_pool_share;
     case WagerStatus.CANCELLED:
       return doc.amount;
     case WagerStatus.LOST:

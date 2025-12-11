@@ -21,6 +21,9 @@ router.post('/webhook/nowpayments', billingController.nowpaymentsWebhook);
 // Dev-only mock webhook for NOWPayments
 router.post('/webhook/nowpayments/mock', billingController.nowpaymentsWebhookMock);
 
+// Faucet (dev/staging only): credit real balance for testing
+router.post('/faucet', requireAuth, billingController.faucetCredit);
+
 // Admin-only operational helpers (remove/disable for prod as needed)
 router.post('/reconcile/nowpayments', requireAdminKey, billingController.reconcileNowpaymentsPending);
 router.post('/reissue/nowpayments/:id', requireAdminKey, billingController.reissueNowpaymentsInvoice);

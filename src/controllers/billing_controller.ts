@@ -32,6 +32,12 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
       const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
       const ipnUrl = `${base}/billing/webhook/nowpayments`;
       const selectedPayCurrency: string = (typeof payCurrency === 'string' && payCurrency.trim()) ? String(payCurrency).toUpperCase() : String(currency).toUpperCase();
+      // Whitelist allowed currencies to avoid provider rejections
+      const allowedList = (process.env.NOWPAYMENTS_ALLOWED_CURRENCIES || 'USDTTRC20,USDTBEP20,USDTERC20,USDC,BTC,ETH')
+        .split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+      if (!allowedList.includes(selectedPayCurrency)) {
+        return res.status(400).json({ error: 'Unsupported payCurrency', allowed: allowedList });
+      }
       const feeRate = Math.max(0, Math.min(0.2, Number(process.env.DEPOSIT_FEE_RATE || 0)));
       const fixedFee = Math.max(0, Number(process.env.DEPOSIT_FIXED_FEE_USD || 0));
       const denom = Math.max(0.0001, 1 - feeRate);
@@ -255,6 +261,38 @@ export const nowpaymentsWebhookMock: RequestHandler = async (req, res) => {
   }
 };
 
+// Dev/Staging faucet: credit cash_balance for quick testing
+// - In development: enabled for any authenticated user
+// - In non-development: requires ENABLE_FAUCET=true and X-Admin-Key header
+export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
+  try {
+    const isDev = process.env.NODE_ENV === 'development';
+    const enabled = process.env.ENABLE_FAUCET === 'true';
+    if (!isDev && !enabled) {
+      return res.status(403).json({ error: 'Faucet disabled' });
+    }
+
+    // If not dev, require admin key to prevent abuse in shared envs
+    if (!isDev) {
+      const adminKey = process.env.ADMIN_API_KEY;
+      const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
+      if (!adminKey || !provided || provided !== adminKey) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+    }
+
+    const raw = Number(req.body?.amount ?? 100);
+    if (!Number.isFinite(raw)) return res.status(400).json({ error: 'Invalid amount' });
+    const amount = Math.max(1, Math.min(10000, Math.round(raw * 100) / 100));
+
+    await userService.updateUserData(req.user._id, { $inc: { cash_balance: amount } });
+    await userService.recordBalanceChange(req.user._id, amount, 'Faucet credit', undefined, 'Faucet', 'USDT');
+    return res.status(200).json({ ok: true, credited: amount });
+  } catch (e) {
+    return res.status(500).json({ error: 'Faucet error' });
+  }
+};
+
 // Admin-only: reconcile NOWPayments pending deposits by polling provider
 export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
   try {
@@ -348,6 +386,7 @@ export default {
   coinpaymentsWebhook,
   nowpaymentsWebhook,
   nowpaymentsWebhookMock,
+  faucetCredit,
   reconcileNowpaymentsPending,
   reissueNowpaymentsInvoice,
 };

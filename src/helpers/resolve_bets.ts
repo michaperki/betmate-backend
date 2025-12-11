@@ -19,16 +19,23 @@ const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
   (wager: WagerDoc): ProcessedWager => {
     const baseWager = { _id: wager._id, better_id: wager.better_id, mode: wager.mode, currency: wager.currency } as Partial<ProcessedWager>;
-    // For move bets: Arcade uses stored fixed odds; Real uses pool share
+    // WDL: Arcade uses stored fixed odds; Real uses parimutuel share
+    // Move: Arcade uses stored fixed odds; Real uses pool share
+    const useShare = (wager.mode === 'real');
     const odds = wager.wdl
-      ? wager.odds
-      : (wager.mode === 'real' ? winningPoolShare : wager.odds);
+      ? (useShare ? winningPoolShare : wager.odds)
+      : (useShare ? winningPoolShare : wager.odds);
 
     switch (true) {
       case returnWagers:
         return { ...(baseWager as any), outcome: WagerStatus.CANCELLED, winnings: wager.amount } as ProcessedWager;
       case wager.data === correctWager:
-        return { ...(baseWager as any), outcome: WagerStatus.WON, winnings: wager.amount * odds, ...(wager.wdl ? {} : { applied_share: odds }) } as ProcessedWager;
+        return {
+          ...(baseWager as any),
+          outcome: WagerStatus.WON,
+          winnings: wager.amount * odds,
+          ...(useShare ? { applied_share: odds } : {}),
+        } as ProcessedWager;
       default:
         return { ...(baseWager as any), outcome: WagerStatus.LOST, winnings: 0 } as ProcessedWager;
     }

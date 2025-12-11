@@ -77,8 +77,15 @@ Environment variables (server):
   - `NOWPAYMENTS_CANCEL_URL=https://your-frontend/wallet?status=cancel`
 - Dev-only mock webhook key:
   - `DEV_WEBHOOK_KEY=<random_string>`
- - Admin-only ops routes (staging/dev only):
-   - `ADMIN_API_KEY=<random_string>`
+- Admin-only ops routes (staging/dev only):
+  - `ADMIN_API_KEY=<random_string>`
+
+Dev/Staging Faucet (for Real-mode testing):
+- Enable with `NODE_ENV=development` (auto-enabled) or set `ENABLE_FAUCET=true` and `ADMIN_API_KEY=<key>` in staging.
+- Route: `POST /billing/faucet` (auth required)
+  - In development: no admin key required.
+  - In non-dev when `ENABLE_FAUCET=true`: add header `X-Admin-Key: <ADMIN_API_KEY>`.
+  - Body: `{ "amount": 100 }` (defaults to 100; max 10000). Credits `cash_balance` and records BalanceHistory (`reason: "Faucet credit"`).
 
 Routes:
 - Create deposit intent (auth): `POST /billing/deposit/intent { amount, currency="USDT" }`

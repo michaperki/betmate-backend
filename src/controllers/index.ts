@@ -4,6 +4,7 @@ import wagerController from './wager_controller';
 import lichessController from './lichess_controller';
 import analysisController from './analysis_controller';
 import logController from './log_controller';
+import realMarketController from './real_market_controller';
 
 export {
   chessController,
@@ -12,4 +13,5 @@ export {
   lichessController,
   analysisController,
   logController,
+  realMarketController,
 };
