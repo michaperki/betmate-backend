@@ -58,7 +58,11 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
 
     const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
     const winReal = real.filter(w => w.data === correctOutcome).reduce((s, w) => s + w.amount, 0);
-    const returnReal = winReal === 0;
+    // Refund policy for Real WDL:
+    // - No winners: refund all Real bets
+    // - Single‑sided pool (everyone on winning side): refund all Real bets to avoid <1x payouts due to rake
+    const singleSided = (totalReal > 0 && winReal === totalReal);
+    const returnReal = (winReal === 0) || singleSided;
     const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
 
     const list = [
@@ -67,7 +71,7 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
     ];
     try {
       const rakeCollected = returnReal ? 0 : (totalReal * rake);
-      logger.log({ level: 'info', event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+      logger.log({ level: 'info', event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal }, winReal, returnReal, singleSided, shareReal, rake, rakeCollected } });
     } catch {}
     return list;
   })(),
