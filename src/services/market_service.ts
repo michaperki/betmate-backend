@@ -1,4 +1,4 @@
-import { FilterQuery, UpdateQuery, Types } from 'mongoose';
+import { FilterQuery, UpdateQuery } from 'mongoose';
 import { Market } from 'models';
 import { MarketDoc } from '../types/models/market';
 import { Chess } from 'models';
@@ -24,19 +24,20 @@ const createMarket = async (gameId: string): Promise<MarketDoc> => {
   const rake = REAL_RAKE_DEFAULT;
   const q = probsToQ(p, b);
 
-  const doc = await new Market({ game_id: new Types.ObjectId(gameId), type: 'wdl', q, b, rake, status: 'open' }).save();
+  // Mongoose will cast string -> ObjectId for ObjectId fields; avoid TS ctor issues on Types.ObjectId
+  const doc = await new Market({ game_id: gameId as any, type: 'wdl', q, b, rake, status: 'open' }).save();
   return doc as unknown as MarketDoc;
 };
 
 const getOrCreateWdlMarket = async (gameId: string): Promise<MarketDoc> => {
-  const existing = await getMarket({ game_id: new Types.ObjectId(gameId), type: 'wdl' } as FilterQuery<MarketDoc>);
+  const existing = await getMarket({ game_id: gameId as any, type: 'wdl' } as any);
   if (existing) return existing;
   try {
     return await createMarket(gameId);
   } catch (e: any) {
     // Handle race where two requests try to create at once
     logger.log({ level: 'warn', event: 'market_create_race', context: { gameId, error: e?.message || String(e) } });
-    const after = await getMarket({ game_id: new Types.ObjectId(gameId), type: 'wdl' } as FilterQuery<MarketDoc>);
+    const after = await getMarket({ game_id: gameId as any, type: 'wdl' } as any);
     if (after) return after;
     throw e;
   }
