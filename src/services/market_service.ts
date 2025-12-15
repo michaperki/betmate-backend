@@ -1,7 +1,7 @@
 import { FilterQuery, UpdateQuery } from 'mongoose';
-import { Market } from 'models';
+import { Market } from '../models';
 import { MarketDoc } from '../types/models/market';
-import { Chess } from 'models';
+import { Chess } from '../models';
 import logger from '../helpers/axiom_logger';
 import { lmsrPrices, normalizeP, probsToQ } from '../helpers/lmsr';
 
