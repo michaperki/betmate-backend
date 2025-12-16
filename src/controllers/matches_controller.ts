@@ -67,7 +67,7 @@ const getFeaturedMatch: RequestHandler = async (_req, res) => {
   }
 };
 
-const getMatchDetails: RequestHandler = async (req, res) => {
+  const getMatchDetails: RequestHandler = async (req, res) => {
   try {
     const id = req.params.id;
     const game = await chessService.getChessGame(id);
@@ -81,6 +81,17 @@ const getMatchDetails: RequestHandler = async (req, res) => {
       { $match: { game_id: game._id } },
       { $group: { _id: null, total_pool: { $sum: '$amount' }, total_bets: { $sum: 1 } } },
     ]).allowDiskUse(true);
+
+    // Per-currency (units-aware) stats for FE mode-specific display
+    const byCurrencyAgg = await (Wager as any).aggregate([
+      { $match: { game_id: game._id } },
+      { $group: { _id: '$currency', total_pool: { $sum: '$amount' }, total_bets: { $sum: 1 } } },
+    ]).allowDiskUse(true);
+    const stats_by_currency: any = { BET: { total_bets: 0, total_pool: 0 }, USDT: { total_bets: 0, total_pool: 0 } };
+    for (const row of byCurrencyAgg || []) {
+      const key = (row?._id || 'BET') as 'BET' | 'USDT';
+      stats_by_currency[key] = { total_bets: row?.total_bets || 0, total_pool: row?.total_pool || 0 };
+    }
 
     const dto: any = {
       match_id: String(game._id),
@@ -103,6 +114,7 @@ const getMatchDetails: RequestHandler = async (req, res) => {
       },
       source: { provider: 'lichess', url: undefined },
       stats: agg ? { total_bets: agg.total_bets || 0, total_pool: agg.total_pool || 0 } : { total_bets: 0, total_pool: 0 },
+      stats_by_currency,
       meta: {
         move_number: moveN,
         phase: getPhase(moveN),

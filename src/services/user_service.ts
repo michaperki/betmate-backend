@@ -325,11 +325,14 @@ const recordBalanceChange = async (
 const getUserBalanceHistory = async (
   userId: string | Types.ObjectId,
   limit: number = 30,
-  skip: number = 0
+  skip: number = 0,
+  currency?: 'BET' | 'USDT'
 ): Promise<BalanceHistoryDoc[]> => {
   try {
     const userIdObj = typeof userId === 'string' ? Types.ObjectId(userId) : userId;
-    return await BalanceHistory.find({ user_id: userIdObj })
+    const query: any = { user_id: userIdObj };
+    if (currency === 'BET' || currency === 'USDT') query.currency = currency;
+    return await BalanceHistory.find(query)
       .sort({ created_at: -1 })
       .skip(skip)
       .limit(limit);
