@@ -32,6 +32,7 @@ import {
   analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter, billingRouter,
   realMarketsRouter,
   adminRouter,
+  matchesRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -169,6 +170,7 @@ app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 app.use('/billing', billingRouter); // Wallet deposit/withdrawal endpoints (flag‑gated in FE)
 app.use('/real/markets', realMarketsRouter); // Real-mode WDL market prices (Phase 1 read-only)
 app.use('/admin', adminRouter); // Admin risk endpoints (guarded by X-Admin-Key)
+app.use('/matches', matchesRouter); // Featured + match details endpoints for FE card redesign
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
@@ -191,6 +193,7 @@ app.get('/', (req, res) => {
       analysis: '/analysis',
       raffle: '/raffle',
       twitter: '/api/twitter',
+      matches: '/matches',
       websocket: '/chessws'
     }
   });
