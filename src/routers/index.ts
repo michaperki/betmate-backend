@@ -11,6 +11,7 @@ import twitterRouter from './twitter_router';
 import billingRouter from './billing_router';
 import realMarketsRouter from './real_markets_router';
 import adminRouter from './admin_router';
+import matchesRouter from './matches_router';
 
 export {
   authRouter,
@@ -26,4 +27,5 @@ export {
   billingRouter,
   realMarketsRouter,
   adminRouter,
+  matchesRouter,
 };
