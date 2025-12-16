@@ -21,6 +21,7 @@
     "lint": "eslint ./src",
     "test": "npm run lint && NODE_ENV=test jest --verbose --runInBand --detectOpenHandles",
     "dev": "nodemon --exec \"ts-node -r tsconfig-paths/register src/server.ts\"",
+    "promote-admin": "ts-node -r tsconfig-paths/register scripts/promote-admin.ts",
     "build": "rimraf dist && tsc --skipLibCheck --noEmitOnError false",
     "start": "node -r tsconfig-paths/register dist/server.js",
     "prod": "node -r tsconfig-paths/register dist/server.js",
