@@ -47,7 +47,7 @@ const getFeaturedMatch: RequestHandler = async (_req, res) => {
       } : undefined,
       opening: undefined, // optional; FE will fallback to Move N • phase
       stakes: {
-        tier: 'HIGH_STAKES',
+        tier: 'High Stakes',
         min_bet: 1,
         max_bet: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),
         currency: 'BET',
@@ -95,7 +95,7 @@ const getMatchDetails: RequestHandler = async (req, res) => {
       } : undefined,
       opening: undefined, // optional; FE will fallback to Move N • phase
       stakes: {
-        tier: 'HIGH_STAKES',
+        tier: 'High Stakes',
         min_bet: 1,
         max_bet: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),
         currency: 'BET',
@@ -119,4 +119,3 @@ const getMatchDetails: RequestHandler = async (req, res) => {
 
 const matchesController = { getFeaturedMatch, getMatchDetails };
 export default matchesController;
-
