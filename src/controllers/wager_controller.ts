@@ -4,6 +4,8 @@ import { Types } from 'mongoose';
 
 import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
 import { chessService, userService, wagerService, microserviceService } from '../services';
+import { getRiskConfig, oddsFromP, scaleCapsForConfidence, getFeatureFlags } from '../helpers/risk_config';
+import { getGameExposure, getGlobalExposure, getPlayerGameLiability } from '../services/exposure_service';
 import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';
 import { WagerStatus } from '../types/models/wager';
@@ -126,6 +128,87 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       }
     }
 
+    // If Real + WDL, compute server-side odds with margin/clamps and enforce exposure caps
+    if (wdl && mode === 'real') {
+      // Feature flags and quick disables
+      const flags = getFeatureFlags();
+      if (!flags.enabled) {
+        res.status(403).json({ error: 'Real WDL (house) is disabled' });
+        return;
+      }
+      if (flags.disableWdl) {
+        res.status(403).json({ error: 'WDL betting is temporarily disabled' });
+        return;
+      }
+      if (flags.disableDraw && data === 'draw') {
+        res.status(403).json({ error: 'Draw betting is temporarily disabled' });
+        return;
+      }
+
+      // Compute house odds from engine probabilities + margin
+      const moveNum = game.move_hist.length;
+      const pMap: Record<string, number> = {
+        white_win: Number((game as any)?.odds?.white_win || 0),
+        draw: Number((game as any)?.odds?.draw || 0),
+        black_win: Number((game as any)?.odds?.black_win || 0),
+      };
+      const p = pMap[data] ?? 0;
+      if (!(p > 0)) {
+        res.status(400).json({ error: 'Pricing unavailable for this outcome' });
+        return;
+      }
+
+      const serverOdds = oddsFromP(p, data as any, moveNum);
+      const betLiability = amount * (serverOdds - 1);
+
+      // Compute current exposures
+      const [gameExp, globalExp, playerLiab] = await Promise.all([
+        getGameExposure(game_id),
+        getGlobalExposure(),
+        getPlayerGameLiability(game_id, String(better_id)),
+      ]);
+
+      // Derive caps (scaled for early/low-confidence)
+      const baseCaps = getRiskConfig();
+      const caps = scaleCapsForConfidence(baseCaps, moveNum);
+
+      // Projected exposures if we accept this bet
+      const outcomeKey = data as 'white_win' | 'draw' | 'black_win';
+      const outcomeProjected = gameExp.perOutcome[outcomeKey] + betLiability;
+      const gameWorstProjected = Math.max(
+        outcomeProjected,
+        outcomeKey === 'white_win' ? gameExp.perOutcome.draw : gameExp.perOutcome.white_win,
+        outcomeKey === 'black_win' ? gameExp.perOutcome.draw : gameExp.perOutcome.black_win,
+      );
+      const deltaWorst = Math.max(0, gameWorstProjected - gameExp.worstCase);
+      const globalProjected = globalExp.total + deltaWorst;
+      const playerProjected = playerLiab + betLiability;
+
+      // Enforce caps
+      if (betLiability > caps.perBetLiabilityCap) {
+        res.status(403).json({ error: 'Per-bet limit exceeded', code: 'CAP_PER_BET', cap: caps.perBetLiabilityCap, projected: betLiability });
+        return;
+      }
+      if (playerProjected > caps.perPlayerPerGameCap) {
+        res.status(403).json({ error: 'Per-player limit exceeded', code: 'CAP_PER_PLAYER_GAME', cap: caps.perPlayerPerGameCap, projected: playerProjected });
+        return;
+      }
+      if (outcomeProjected > caps.perOutcomeCap[outcomeKey]) {
+        res.status(403).json({ error: 'Outcome exposure limit reached', code: 'CAP_PER_OUTCOME', outcome: outcomeKey, cap: caps.perOutcomeCap[outcomeKey], projected: outcomeProjected });
+        return;
+      }
+      if (gameWorstProjected > caps.perGameWorstCaseCap) {
+        res.status(403).json({ error: 'Game exposure limit reached', code: 'CAP_PER_GAME', cap: caps.perGameWorstCaseCap, projected: gameWorstProjected });
+        return;
+      }
+      if (globalProjected > caps.globalExposureCap) {
+        res.status(403).json({ error: 'Global exposure limit reached', code: 'CAP_GLOBAL', cap: caps.globalExposureCap, projected: globalProjected });
+        return;
+      }
+
+      computedOdds = serverOdds;
+    }
+
     const doc = await wagerService.createWager({
       game_id,
       better_id,
@@ -137,7 +220,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       is_bot: false,
       mode,
       currency,
-      pricing_model_version: process.env.PRICING_MODEL_VERSION || 'v0',
+      pricing_model_version: process.env.PRICING_MODEL_VERSION || 'wdl-house-v1',
     });
 
     // Update user balance

@@ -10,6 +10,7 @@ import logRouter from './log_router';
 import twitterRouter from './twitter_router';
 import billingRouter from './billing_router';
 import realMarketsRouter from './real_markets_router';
+import adminRouter from './admin_router';
 
 export {
   authRouter,
@@ -24,4 +25,5 @@ export {
   twitterRouter,
   billingRouter,
   realMarketsRouter,
+  adminRouter,
 };
