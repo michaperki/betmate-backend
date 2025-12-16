@@ -212,11 +212,17 @@ app.use(errorHandler);
 
 // mongoose setup
 const MONGODB_URI = env.get('MONGODB_URI').required().asString();
-// Add a 10 second timeout for MongoDB connection
-const mongooseOptions = { 
+// Add connection options + deprecation flags for Mongoose 5.x
+const mongooseOptions = {
+  // Driver/connection timeouts
   serverSelectionTimeoutMS: 10000,
   connectTimeoutMS: 10000,
-};
+  // Silence deprecation warnings on MongoDB driver/Mongoose 5.x
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useFindAndModify: false,
+  useCreateIndex: true,
+} as any;
 
 // Handle successful MongoDB connection
 const connectSuccess = () => {

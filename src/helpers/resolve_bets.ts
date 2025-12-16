@@ -55,6 +55,7 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
 
     const arcade = wagers.filter(w => w.mode !== 'real');
     const real = wagers.filter(w => w.mode === 'real');
+    const totalArcade = arcade.reduce((sum, w) => sum + w.amount, 0);
 
     const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
     const winReal = real.filter(w => w.data === correctOutcome).reduce((s, w) => s + w.amount, 0);
@@ -71,7 +72,9 @@ export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
     ];
     try {
       const rakeCollected = returnReal ? 0 : (totalReal * rake);
-      logger.log({ level: 'info', event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal }, winReal, returnReal, singleSided, shareReal, rake, rakeCollected } });
+      const hadAny = (totalArcade + totalReal) > 0;
+      const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
+      logger.log({ level, event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal, totalArcade }, winReal, returnReal, singleSided, shareReal, rake, rakeCollected } });
     } catch {}
     return list;
   })(),
@@ -110,7 +113,9 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
 
   try {
     const rakeCollected = returnReal ? 0 : (totalReal * rake);
-    logger.log({ level: 'info', event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    const hadAny = (totalArcade + totalReal) > 0;
+    const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
+    logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
   } catch {}
 
   return { processedWagers };
