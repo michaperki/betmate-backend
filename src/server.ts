@@ -270,33 +270,28 @@ logger.log({ level: 'debug', event: 'env_presence', context: {
   MONGODB_PASSWORD: !!process.env.MONGODB_PASSWORD
 }});
 
-// Attempt to connect to MongoDB with the URI
-mongoose.connect(mongoUri, mongooseOptions)
-  .then(connectSuccess)
-  .catch(error => {
-    logger.log({ level: 'error', event: 'mongo_connect_error', context: { error: error.message } });
-    
-    // Try constructing the URI differently
+// Attempt to connect to MongoDB with the URI (async/await to avoid TS chaining on void)
+(async () => {
+  try {
+    await mongoose.connect(mongoUri, mongooseOptions as any);
+    connectSuccess();
+  } catch (error: any) {
+    logger.log({ level: 'error', event: 'mongo_connect_error', context: { error: error?.message || String(error) } });
     if (mongoUri.includes('mongodb+srv')) {
       try {
         const formattedUri = constructSrvUri(mongoUri);
         logger.log({ level: 'debug', event: 'mongo_uri_reformat_attempt' });
-        
-        mongoose.connect(formattedUri, mongooseOptions)
-          .then(connectSuccess)
-          .catch(err => {
-            logger.log({ level: 'error', event: 'mongo_connect_error_reformatted', context: { error: err.message } });
-          });
-      } catch (error) {
-        logger.log({ level: 'error', event: 'mongo_uri_construct_error', context: { error: (error as any).message } });
-        // No more retries, just exit
+        await mongoose.connect(formattedUri, mongooseOptions as any);
+        connectSuccess();
+      } catch (err: any) {
+        logger.log({ level: 'error', event: 'mongo_connect_error_reformatted', context: { error: err?.message || String(err) } });
         process.exit(1);
       }
     } else {
-      // Non-SRV URI failed, exit
       process.exit(1);
     }
-  });
+  }
+})();
 
 /**
  * Construct a properly formatted SRV URI with credentials
