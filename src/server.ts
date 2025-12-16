@@ -205,6 +205,9 @@ app.get('/api/status', async (_req, res) => {
   // Read feature flags from DB (fallback to env defaults)
   let features: any = {};
   let pricingModelVersion = process.env.PRICING_MODEL_VERSION || 'v0';
+  // Risk summary (public) for FE odds display parity with backend acceptance
+  // Pull margins, max odds, and confidence knobs only (no bankroll/exposure figures)
+  let riskPublic: any = {};
   try {
     const { getFeatures } = require('./utils/features_runtime');
     const f = await getFeatures();
@@ -234,6 +237,27 @@ app.get('/api/status', async (_req, res) => {
     poolRake: Number(process.env.POOL_RAKE || 0.05),
   };
 
+  // Compute public risk summary using helper (safe: no exposure/bankroll)
+  try {
+    const { getMargins, getConfidence } = require('./helpers/risk_config');
+    const m = getMargins();
+    const c = getConfidence();
+    riskPublic = {
+      margins: {
+        baseMargin: m.baseMargin,
+        drawExtraMargin: m.drawExtraMargin,
+        extraMarginLowConf: c.extraMarginLowConf,
+      },
+      confidence: {
+        earlyMoveNum: c.earlyMoveNum,
+      },
+      maxOdds: m.maxOdds,
+    };
+  } catch (_err) {
+    // leave riskPublic empty on error; FE will fall back to defaults
+    riskPublic = {};
+  }
+
   res.json({
     status: 'online',
     version: v.appVersion,
@@ -246,6 +270,7 @@ app.get('/api/status', async (_req, res) => {
     },
     features,
     pricing,
+    risk: riskPublic,
     limits,
   });
 });

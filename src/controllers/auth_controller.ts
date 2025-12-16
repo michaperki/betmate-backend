@@ -147,8 +147,9 @@ const getBalanceHistory = async (req: RequestWithJWT, res: Response): Promise<vo
 
     const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 30;
     const skip = req.query.skip ? parseInt(req.query.skip as string, 10) : 0;
+    const currency = (req.query.currency as any) as ('BET' | 'USDT' | undefined);
 
-    const history = await userService.getUserBalanceHistory(userId, limit, skip);
+    const history = await userService.getUserBalanceHistory(userId, limit, skip, currency);
 
     res.status(200).json(history);
   } catch (error) {
