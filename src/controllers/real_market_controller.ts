@@ -8,8 +8,15 @@ export const getWdlMarket: RequestHandler = async (req, res) => {
   try {
     const { gameId } = req.params as { gameId: string };
 
-    // Gate Real mode via feature flag as an extra safeguard
-    const realAllowed = (process.env.FEATURE_REAL_MODE === 'true') || (process.env.NODE_ENV === 'development');
+    // Gate Real mode via DB-backed feature flag (fallback to env for safety)
+    let realAllowed = false;
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const f = await getFeatures();
+      realAllowed = !!f.realModeEnabled;
+    } catch (_e) {
+      realAllowed = (process.env.FEATURE_REAL_MODE === 'true') || (process.env.NODE_ENV === 'development');
+    }
     if (!realAllowed) return res.status(403).json({ error: 'Real mode is currently disabled' });
 
     // Ensure game exists (also allows us to reflect lock state later)

@@ -274,8 +274,12 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
       return res.status(403).json({ error: 'Faucet disabled' });
     }
 
-    // If not dev, require admin key to prevent abuse in shared envs
-    if (!isDev) {
+    // In non-dev environments, require an admin key by default to prevent abuse.
+    // You can explicitly disable this requirement by setting FAUCET_REQUIRE_ADMIN_KEY=false
+    // (useful on staging). If unset, the default is to require the key.
+    const requireKeyEnv = process.env.FAUCET_REQUIRE_ADMIN_KEY;
+    const requireAdminKey = (requireKeyEnv == null) ? true : (String(requireKeyEnv).toLowerCase() === 'true');
+    if (!isDev && requireAdminKey) {
       const adminKey = process.env.ADMIN_API_KEY;
       const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
       if (!adminKey || !provided || provided !== adminKey) {
