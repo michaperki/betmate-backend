@@ -57,6 +57,7 @@ const getFeaturedMatch: RequestHandler = async (_req, res) => {
       meta: {
         move_number: moveN,
         phase: getPhase(moveN),
+        side_to_move: (game.state || '').split(' ')[1] === 'w' ? 'white' : 'black',
       },
     };
 
