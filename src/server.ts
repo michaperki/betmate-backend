@@ -246,17 +246,17 @@ const connectSuccess = () => {
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {
     logger.log({ level: 'info', event: 'purge_stale_games_start' });
-    chessService.purgeStaleGames()
-      .then(result => {
+    (async () => {
+      try {
+        const result = await (chessService.purgeStaleGames() as any);
         logger.log({ level: 'info', event: 'purge_stale_games_done', context: { result } });
-        // Start listening for Lichess games after purging stale games
+      } catch (error: any) {
+        logger.log({ level: 'error', event: 'purge_stale_games_error', context: { error: error?.message || String(error) } });
+      } finally {
+        // Start listening for Lichess games regardless
         streamLoop(chessWebsocket).catch(console.error);
-      })
-      .catch(error => {
-        logger.log({ level: 'error', event: 'purge_stale_games_error', context: { error: error.message } });
-        // Continue with Lichess stream anyway
-        streamLoop(chessWebsocket).catch(console.error);
-      });
+      }
+    })();
   }
 };
 
