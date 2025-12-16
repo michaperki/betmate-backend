@@ -53,3 +53,10 @@ export const decodeToken = (token: string, noVerify = false): any => {
 export const generateCorrelationId = (): string => {
   return Math.random().toString(36).substring(2, 10);
 };
+
+/**
+ * Clamp a number between min and max
+ */
+export const clamp = (value: number, min: number, max: number): number => {
+  return Math.max(min, Math.min(max, value));
+};

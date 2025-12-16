@@ -31,6 +31,7 @@ import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
   analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter, billingRouter,
   realMarketsRouter,
+  adminRouter,
 } from './routers';
 
 import * as constants from './helpers/constants';
@@ -72,7 +73,8 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  // Allow admin header for in-app ops panel
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'x-admin-key'],
 }));
 
 // Setup Socket.IO with allowed origins
@@ -145,6 +147,7 @@ app.use('/api/log', logRouter); // Frontend logging endpoint
 app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 app.use('/billing', billingRouter); // Wallet deposit/withdrawal endpoints (flag‑gated in FE)
 app.use('/real/markets', realMarketsRouter); // Real-mode WDL market prices (Phase 1 read-only)
+app.use('/admin', adminRouter); // Admin risk endpoints (guarded by X-Admin-Key)
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');

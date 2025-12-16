@@ -19,12 +19,10 @@ const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 export const processWager = (correctWager: string, winningPoolShare = 1, returnWagers = false) => (
   (wager: WagerDoc): ProcessedWager => {
     const baseWager = { _id: wager._id, better_id: wager.better_id, mode: wager.mode, currency: wager.currency } as Partial<ProcessedWager>;
-    // WDL: Arcade uses stored fixed odds; Real uses parimutuel share
-    // Move: Arcade uses stored fixed odds; Real uses pool share
-    const useShare = (wager.mode === 'real');
-    const odds = wager.wdl
-      ? (useShare ? winningPoolShare : wager.odds)
-      : (useShare ? winningPoolShare : wager.odds);
+    // WDL (game outcome): both Arcade and Real use stored fixed odds at bet-time
+    // Move: Arcade uses fixed odds; Real uses pool share
+    const useShare = (wager.mode === 'real') && !wager.wdl;
+    const odds = useShare ? winningPoolShare : wager.odds;
 
     switch (true) {
       case returnWagers:
@@ -49,32 +47,13 @@ export const processWager = (correctWager: string, winningPoolShare = 1, returnW
  * @returns Processed `wagers`
  */
 export const processWDLWagers: WagerProcessor = (wagers, correctOutcome) => ({
-  // Split Arcade vs Real; Arcade uses fixed odds; Real uses parimutuel with rake
+  // Both Arcade and Real use stored fixed odds for WDL; no parimutuel share or rake
   processedWagers: (() => {
-    const rake = Math.max(0, Math.min(0.25, Number(process.env.POOL_RAKE || 0.05)));
-
-    const arcade = wagers.filter(w => w.mode !== 'real');
-    const real = wagers.filter(w => w.mode === 'real');
-    const totalArcade = arcade.reduce((sum, w) => sum + w.amount, 0);
-
-    const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
-    const winReal = real.filter(w => w.data === correctOutcome).reduce((s, w) => s + w.amount, 0);
-    // Refund policy for Real WDL:
-    // - No winners: refund all Real bets
-    // - Single‑sided pool (everyone on winning side): refund all Real bets to avoid <1x payouts due to rake
-    const singleSided = (totalReal > 0 && winReal === totalReal);
-    const returnReal = (winReal === 0) || singleSided;
-    const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
-
-    const list = [
-      ...arcade.map(processWager(correctOutcome)),
-      ...real.map(processWager(correctOutcome, shareReal, returnReal)),
-    ];
+    const list = wagers.map(processWager(correctOutcome));
     try {
-      const rakeCollected = returnReal ? 0 : (totalReal * rake);
-      const hadAny = (totalArcade + totalReal) > 0;
+      const hadAny = wagers.length > 0;
       const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
-      logger.log({ level, event: 'wdl_settlement', context: { outcome: correctOutcome, totals: { totalReal, totalArcade }, winReal, returnReal, singleSided, shareReal, rake, rakeCollected } });
+      logger.log({ level, event: 'wdl_settlement', context: { outcome: correctOutcome, wagers: wagers.length, mode: 'fixed_odds' } });
     } catch {}
     return list;
   })(),
@@ -168,7 +147,7 @@ export const getUserWagers = (wagers: WagerDoc[]): UserWagers => (
  * @returns JSON mapping wager outcomes to an array of wagers IDs with that outcome
  */
 export const getWagerResults = (pw: ProcessedWager[]): WagerResults => {
-  // Treat Arcade move wagers as win/lose only — never cancelled
+  // Treat Arcade wagers as win/lose only — never cancelled; Real pool bets may be cancelled
   const winners = pw.filter((w) => w.outcome === WagerStatus.WON).map((w) => w._id);
   const lost = pw
     .filter((w) => w.outcome === WagerStatus.LOST || (w.outcome === WagerStatus.CANCELLED && w.mode !== 'real'))
