@@ -104,32 +104,53 @@ if (process.env.LOG_HTTP_DEBUG === 'true') {
 
 // Configure rate limiting middleware
 import { rateLimit } from 'express-rate-limit';
+import opsMetrics from './utils/ops_metrics';
 import errorHandler from './middleware/error_handler';
 import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
 
 // Enable if in production or if a specific env var is set.
 // Apply selectively to avoid throttling core dashboard endpoints like /leaderboard and /wager.
 if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
-  const selectiveLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
+  // Separate limiters so we can attribute counters clearly
+  const analysisLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
     standardHeaders: true,
     legacyHeaders: false,
-    message: "Too many requests from this IP, please try again after 15 minutes"
+    message: "Too many requests",
+    handler: (req, res, _next, _opts) => {
+      opsMetrics.inc('analysis429');
+      res.status(429).json({ error: 'Too many requests' });
+    },
+  });
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Too many requests",
+    handler: (req, res, _next, _opts) => {
+      opsMetrics.inc('auth429');
+      res.status(429).json({ error: 'Too many requests' });
+    },
+  });
+  const billingLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Too many deposit attempts",
+    handler: (req, res, _next, _opts) => {
+      opsMetrics.inc('billingIntent429');
+      res.status(429).json({ error: 'Too many deposit attempts' });
+    },
   });
 
-  // Narrow scope: heavy/expensive or auth-centric endpoints
-  app.use('/analysis', selectiveLimiter);
-  app.use('/auth', selectiveLimiter);
-  // Billing: stricter short-window rate limit for creating deposit intents
-  const billingLimiter = rateLimit({
-    windowMs: 60 * 1000, // 1 minute
-    max: 5, // at most 5 intents per minute per IP
-    standardHeaders: true,
-    legacyHeaders: false,
-  });
+  // Narrow scope only to heavy or auth endpoints
+  app.use('/analysis', analysisLimiter);
+  app.use('/auth', authLimiter);
   app.use('/billing/deposit/intent', billingLimiter);
-  // Note: /leaderboard and /wager are intentionally left unrestricted by the global limiter here.
+  // Intentional: leaderboard, wager, admin are not behind the limiter
 }
 
 // Add Axiom logging middleware
@@ -184,14 +205,22 @@ app.get('/api/status', async (_req, res) => {
   try {
     const { getFeatures } = require('./utils/features_runtime');
     const f = await getFeatures();
-    features = { realModeEnabled: !!f.realModeEnabled };
+    features = {
+      realModeEnabled: !!f.realModeEnabled,
+      enableFaucet: !!f.enableFaucet,
+      enableRateLimiting: !!f.enableRateLimiting,
+    };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {
     const realModeEnabled = (
       process.env.FEATURE_REAL_MODE === 'true'
       || process.env.NODE_ENV === 'development'
     );
-    features = { realModeEnabled };
+    features = {
+      realModeEnabled,
+      enableFaucet: process.env.ENABLE_FAUCET === 'true',
+      enableRateLimiting: (process.env.NODE_ENV === 'production') || (process.env.ENABLE_RATE_LIMITING === 'true'),
+    };
   }
 
   const pricing = { pricingModelVersion };

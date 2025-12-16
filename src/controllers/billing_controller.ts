@@ -270,7 +270,7 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
     const ff = await getRuntimeFeatures();
     const enabled = ff.enableFaucet || process.env.ENABLE_FAUCET === 'true';
-    if (!isDev && !enabled) {
+    if (!enabled) {
       return res.status(403).json({ error: 'Faucet disabled' });
     }
 

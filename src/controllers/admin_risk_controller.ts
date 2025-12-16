@@ -62,3 +62,41 @@ const adminRiskController = {
 
 export default adminRiskController;
 
+// Presets: lightweight mapping for quick ops defaults
+const PRESETS: Record<string, any> = {
+  low: {
+    bankroll: 50000,
+    baseMargin: 0.06,
+    drawExtraMargin: 0.08,
+    perBetLiabilityCap: 200,
+    perPlayerPerGameCap: 600,
+  },
+  med: {
+    bankroll: 100000,
+    baseMargin: 0.05,
+    drawExtraMargin: 0.07,
+    perBetLiabilityCap: 400,
+    perPlayerPerGameCap: 1200,
+  },
+  high: {
+    bankroll: 200000,
+    baseMargin: 0.04,
+    drawExtraMargin: 0.06,
+    perBetLiabilityCap: 800,
+    perPlayerPerGameCap: 2400,
+  },
+};
+
+export const applyRiskPresetHandler: import('express').RequestHandler = async (req, res) => {
+  try {
+    const lvl = String(req.body?.level || '').toLowerCase();
+    if (!['low', 'med', 'high'].includes(lvl)) {
+      return res.status(400).json({ error: 'Invalid level' });
+    }
+    const patch = PRESETS[lvl];
+    const cfg = updateOverrides(patch);
+    return res.status(200).json(cfg);
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || 'Failed to apply preset' });
+  }
+};
