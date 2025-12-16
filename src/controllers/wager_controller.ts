@@ -48,9 +48,11 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       return;
     }
 
-    // Determine requested mode and gate Real mode via feature flag
+    // Determine requested mode and gate Real mode via DB-backed feature flag
     const mode = req.body.mode === 'real' ? 'real' : 'arcade';
-    const realAllowed = (process.env.FEATURE_REAL_MODE === 'true') || (process.env.NODE_ENV === 'development');
+    const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+    const featureFlags = await getRuntimeFeatures();
+    const realAllowed = !!featureFlags.realModeEnabled;
     if (mode === 'real' && !realAllowed) {
       res.status(403).json({ error: 'Real mode is currently disabled' });
       return;
@@ -209,6 +211,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       computedOdds = serverOdds;
     }
 
+    const pv = featureFlags.pricingModelVersion || (process.env.PRICING_MODEL_VERSION || 'wdl-house-v1');
     const doc = await wagerService.createWager({
       game_id,
       better_id,
@@ -220,7 +223,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       is_bot: false,
       mode,
       currency,
-      pricing_model_version: process.env.PRICING_MODEL_VERSION || 'wdl-house-v1',
+      pricing_model_version: pv,
     });
 
     // Update user balance

@@ -267,7 +267,9 @@ export const nowpaymentsWebhookMock: RequestHandler = async (req, res) => {
 export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
     const isDev = process.env.NODE_ENV === 'development';
-    const enabled = process.env.ENABLE_FAUCET === 'true';
+    const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+    const ff = await getRuntimeFeatures();
+    const enabled = ff.enableFaucet || process.env.ENABLE_FAUCET === 'true';
     if (!isDev && !enabled) {
       return res.status(403).json({ error: 'Faucet disabled' });
     }

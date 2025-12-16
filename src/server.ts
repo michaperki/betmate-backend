@@ -176,17 +176,25 @@ app.get('/', (req, res) => {
 });
 
 // Add an API version endpoint for the frontend to check
-app.get('/api/status', (req, res) => {
+app.get('/api/status', async (_req, res) => {
   const v = getVersionInfo();
-  // Enable Real mode by default in development to allow UI toggle while building.
-  const realModeEnabled = (
-    process.env.FEATURE_REAL_MODE === 'true'
-    || process.env.NODE_ENV === 'development'
-  );
-  const features = { realModeEnabled };
-  const pricing = {
-    pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
-  };
+  // Read feature flags from DB (fallback to env defaults)
+  let features: any = {};
+  let pricingModelVersion = process.env.PRICING_MODEL_VERSION || 'v0';
+  try {
+    const { getFeatures } = require('./utils/features_runtime');
+    const f = await getFeatures();
+    features = { realModeEnabled: !!f.realModeEnabled };
+    pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
+  } catch (_e) {
+    const realModeEnabled = (
+      process.env.FEATURE_REAL_MODE === 'true'
+      || process.env.NODE_ENV === 'development'
+    );
+    features = { realModeEnabled };
+  }
+
+  const pricing = { pricingModelVersion };
   const limits = {
     arcadeMaxStakeMove: Number(process.env.ARCADE_MAX_STAKE_MOVE || 25),
     arcadeMaxStakeWdl: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),

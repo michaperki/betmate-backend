@@ -2,6 +2,8 @@ import express from 'express';
 import { requireAdminAccess } from '../authentication/requireAdminAccess';
 import adminRiskController from '../controllers/admin_risk_controller';
 import adminDevController from '../controllers/admin_dev_controller';
+import adminFeaturesController from '../controllers/admin_features_controller';
+import adminHomeController from '../controllers/admin_home_controller';
 
 const router = express();
 
@@ -12,6 +14,13 @@ router.put('/risk/config', express.json(), requireAdminAccess, adminRiskControll
 // Exposure
 router.get('/exposure/global', requireAdminAccess, adminRiskController.getGlobalExposure);
 router.get('/exposure/games/:gameId', requireAdminAccess, adminRiskController.getGameExposure);
+
+// Feature flags (DB-backed)
+router.get('/features', requireAdminAccess, adminFeaturesController.getFeatures);
+router.put('/features', express.json(), requireAdminAccess, adminFeaturesController.updateFeatures);
+
+// Admin home snapshot
+router.get('/home', requireAdminAccess, adminHomeController.getAdminHome);
 
 // Optional: reset in‑memory overrides (dev/staging convenience)
 router.post('/risk/reset', requireAdminAccess, (req, res) => {
