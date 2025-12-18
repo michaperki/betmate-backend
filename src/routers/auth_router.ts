@@ -59,6 +59,10 @@ router.route('/logout')
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
 
+// Mock KYC flow start (non-production only advisable)
+router.route('/kyc/start')
+  .post(requireAuth, authController.startKycMock);
+
 // Minimal onboarding status endpoint to quiet frontend polling
 router.route('/onboarding')
   .get(requireAuth, (req, res) => {

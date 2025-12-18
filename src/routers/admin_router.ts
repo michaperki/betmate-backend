@@ -6,8 +6,10 @@ import adminDevController, { createSampleGame, advanceMoveDev, simulateGameDev, 
 import adminFeaturesController from '../controllers/admin_features_controller';
 import adminHomeController from '../controllers/admin_home_controller';
 import adminWalletController from '../controllers/admin_wallet_controller';
+import adminWithdrawalsController from '../controllers/admin_withdrawals_controller';
 import adminOpsController from '../controllers/admin_ops_controller';
 import adminWagerController from '../controllers/admin_wager_controller';
+import adminKycController from '../controllers/admin_kyc_controller';
 
 const router = express.Router();
 
@@ -31,12 +33,24 @@ router.get('/home', requireAdminAccess, adminHomeController.getAdminHome);
 router.get('/wallet/deposits', requireAdminAccess, adminWalletController.listDeposits);
 // Dev/staging helper: clear stale pending invoices
 router.post('/dev/clear-stale-invoices', requireAdminAccess, express.json(), adminWalletController.clearStaleInvoices);
+// Wallet/withdrawals (admin view + actions)
+router.get('/wallet/withdrawals', requireAdminAccess, adminWithdrawalsController.listWithdrawals);
+router.post('/wallet/withdrawals/:id/approve', requireAdminAccess, adminWithdrawalsController.approveWithdrawal);
+router.post('/wallet/withdrawals/:id/reject', requireAdminAccess, adminWithdrawalsController.rejectWithdrawal);
+router.post('/wallet/withdrawals/:id/mark-processing', requireAdminAccess, adminWithdrawalsController.markProcessing);
+router.post('/wallet/withdrawals/:id/mark-paid', requireAdminAccess, adminWithdrawalsController.markPaid);
+router.post('/wallet/withdrawals/:id/mark-failed', requireAdminAccess, adminWithdrawalsController.markFailed);
 // Dev/staging helper: clear stale pending wagers (Real WDL only)
 router.post('/dev/clear-stale-wagers', requireAdminAccess, express.json(), adminWagerController.clearStaleWagers);
 
 // Ops & health
 router.get('/ops/stats', requireAdminAccess, adminOpsController.getOpsStats);
 router.get('/ops/ping', requireAdminAccess, adminOpsController.pingMicroservice);
+
+// KYC queue
+router.get('/kyc/users', requireAdminAccess, adminKycController.listKycUsers);
+router.post('/kyc/:id/approve', requireAdminAccess, adminKycController.approveKyc);
+router.post('/kyc/:id/reject', requireAdminAccess, adminKycController.rejectKyc);
 
 // Optional: reset in‑memory overrides (dev/staging convenience)
 router.post('/risk/reset', requireAdminAccess, (req, res) => {

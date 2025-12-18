@@ -11,12 +11,18 @@ router.post('/deposit/intent', bodyParser.json(), requireAuth, billingController
 router.get('/deposits', requireAuth, billingController.listDeposits);
 // Quote deposit (auth): returns charge USD incl. fees and estimated crypto amount
 router.get('/quote', requireAuth, billingController.quoteDeposit);
+// Withdrawals
+router.get('/withdrawals', requireAuth, billingController.listWithdrawals);
+router.post('/withdrawals/request', bodyParser.json(), requireAuth, billingController.requestWithdrawal);
+router.post('/withdrawals/:id/cancel', requireAuth, billingController.cancelWithdrawal);
 
 // CoinPayments IPN — HMAC verified using raw body (captured in server.ts)
 router.post('/webhook/coinpayments', billingController.coinpaymentsWebhook);
 
 // NOWPayments webhook — HMAC verified using raw body (captured in server.ts)
 router.post('/webhook/nowpayments', billingController.nowpaymentsWebhook);
+// NOWPayments payout webhook
+router.post('/webhook/nowpayments-payout', billingController.nowpaymentsPayoutWebhook);
 
 // Dev-only mock webhook for NOWPayments
 router.post('/webhook/nowpayments/mock', billingController.nowpaymentsWebhookMock);
@@ -27,5 +33,6 @@ router.post('/faucet', requireAuth, billingController.faucetCredit);
 // Admin-only operational helpers (remove/disable for prod as needed)
 router.post('/reconcile/nowpayments', requireAdminKey, billingController.reconcileNowpaymentsPending);
 router.post('/reissue/nowpayments/:id', requireAdminKey, billingController.reissueNowpaymentsInvoice);
+router.post('/reconcile/nowpayments-payouts', requireAdminKey, billingController.reconcileNowpaymentsPayouts);
 
 export default router;

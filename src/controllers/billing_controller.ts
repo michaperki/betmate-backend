@@ -1,11 +1,14 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequestWithJWT } from '../types/requests';
-import { Users, Deposit } from '../models';
+import { Users, Deposit, Withdrawal } from '../models';
 import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
 import { createPayment as createNowPayment, createInvoice as createNowInvoice, estimatePayAmountUSD, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
 import logger from '../helpers/axiom_logger';
+import type { RequestWithJWT } from '../types/requests';
+import { verifyWebhookSignature as verifyNowSig } from '../services/providers/nowpayments';
+import { getPayout as getNowPayout } from '../services/providers/nowpayments_payouts';
 
 export const createDepositIntent: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
@@ -231,6 +234,54 @@ export const nowpaymentsWebhook: RequestHandler = async (req, res) => {
   }
 };
 
+// NOWPayments payout webhook
+export const nowpaymentsPayoutWebhook: RequestHandler = async (req, res) => {
+  try {
+    const raw = (req as any).rawBody || JSON.stringify(req.body);
+    const sig = req.header('x-nowpayments-sig') || req.header('x-nowpayments-signature') || '';
+    if (!verifyNowSig(typeof raw === 'string' ? raw : raw.toString(), sig)) {
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    const body = req.body || {};
+    const payoutId = String(body?.payout_id || body?.id || '');
+    const orderId = body?.withdrawal_id ? String(body.withdrawal_id) : '';
+    const status = String(body?.status || body?.payment_status || '').toLowerCase();
+    if (!payoutId && !orderId) return res.status(400).json({ error: 'Missing identifiers' });
+
+    let wd = null as any;
+    if (orderId) wd = await Withdrawal.findById(orderId);
+    if (!wd && payoutId) wd = await Withdrawal.findOne({ provider: 'nowpayments', provider_ref: payoutId });
+    if (!wd) return res.status(200).json({ ok: true });
+
+    const confirmed = ['confirmed','finished','completed','paid','success'].includes(status);
+    const failed = ['failed','cancelled','rejected','error'].includes(status);
+    if (confirmed && wd.status !== 'paid') {
+      wd.status = 'paid';
+      wd.provider = 'nowpayments';
+      wd.provider_ref = wd.provider_ref || payoutId;
+      await wd.save();
+      return res.status(200).json({ ok: true });
+    }
+    if (failed) {
+      // Refund on failure if not already paid
+      if (wd.status !== 'paid') {
+        try {
+          await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
+          await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
+        } catch {}
+      }
+      wd.status = 'failed';
+      wd.provider = 'nowpayments';
+      wd.provider_ref = wd.provider_ref || payoutId;
+      await wd.save();
+      return res.status(200).json({ ok: true });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    return res.status(500).json({ error: 'Webhook error' });
+  }
+};
+
 export const nowpaymentsWebhookMock: RequestHandler = async (req, res) => {
   try {
     const key = (req.header('x-dev-webhook-key') || (req.query.key as string) || '').toString();
@@ -303,6 +354,141 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
   }
 };
 
+// List current user's withdrawals
+export const listWithdrawals: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
+  try {
+    const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
+    const rows = await Withdrawal.find({ user_id: req.user._id }).sort({ created_at: -1 }).limit(limit).lean();
+    const data = (rows || []).map((r: any) => ({
+      _id: String(r._id),
+      amount: r.amount,
+      currency: r.currency,
+      address: r.address,
+      status: r.status,
+      provider: r.provider,
+      provider_ref: r.provider_ref,
+      created_at: r.created_at,
+      metadata: r.metadata,
+    }));
+    return res.status(200).json({ withdrawals: data });
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to fetch withdrawals' });
+  }
+};
+
+// Request a withdrawal (places a hold immediately)
+export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    const { amount, currency = 'USDTTRC20', address } = req.body || {};
+    if (!req.user?._id) return res.status(401).json({ error: 'Unauthorized' });
+
+    // Feature flags
+    const { getFeatures } = require('../utils/features_runtime');
+    const ff = await getFeatures();
+    const enabled = (ff as any).enableWithdrawals === true || process.env.ENABLE_WITHDRAWALS === 'true';
+    const requireKyc = (ff as any).requireKyc === true || process.env.REQUIRE_KYC === 'true';
+    if (!enabled) return res.status(403).json({ error: 'Withdrawals disabled' });
+
+    // KYC gate
+    const kycStatus = (req.user as any)?.kyc_status || 'none';
+    if (requireKyc && kycStatus !== 'approved') {
+      return res.status(403).json({ error: 'KYC required' });
+    }
+
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
+    const minUSD = Math.max(1, Number(process.env.WITHDRAW_MIN_USD || 10));
+    const maxUSD = Math.max(minUSD, Number(process.env.WITHDRAW_MAX_USD || 5000));
+    if (amt < minUSD || amt > maxUSD) return res.status(400).json({ error: `Amount out of bounds (${minUSD}-${maxUSD})` });
+
+    // Allowed payout currencies
+    const allowedList = (process.env.WITHDRAW_ALLOWED_CURRENCIES || process.env.NOWPAYMENTS_ALLOWED_CURRENCIES || 'USDTTRC20,USDTBEP20,USDTERC20,USDC,BTC,ETH')
+      .split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+    const payCurrency = String(currency || '').toUpperCase();
+    if (!allowedList.includes(payCurrency)) {
+      return res.status(400).json({ error: 'Unsupported currency', allowed: allowedList });
+    }
+
+    // Basic address validation heuristics
+    const addr = String(address || '').trim();
+    if (!addr) return res.status(400).json({ error: 'Missing address' });
+    const isEvm = payCurrency.includes('ERC20') || payCurrency.includes('BEP20') || payCurrency === 'USDC' || payCurrency === 'ETH' || payCurrency === 'USDT';
+    const isTron = payCurrency.includes('TRC20');
+    if (isEvm) {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ error: 'Invalid EVM address format' });
+    } else if (isTron) {
+      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)) return res.status(400).json({ error: 'Invalid TRON address format' });
+    } else if (payCurrency === 'BTC') {
+      // Basic BTC address heuristic: legacy (1/3...) or bech32 (bc1...)
+      if (!/^(bc1[0-9a-z]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(addr)) {
+        return res.status(400).json({ error: 'Invalid BTC address format' });
+      }
+    }
+
+    // Velocity limit: restrict concurrent open withdrawals
+    const maxOpen = Math.max(1, Number(process.env.WITHDRAW_MAX_OPEN || 1));
+    const openCount = await Withdrawal.countDocuments({ user_id: req.user._id, status: { $in: ['requested', 'approved', 'processing'] } });
+    if (openCount >= maxOpen) return res.status(429).json({ error: 'Too many open withdrawals' });
+
+    // Check user balance
+    const freshUser = await Users.findById(req.user._id);
+    if (!freshUser) return res.status(404).json({ error: 'User not found' });
+    const bal = (freshUser as any).cash_balance || 0;
+    if (bal < amt) return res.status(400).json({ error: 'Insufficient balance' });
+
+    // Create withdrawal first
+    const wd = await new Withdrawal({
+      user_id: req.user._id,
+      amount: amt,
+      currency: payCurrency,
+      address: addr,
+      status: 'requested',
+      provider: 'manual',
+    }).save();
+
+    // Place hold by debiting cash_balance
+    try {
+      await userService.updateUserData(req.user._id, { $inc: { cash_balance: -amt } });
+      await userService.recordBalanceChange(req.user._id, -amt, 'Withdrawal hold', String(wd._id), 'Withdrawal', 'USDT');
+    } catch (e) {
+      try { wd.status = 'failed'; await wd.save(); } catch {}
+      return res.status(500).json({ error: 'Failed to place hold' });
+    }
+
+    return res.status(200).json({ ok: true, withdrawal_id: String(wd._id) });
+  } catch (e) {
+    return res.status(500).json({ error: 'Withdrawal request error' });
+  }
+};
+
+// Cancel a requested withdrawal (user‑initiated)
+export const cancelWithdrawal: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    if (!req.user?._id) return res.status(401).json({ error: 'Unauthorized' });
+    const id = String(req.params.id || '');
+    const wd = await Withdrawal.findById(id);
+    if (!wd || String(wd.user_id) !== String(req.user._id)) {
+      return res.status(404).json({ error: 'Not found' });
+    }
+    if (wd.status !== 'requested') {
+      return res.status(400).json({ error: 'Cannot cancel in current status' });
+    }
+    // Refund hold
+    try {
+      await userService.updateUserData(req.user._id, { $inc: { cash_balance: wd.amount } });
+      await userService.recordBalanceChange(req.user._id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
+    } catch (e) {
+      return res.status(500).json({ error: 'Refund failed' });
+    }
+    wd.status = 'cancelled';
+    (wd as any).metadata = { ...(wd as any).metadata, user_cancelled_at: new Date().toISOString() };
+    await wd.save();
+    return res.status(200).json({ ok: true, status: wd.status });
+  } catch (e) {
+    return res.status(500).json({ error: 'Cancel error' });
+  }
+};
+
 // Admin-only: reconcile NOWPayments pending deposits by polling provider
 export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
   try {
@@ -336,6 +522,45 @@ export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
         }
       } catch (e) {
         results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+      }
+    }
+    return res.status(200).json({ ok: true, count: results.length, results });
+  } catch (e) {
+    return res.status(500).json({ error: 'Reconciliation error' });
+  }
+};
+
+// Admin-only: reconcile NOWPayments pending payouts by polling provider
+export const reconcileNowpaymentsPayouts: RequestHandler = async (req, res) => {
+  try {
+    const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
+    const items = await Withdrawal.find({ provider: 'nowpayments', status: { $in: ['processing','approved'] } }).sort({ created_at: 1 }).limit(limit);
+    const results: any[] = [];
+    for (const wd of items) {
+      const ref = wd.provider_ref;
+      if (!ref) { results.push({ id: String(wd._id), action: 'skip_no_ref' }); continue; }
+      try {
+        const info = await getNowPayout(ref);
+        const status = String(info?.status || info?.payment_status || '').toLowerCase();
+        const confirmed = ['confirmed','finished','completed','paid','success'].includes(status);
+        const failed = ['failed','cancelled','rejected','error'].includes(status);
+        if (confirmed && wd.status !== 'paid') {
+          wd.status = 'paid';
+          await wd.save();
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'paid' });
+        } else if (failed && wd.status !== 'paid') {
+          try {
+            await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
+            await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
+          } catch {}
+          wd.status = 'failed';
+          await wd.save();
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'failed' });
+        } else {
+          results.push({ id: String(wd._id), provider_ref: ref, status: wd.status });
+        }
+      } catch (e) {
+        results.push({ id: String(wd._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
       }
     }
     return res.status(200).json({ ok: true, count: results.length, results });
@@ -392,11 +617,16 @@ export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
 export default {
   createDepositIntent,
   listDeposits,
+  listWithdrawals,
+  requestWithdrawal,
+  cancelWithdrawal,
   quoteDeposit,
   coinpaymentsWebhook,
   nowpaymentsWebhook,
+  nowpaymentsPayoutWebhook,
   nowpaymentsWebhookMock,
   faucetCredit,
   reconcileNowpaymentsPending,
+  reconcileNowpaymentsPayouts,
   reissueNowpaymentsInvoice,
 };
