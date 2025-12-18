@@ -1,7 +1,8 @@
 import express from 'express';
 import { requireAdminAccess } from '../authentication/requireAdminAccess';
+import requireAuth from '../authentication/requireAuth';
 import adminRiskController, { applyRiskPresetHandler } from '../controllers/admin_risk_controller';
-import adminDevController from '../controllers/admin_dev_controller';
+import adminDevController, { createSampleGame, advanceMoveDev, simulateGameDev, stopSimulateDev } from '../controllers/admin_dev_controller';
 import adminFeaturesController from '../controllers/admin_features_controller';
 import adminHomeController from '../controllers/admin_home_controller';
 import adminWalletController from '../controllers/admin_wallet_controller';
@@ -47,5 +48,38 @@ router.post('/risk/reset', requireAdminAccess, (req, res) => {
 
 // Danger zone: clear all wagers (dev)
 router.post('/dev/clear-wagers', requireAdminAccess, adminDevController.clearAllWagers);
+
+// Dev-only: create a deterministic sample game for E2E tests
+router.post('/dev/create-sample-game', express.json(), requireAdminAccess, createSampleGame);
+
+// Dev-only (non-production): allow any authenticated user to create a sample game for testing
+router.post('/dev/create-sample-game-open', express.json(), requireAuth, (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  return createSampleGame(req, res, next);
+});
+
+// Dev-only (non-production): simple simulator endpoints for deterministic testing
+router.post('/dev/advance-move', express.json(), requireAuth, (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  return advanceMoveDev(req, res, next);
+});
+
+router.post('/dev/simulate-game', express.json(), requireAuth, (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  return simulateGameDev(req, res, next);
+});
+
+router.post('/dev/stop-simulate', express.json(), requireAuth, (req, res, next) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  return stopSimulateDev(req, res, next);
+});
 
 export default router;

@@ -302,7 +302,11 @@ const recordBalanceChange = async (
     const balanceHistory = new BalanceHistory({
       user_id: userId,
       amount: amount,
-      balance: currency === 'USDT' ? (user as any).cash_balance : user.account,
+      // Snapshot the correct wallet balance based on currency
+      // Prefer token_balance for BET (fallback to legacy account during migration)
+      balance: (currency === 'USDT')
+        ? (user as any).cash_balance
+        : ((user as any).token_balance != null ? (user as any).token_balance : user.account),
       currency: currency || 'BET',
       reason: reason,
       ...(referenceId && { reference_id: referenceId }),

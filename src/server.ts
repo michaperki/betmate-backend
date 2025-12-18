@@ -37,6 +37,7 @@ import {
 
 import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
+import { setChessNamespace } from './websockets/namespace';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
 // Ensure global type augmentations are included for type-checking only
@@ -174,6 +175,7 @@ app.use('/matches', matchesRouter); // Featured + match details endpoints for FE
 
 // declare websockets
 const chessWebsocket = io.of('/chessws');
+setChessNamespace(chessWebsocket);
 chessWebsocket.on('connection', chessWS);
 
 app.use('/lichess', lichessRouter(chessWebsocket));

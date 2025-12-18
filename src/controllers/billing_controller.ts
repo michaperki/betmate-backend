@@ -19,7 +19,10 @@ export const createDepositIntent: RequestHandler = async (req: ValidatedRequestW
     if (desiredUSD < minUSD || desiredUSD > maxUSD) {
       return res.status(400).json({ error: `Amount out of bounds (${minUSD} - ${maxUSD})` });
     }
-    const provider = (process.env.PAYMENTS_PROVIDER || 'coinpayments').toLowerCase();
+    const provider = (
+      process.env.PAYMENTS_PROVIDER
+      || (process.env.NODE_ENV === 'production' ? 'coinpayments' : 'nowpayments')
+    ).toLowerCase();
     if (provider === 'coinpayments') {
       const base = process.env.PUBLIC_BACKEND_URL || `${req.protocol}://${req.get('host')}`;
       const ipnUrl = `${base}/billing/webhook/coinpayments`;
@@ -230,8 +233,9 @@ export const nowpaymentsWebhook: RequestHandler = async (req, res) => {
 
 export const nowpaymentsWebhookMock: RequestHandler = async (req, res) => {
   try {
-    const key = req.header('x-dev-webhook-key') || req.query.key as string || '';
-    const required = process.env.DEV_WEBHOOK_KEY || '';
+    const key = (req.header('x-dev-webhook-key') || (req.query.key as string) || '').toString();
+    // In non-production, allow a sane default if DEV_WEBHOOK_KEY is not provided
+    const required = (process.env.DEV_WEBHOOK_KEY || (process.env.NODE_ENV !== 'production' ? 'test-dev-webhook-key' : '')).toString();
     if (process.env.NODE_ENV === 'production' || !required || key !== required) {
       return res.status(403).json({ error: 'Forbidden' });
     }

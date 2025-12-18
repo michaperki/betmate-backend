@@ -184,11 +184,12 @@ const updateUserWinnings = async (processedWagers: ProcessedWager[]): Promise<Us
       : null;
 
     if (updatedUser) {
-      if (amounts.BET && amounts.BET > 0) {
-        await userService.recordBalanceChange(id, amounts.BET, 'Wager winnings', undefined, 'Wager');
-      }
-      if (amounts.USDT && amounts.USDT > 0) {
-        await userService.recordBalanceChange(id, amounts.USDT, 'Wager winnings', undefined, 'Wager');
+      // Record per-wager ledger entries with appropriate reason (Refund vs Wager winnings)
+      const relevant = processedWagers.filter(w => String(w.better_id) === String(id) && (w.winnings || 0) > 0);
+      for (const w of relevant) {
+        const curr = (w.currency === 'USDT') ? 'USDT' : 'BET';
+        const reason = (w.outcome === WagerStatus.CANCELLED) ? 'Refund' : 'Wager winnings';
+        await userService.recordBalanceChange(id, w.winnings, reason, String(w._id), 'Wager', curr as any);
       }
     }
     return updatedUser;
