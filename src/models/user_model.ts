@@ -22,6 +22,10 @@ const UserSchema = new Schema({
   // New dual-wallet fields (backward compatible)
   token_balance: { type: Number, default: 1000 },
   cash_balance: { type: Number, default: 0 },
+  // KYC state machine (mock for now)
+  kyc_status: { type: String, enum: ['none', 'required', 'pending', 'approved', 'rejected'], default: 'none', index: true },
+  kyc_meta: { type: Schema.Types.Mixed, default: undefined },
+  kyc_updated_at: { type: Date },
   role: {
     type: String,
     default: UserRole.USER,

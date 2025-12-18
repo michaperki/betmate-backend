@@ -147,11 +147,23 @@ if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING ==
       res.status(429).json({ error: 'Too many deposit attempts' });
     },
   });
+  const withdrawLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 3,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: "Too many withdrawal attempts",
+    handler: (req, res, _next, _opts) => {
+      opsMetrics.inc('billingIntent429');
+      res.status(429).json({ error: 'Too many withdrawal attempts' });
+    },
+  });
 
   // Narrow scope only to heavy or auth endpoints
   app.use('/analysis', analysisLimiter);
   app.use('/auth', authLimiter);
   app.use('/billing/deposit/intent', billingLimiter);
+  app.use('/billing/withdrawals/request', withdrawLimiter);
   // Intentional: leaderboard, wager, admin are not behind the limiter
 }
 
@@ -217,6 +229,8 @@ app.get('/api/status', async (_req, res) => {
       realModeEnabled: !!f.realModeEnabled,
       enableFaucet: !!f.enableFaucet,
       enableRateLimiting: !!f.enableRateLimiting,
+      enableWithdrawals: !!(f as any).enableWithdrawals,
+      requireKyc: !!(f as any).requireKyc,
     };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {
@@ -228,6 +242,8 @@ app.get('/api/status', async (_req, res) => {
       realModeEnabled,
       enableFaucet: process.env.ENABLE_FAUCET === 'true',
       enableRateLimiting: (process.env.NODE_ENV === 'production') || (process.env.ENABLE_RATE_LIMITING === 'true'),
+      enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
+      requireKyc: process.env.REQUIRE_KYC === 'true',
     };
   }
 

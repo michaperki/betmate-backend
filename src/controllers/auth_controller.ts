@@ -158,6 +158,24 @@ const getBalanceHistory = async (req: RequestWithJWT, res: Response): Promise<vo
 };
 
 /**
+ * Mock KYC start: set user's kyc_status to 'pending'.
+ */
+const startKycMock: RequestHandler = async (req: RequestWithJWT, res) => {
+  try {
+    const userId = req.user?._id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    const current = (req.user as any)?.kyc_status || 'none';
+    if (current === 'approved') {
+      return res.status(200).json({ ok: true, kyc_status: 'approved' });
+    }
+    const updated = await userService.updateUserData(userId, { $set: { kyc_status: 'pending', kyc_updated_at: new Date() } } as any);
+    return res.status(200).json({ ok: true, kyc_status: (updated as any)?.kyc_status || 'pending' });
+  } catch (error) {
+    return handleFailure(res)(error);
+  }
+};
+
+/**
  * Refresh auth token using refresh token
  * - Validate refresh token
  * - Create new JWT token
@@ -233,6 +251,7 @@ const authController = {
   signInUser,
   jwtSignIn,
   getBalanceHistory,
+  startKycMock,
   refreshToken,
   logout,
 };

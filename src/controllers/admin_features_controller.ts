@@ -6,6 +6,8 @@ type FeatureFlags = {
   enableFaucet: boolean;
   enableRateLimiting: boolean;
   pricingModelVersion: string;
+  enableWithdrawals?: boolean;
+  requireKyc?: boolean;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -25,6 +27,8 @@ function defaults(): FeatureFlags {
     enableFaucet: process.env.ENABLE_FAUCET === 'true',
     enableRateLimiting: (process.env.NODE_ENV === 'production') || (process.env.ENABLE_RATE_LIMITING === 'true'),
     pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
+    enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
+    requireKyc: process.env.REQUIRE_KYC === 'true',
   };
 }
 
@@ -39,6 +43,8 @@ async function readFeatures(): Promise<FeatureFlags> {
       enableFaucet: toBool(data.enableFaucet, d.enableFaucet),
       enableRateLimiting: toBool(data.enableRateLimiting, d.enableRateLimiting),
       pricingModelVersion: String(data.pricingModelVersion ?? d.pricingModelVersion),
+      enableWithdrawals: toBool((data as any).enableWithdrawals, d.enableWithdrawals || false),
+      requireKyc: toBool((data as any).requireKyc, d.requireKyc || false),
     };
   } catch (_e) {
     return defaults();
@@ -70,4 +76,3 @@ export const updateFeatures: RequestHandler = async (req, res) => {
 };
 
 export default { getFeatures, updateFeatures };
-
