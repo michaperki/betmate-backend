@@ -10,7 +10,8 @@ async function recordMoveRake(
   note?: string,
 ) {
   try {
-    const gid = typeof gameId === 'string' ? new Types.ObjectId(gameId) : gameId;
+    // Allow Mongoose to cast strings to ObjectId; avoid constructor typing issues
+    const gid = gameId as any;
     // Persist best-effort; swallow errors so settlement is never blocked
     await (HouseLedger as any).create({
       game_id: gid,
