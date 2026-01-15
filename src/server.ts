@@ -333,6 +333,15 @@ const connectSuccess = () => {
       try {
         const result = await (chessService.purgeStaleGames() as any);
         logger.log({ level: 'info', event: 'purge_stale_games_done', context: { result } });
+
+        // After marking games, sweep orphan/finished-game unresolved wagers to avoid blocking caps
+        try {
+          const { cleanupOrphanAndFinishedWagers } = require('./services/wager_cleanup_service');
+          const sweep = await cleanupOrphanAndFinishedWagers();
+          logger.log({ level: 'info', event: 'wager_orphan_sweep_done', context: { updated: sweep.updated, inspected: sweep.inspected } });
+        } catch (e: any) {
+          logger.log({ level: 'error', event: 'wager_orphan_sweep_error', context: { error: e?.message || String(e) } });
+        }
       } catch (error: any) {
         logger.log({ level: 'error', event: 'purge_stale_games_error', context: { error: error?.message || String(error) } });
       } finally {

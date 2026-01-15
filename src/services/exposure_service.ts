@@ -1,5 +1,5 @@
 import { Types } from 'mongoose';
-import { Wager } from '../models';
+import { Chess, Wager } from '../models';
 
 export type OutcomeKey = 'white_win' | 'draw' | 'black_win';
 
@@ -28,6 +28,11 @@ function worstCase(exp: OutcomeExposure): number {
  */
 export async function getGameExposure(gameId: string): Promise<GameExposure> {
   const perOutcome = emptyExposure();
+  // If the game no longer exists, report zero exposure to avoid blocking caps
+  try {
+    const exists = await Chess.exists({ _id: Types.ObjectId(gameId) });
+    if (!exists) return { gameId, perOutcome, worstCase: 0 };
+  } catch {}
   const rows = await Wager.find({
     game_id: Types.ObjectId(gameId),
     wdl: true,
@@ -52,8 +57,15 @@ export async function getGlobalExposure(): Promise<{ total: number; byGame: Game
     .select('game_id data amount odds')
     .lean();
   const byGame = new Map<string, OutcomeExposure>();
+  // Restrict to games that are currently active (complete: false)
+  const gameIds = Array.from(new Set((rows || []).map((w: any) => String(w.game_id)).filter(Boolean)));
+  const activeGames = await Chess.find({ _id: { $in: gameIds.map((id) => Types.ObjectId(id)) }, complete: false })
+    .select('_id')
+    .lean();
+  const activeSet = new Set<string>(activeGames.map((g: any) => String(g._id)));
   for (const w of rows || []) {
     const gid = String((w as any).game_id);
+    if (!activeSet.has(gid)) continue;
     if (!byGame.has(gid)) byGame.set(gid, emptyExposure());
     const odds = Math.max(1, Number((w as any).odds || 1));
     const stake = Math.max(0, Number((w as any).amount || 0));
@@ -82,4 +94,3 @@ export async function getPlayerGameLiability(gameId: string, userId: string): Pr
     return s + stake * (odds - 1);
   }, 0);
 }
-

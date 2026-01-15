@@ -83,11 +83,16 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
 
     console.log(`Found ${incompleteCount} incomplete games and ${inProgressCount} in-progress/not-started games`);
 
-    // Perform deletion operations
-    const deleteIncomplete = await Chess.deleteMany({ complete: false });
-    const deleteInProgress = await Chess.deleteMany({
-      game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] }
-    });
+    // Mark any lingering or in-progress games as ABORTED instead of deleting,
+    // so downstream cleanup (e.g., wagers) can reason about them.
+    const markIncomplete = await Chess.updateMany(
+      { complete: false },
+      { $set: { complete: true, game_status: GameStatus.ABORTED } }
+    );
+    const markInProgress = await Chess.updateMany(
+      { game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] } },
+      { $set: { complete: true, game_status: GameStatus.ABORTED } }
+    );
 
     // Additionally, find and mark as complete any games older than 2 hours
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
@@ -104,14 +109,16 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
       }
     );
 
-    const totalDeleted = (deleteIncomplete.deletedCount || 0) + (deleteInProgress.deletedCount || 0);
+    const totalDeleted = 0; // we no longer delete; we mark as ABORTED
     // Use nModified for older MongoDB versions or modifiedCount for newer ones
-    const totalMarked = markOldGames.nModified || (markOldGames as any).modifiedCount || 0;
+    const totalMarked = (markIncomplete as any).nModified || (markIncomplete as any).modifiedCount || 0;
+    const totalMarked2 = (markInProgress as any).nModified || (markInProgress as any).modifiedCount || 0;
+    const totalAborted = Number(totalMarked || 0) + Number(totalMarked2 || 0);
 
     return {
       success: true,
       deletedCount: totalDeleted,
-      details: `Deleted ${totalDeleted} stale games and marked ${totalMarked} old games as complete.`
+      details: `Aborted ${totalAborted} lingering/in-progress games and marked ${((markOldGames as any).nModified || (markOldGames as any).modifiedCount || 0)} old games as complete.`
     };
   } catch (error) {
     console.error('Error purging stale games:', error);

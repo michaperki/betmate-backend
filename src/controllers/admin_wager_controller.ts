@@ -16,7 +16,7 @@ export const clearStaleWagers: RequestHandler = async (req, res) => {
     const gameIds = games.map((g: any) => g._id as Types.ObjectId);
     if (!gameIds.length) return res.status(200).json({ ok: true, updated: 0, olderThanMinutes: minutes });
 
-    // Find stuck wagers
+    // Find stuck wagers (completed games)
     const stuck = await Wager.find({
       wdl: true,
       mode: 'real',
@@ -39,6 +39,30 @@ export const clearStaleWagers: RequestHandler = async (req, res) => {
       }
     }
 
+    // Orphaned wagers: unresolved wagers whose game doc is missing (older than cutoff)
+    const orphanCandidates = await Wager.find({
+      wdl: true,
+      mode: 'real',
+      status: WagerStatus.PENDING,
+      created_at: { $lt: cutoff },
+    }).select('_id better_id amount currency game_id').lean();
+
+    if (orphanCandidates.length) {
+      const orphanGameIds = Array.from(new Set(orphanCandidates.map((w: any) => String(w.game_id)).filter(Boolean)));
+      const present = await Chess.find({ _id: { $in: orphanGameIds.map((id) => Types.ObjectId(id)) } }).select('_id').lean();
+      const presentSet = new Set<string>(present.map((g: any) => String(g._id)));
+      for (const w of orphanCandidates) {
+        const gid = String((w as any).game_id);
+        if (!gid || presentSet.has(gid)) continue; // not orphan
+        try {
+          await userService.updateUserData((w as any).better_id, { $inc: { cash_balance: Math.max(0, Number((w as any).amount || 0)) } });
+          await userService.recordBalanceChange((w as any).better_id, Math.max(0, Number((w as any).amount || 0)), 'Wager cancelled (orphaned game)', String((w as any)._id), 'Wager', 'USDT');
+          await Wager.updateOne({ _id: (w as any)._id }, { $set: { status: WagerStatus.CANCELLED, resolved: true } });
+          updated += 1;
+        } catch (_e) {}
+      }
+    }
+
     return res.status(200).json({ ok: true, updated, olderThanMinutes: minutes });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to clear stale wagers' });
@@ -46,4 +70,3 @@ export const clearStaleWagers: RequestHandler = async (req, res) => {
 };
 
 export default { clearStaleWagers };
-
