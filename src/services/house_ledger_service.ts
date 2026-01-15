@@ -12,7 +12,7 @@ async function recordMoveRake(
   try {
     const gid = typeof gameId === 'string' ? new Types.ObjectId(gameId) : gameId;
     // Persist best-effort; swallow errors so settlement is never blocked
-    await new (HouseLedger as any)({
+    await (HouseLedger as any).create({
       game_id: gid,
       move_number: moveNumber,
       total_pool_real: totalRealPool,
@@ -20,7 +20,7 @@ async function recordMoveRake(
       amount,
       currency: 'USDT',
       note,
-    }).save();
+    });
   } catch (_e) {
     // no-op
   }
@@ -28,4 +28,3 @@ async function recordMoveRake(
 
 const houseLedgerService = { recordMoveRake };
 export default houseLedgerService;
-
