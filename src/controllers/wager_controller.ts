@@ -103,13 +103,16 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
         }
         if (!Number.isFinite(bestScore)) bestScore = 0;
 
-        // Bucketed raw probabilities based on delta from best
+        // Bucketed raw probabilities based on delta from best (env-tunable)
+        const T1 = Number(process.env.ARCADE_DELTA_T1 ?? 30);
+        const T2 = Number(process.env.ARCADE_DELTA_T2 ?? 80);
+        const T3 = Number(process.env.ARCADE_DELTA_T3 ?? 200);
         const rawP = (mv: string): number => {
           const sc = scoreByMove.has(mv) ? (scoreByMove.get(mv) as number) : (bestScore - 250);
           const delta = bestScore - sc; // worse moves have larger delta
-          if (delta <= 30) return 0.5;
-          if (delta <= 80) return 0.3;
-          if (delta <= 200) return 0.15;
+          if (delta <= T1) return 0.5;
+          if (delta <= T2) return 0.3;
+          if (delta <= T3) return 0.15;
           return 0.05;
         };
 

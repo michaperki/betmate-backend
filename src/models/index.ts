@@ -7,6 +7,7 @@ import DepositModel from './deposit_model';
 import WithdrawalModel from './withdrawal_model';
 import RefreshTokenModel from './refresh_token_model';
 import MarketModel from './market_model';
+import HouseLedgerModel from './house_ledger_model';
 
 export {
   UserModel as Users,
@@ -18,4 +19,5 @@ export {
   DepositModel as Deposit,
   WithdrawalModel as Withdrawal,
   MarketModel as Market,
+  HouseLedgerModel as HouseLedger,
 };

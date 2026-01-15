@@ -6,6 +6,7 @@ import agentService from './agent_service';
 import refreshTokenService from './refresh_token_service';
 import twitterService from './twitter_service';
 import marketService from './market_service';
+import houseLedgerService from './house_ledger_service';
 
 export {
   microservice as microserviceService,
@@ -16,4 +17,5 @@ export {
   refreshTokenService,
   twitterService,
   marketService,
+  houseLedgerService,
 };

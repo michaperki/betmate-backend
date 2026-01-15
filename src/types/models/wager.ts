@@ -60,7 +60,16 @@ export interface ProcessedWager {
 
   type WagerProcessorOutput = {
     processedWagers: ProcessedWager[],
-    winningPoolShare?: number
+    winningPoolShare?: number,
+    meta?: {
+      // Real move settlement stats for rake/ops
+      totalReal?: number,
+      winReal?: number,
+      returnReal?: boolean,
+      shareReal?: number,
+      rake?: number,
+      rakeCollected?: number,
+    }
   };
 
 export type WagerProcessor = (wagers: WagerDoc[], correctWager: string) => WagerProcessorOutput;

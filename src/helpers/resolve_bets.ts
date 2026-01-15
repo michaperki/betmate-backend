@@ -1,5 +1,5 @@
 import { UpdateQuery, Types } from 'mongoose';
-import { userService, wagerService } from '../services';
+import { userService, wagerService, houseLedgerService } from '../services';
 import { UserDoc } from '../types/models/user';
 import {
   ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
@@ -90,14 +90,14 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
     ...real.map(processWager(correctMove, shareReal, returnReal)),
   );
 
+  const rakeCollected = returnReal ? 0 : (totalReal * rake);
   try {
-    const rakeCollected = returnReal ? 0 : (totalReal * rake);
     const hadAny = (totalArcade + totalReal) > 0;
     const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
     logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
   } catch {}
 
-  return { processedWagers };
+  return { processedWagers, meta: { totalReal, winReal, returnReal, shareReal, rake, rakeCollected } };
 };
 
 /**
@@ -242,7 +242,13 @@ const updateWagerResults = async (processedWagers: ProcessedWager[], wagerResult
  * @param correlationId Optional correlation ID for tracking related logs
  * @returns JSON mapping user IDs to their wagers
  */
-const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWagers: WagerProcessor, correlationId?: string): Promise<UserWagers> => {
+const resolveWagers = async (
+  wagers: WagerDoc[],
+  correctWager: string,
+  processWagers: WagerProcessor,
+  correlationId?: string,
+  extra?: { gameId?: string; moveNum?: number; type?: 'critical_move' | 'wdl' },
+): Promise<UserWagers> => {
   const cid = correlationId || generateCorrelationId();
   const userCount = new Set(wagers.map(w => w.better_id)).size;
 
@@ -251,13 +257,27 @@ const resolveWagers = async (wagers: WagerDoc[], correctWager: string, processWa
     logger.log({ level: 'debug', event: 'resolve_wagers_start', context: { cid, wagers: wagers.length, userCount } });
   }
 
-  const { processedWagers } = processWagers(wagers, correctWager);
+  const { processedWagers, meta } = processWagers(wagers, correctWager);
 
   const userWinnings = getUserWinnings(processedWagers);
   const wagerResults = getWagerResults(processedWagers);
 
   await updateUserWinnings(processedWagers);
   const updatedWagers = await updateWagerResults(processedWagers, wagerResults);
+
+  // Best-effort rake ledgering for Real move pools (non-blocking)
+  try {
+    if (extra?.type === 'critical_move' && meta && meta.rakeCollected && !meta.returnReal && (meta.rakeCollected > 0)) {
+      const any = wagers[0];
+      const moveNum = extra.moveNum ?? (any?.move_number || 0);
+      const gameId = extra.gameId || (any?.game_id ? String(any.game_id) : undefined);
+      if (gameId) {
+        // Do not await; avoid blocking settlement path
+        houseLedgerService.recordMoveRake(gameId, moveNum, meta.totalReal || 0, meta.rake || 0, meta.rakeCollected)
+          .catch(() => {});
+      }
+    }
+  } catch {}
 
   if (userCount > 0) {
     logger.log({ level: 'info', event: 'resolve_wagers_complete', context: { cid, userCount } });
@@ -295,7 +315,7 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
     resolved: false,
   });
 
-  return resolveWagers(wagers, correctMove, processCriticalMoveWagers, correlationId);
+  return resolveWagers(wagers, correctMove, processCriticalMoveWagers, correlationId, { gameId, moveNum, type: 'critical_move' });
 };
 
 /**
@@ -318,7 +338,7 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
     resolved: false,
   });
 
-  return resolveWagers(wagers, gameStatus, processWDLWagers, correlationId);
+  return resolveWagers(wagers, gameStatus, processWDLWagers, correlationId, { gameId, type: 'wdl' });
 };
 
 /**
