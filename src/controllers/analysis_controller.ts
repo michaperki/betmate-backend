@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
-import { microserviceService } from '../services';
+import { microserviceService, moveBadgeService, chessService } from '../services';
 import { GetMoveAnalysisRequest, BatchMoveAnalysisRequest } from '../validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
 import logger from '../helpers/axiom_logger';
@@ -36,7 +36,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
 
   return microserviceService
     .getMoveAnalysis(fen, move)
-    .then(result => {
+    .then(async result => {
       clearTimeout(timeout);
       if (process.env.LOG_ANALYSIS_DEBUG === 'true') {
         logger.log({ level: 'debug', event: 'analysis_move_result', context: { move, resultSummary: { score: (result as any)?.score, percentile: (result as any)?.percentile, is_best_move: (result as any)?.is_best_move } } });
@@ -67,7 +67,7 @@ const getMoveAnalysisRequest: RequestHandler = (req: ValidatedRequest<GetMoveAna
  * Get top moves for a position
  */
 const getTopMovesRequest: RequestHandler = (req, res) => {
-  const { fen, n = '3' } = req.query;
+  const { fen, n = '3', game_id } = req.query as any;
 
   if (!fen || typeof fen !== 'string') {
     return res.status(400).json({ message: 'fen parameter is required' });
@@ -87,12 +87,57 @@ const getTopMovesRequest: RequestHandler = (req, res) => {
 
   return microserviceService
     .getTopMoves(fen, parseInt(n as string) || 3)
-    .then(result => {
+    .then(async result => {
       clearTimeout(timeout);
       if (!hasResponded && !res.headersSent) {
+        // Derive ply and a neutral WDL for badge resolution (dominance requires clocks; neutral here)
+        let ply = 1;
+        try {
+          const parts = String(fen).split(' ');
+          const fullmove = Number(parts[5] || '1');
+          const side = parts[1] === 'b' ? 1 : 0; // black to move adds one ply before move
+          ply = Math.max(1, (fullmove - 1) * 2 + 1 + side);
+        } catch (_) {
+          ply = 1;
+        }
+        const neutralWDL = { white_win: 0.34, draw: 0.33, black_win: 0.33 };
+        let sanHistory: string[] | undefined;
+        try {
+          if (typeof game_id === 'string' && game_id) {
+            const g = await chessService.getChessGame(game_id);
+            if (g && Array.isArray((g as any).move_hist)) {
+              const full = (g as any).move_hist.map((m: any) => String(m.san)).filter(Boolean);
+              const at = Number.parseInt(String((req.query as any)?.at_move ?? '0'), 10);
+              const idx = Number.isFinite(at) && at > 0 ? Math.min(full.length, at) : 0;
+              sanHistory = idx > 0 ? full.slice(0, idx) : full;
+            }
+          }
+        } catch {}
+        const badgeMeta = moveBadgeService.resolveBadgesForTopMoves(String(fen), ply, neutralWDL, (result as any) || [], sanHistory);
+
+        // Telemetry for badge resolution (HTTP)
+        try {
+          const badgeCount = Object.keys(badgeMeta?.badges || {}).length;
+          const openingCount = Object.values(badgeMeta?.badges || {}).filter((b: any) => b?.badge_type === 'opening').length;
+          const emojiCount = Object.values(badgeMeta?.badges || {}).filter((b: any) => b?.badge_type === 'emoji').length;
+          logger.log({
+            level: 'debug',
+            event: 'badges_resolved_http',
+            context: {
+              fen_hash: String(fen).substring(0, 10),
+              badgeCount,
+              openingCount,
+              emojiCount,
+              phase: badgeMeta.phase,
+              dominated: badgeMeta.dominated_eval,
+            },
+          });
+        } catch {}
+
         return res.status(200).json({
           message: 'SUCCESS',
-          data: result
+          data: result,
+          meta: badgeMeta,
         });
       }
     })

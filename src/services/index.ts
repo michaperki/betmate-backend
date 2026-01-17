@@ -7,6 +7,8 @@ import refreshTokenService from './refresh_token_service';
 import twitterService from './twitter_service';
 import marketService from './market_service';
 import houseLedgerService from './house_ledger_service';
+import openingService from './opening_service';
+import moveBadgeService from './move_badge_service';
 
 export {
   microservice as microserviceService,
@@ -18,4 +20,6 @@ export {
   twitterService,
   marketService,
   houseLedgerService,
+  openingService,
+  moveBadgeService,
 };

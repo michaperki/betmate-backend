@@ -5,7 +5,9 @@ import { UpdateQuery, Types } from 'mongoose';
 import { Chess } from 'chess.js';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
 import { ReplaySchema, GameData } from '../types/game_loop';
-import { chessService, microserviceService } from '../services';
+import { chessService, microserviceService, moveBadgeService } from '../services';
+import moveBadgeConfig from '../config/move_badges';
+import dominanceTracker from '../services/dominance_tracker';
 import logger from '../helpers/axiom_logger';
 
 import data300 from '../assets/game_data_300.json';
@@ -262,6 +264,23 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
           });
         }
 
+        // Compute badge metadata with precedence (dominance -> opening -> emoji)
+        // Build SAN history for opening detection
+        const sanHistory = moveHist.map((m) => m.san).filter(Boolean) as string[];
+        // Determine dominated with persistence across plies
+        const maxp = Math.max(Number(odds.white_win || 0), Number(odds.black_win || 0), Number(odds.draw || 0));
+        const dominatedNow = (moveBadgeConfig.dominated.enable && maxp >= moveBadgeConfig.dominated.probThreshold);
+        const persistedDominated = dominanceTracker.update(gameId, dominatedNow);
+
+        const badgeMeta = moveBadgeService.resolveBadgesForTopMoves(
+          currentFen,
+          nextMoveNumber,
+          odds,
+          topMoves as any,
+          sanHistory,
+          persistedDominated,
+        );
+
         const oddsUpdate = {
           odds,
           pool_wagers: {
@@ -270,10 +289,29 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
               options: topMoves.map(move => move.move) as Types.Array<string>,
             },
           },
+          badge_meta: badgeMeta,
         };
 
         // Broadcast new odds, save to database
         socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
+        try {
+          const badgeCount = Object.keys(badgeMeta?.badges || {}).length;
+          const openingCount = Object.values(badgeMeta?.badges || {}).filter((b: any) => (b as any)?.badge_type === 'opening').length;
+          const emojiCount = Object.values(badgeMeta?.badges || {}).filter((b: any) => (b as any)?.badge_type === 'emoji').length;
+          logger.log({
+            level: 'debug',
+            event: 'badges_resolved_ws',
+            context: {
+              gameId,
+              moveNumber: nextMoveNumber,
+              badgeCount,
+              openingCount,
+              emojiCount,
+              phase: badgeMeta.phase,
+              dominated: badgeMeta.dominated_eval,
+            },
+          });
+        } catch {}
         chessService.updateChessGame(gameDoc._id.toString(), oddsUpdate);
       });
     }

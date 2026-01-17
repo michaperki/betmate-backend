@@ -11,7 +11,9 @@ import { Types } from 'mongoose';
 import { Chess as ChessGame } from 'chess.js';
 import { Chess } from '../models';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
-import { chessService, microserviceService, agentService } from '../services';
+import { chessService, microserviceService, agentService, moveBadgeService } from '../services';
+import moveBadgeConfig from '../config/move_badges';
+import dominanceTracker from '../services/dominance_tracker';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
@@ -253,6 +255,19 @@ export const getStream = async (
             // }
             liveTopMoves = topMoves.map(move => move.move);
 
+            // Compute badge metadata using SAN history + dominated persistence
+            const maxp = Math.max(Number(odds.white_win || 0), Number(odds.black_win || 0), Number(odds.draw || 0));
+            const dominatedNow = (moveBadgeConfig.dominated.enable && maxp >= moveBadgeConfig.dominated.probThreshold);
+            const persistedDominated = dominanceTracker.update(gameId, dominatedNow);
+            const badgeMeta = moveBadgeService.resolveBadgesForTopMoves(
+              game.fen(),
+              history.length + 1,
+              odds,
+              (topMoves as any),
+              history,
+              persistedDominated,
+            );
+
             const oddsUpdate = {
               odds,
               pool_wagers: {
@@ -261,6 +276,7 @@ export const getStream = async (
                   options: topMoves.map(move => move.move) as Types.Array<string>,
                 },
               },
+              badge_meta: badgeMeta,
             };
 
             chessService.updateChessGame(gameId, oddsUpdate);
