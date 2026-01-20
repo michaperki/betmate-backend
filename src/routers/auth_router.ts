@@ -8,6 +8,8 @@ import { requireSignin, requireAuth } from '../authentication';
 import { authLimiter, sensitiveActionLimiter } from '../middleware/rate_limiter';
 
 import { authController } from '../controllers';
+import { UserDoc } from '../types/models/user';
+import userService from '../services/user_service';
 import { SignUpUserSchema } from '../validation/auth';
 import { handleValidationError } from '../validation';
 
@@ -63,10 +65,31 @@ router.route('/balance-history')
 router.route('/kyc/start')
   .post(requireAuth, authController.startKycMock);
 
-// Minimal onboarding status endpoint to quiet frontend polling
+// Onboarding status endpoints (stubbed persistence)
+// GET returns the current onboarding version info
+// PUT accepts `{ version: number }` and echoes back as seen (no DB persistence yet)
 router.route('/onboarding')
-  .get(requireAuth, (req, res) => {
-    res.status(200).json({ needsOnboarding: false, version: 1 });
+  .get(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      const versionSeen = Number(user?.onboarding_version_seen || 0);
+      // For now, a single current version; may move to runtime features later
+      const currentVersion = 1;
+      return res.status(200).json({ versionSeen, currentVersion });
+    } catch (e) {
+      return res.status(200).json({ versionSeen: 0, currentVersion: 1 });
+    }
+  })
+  .put(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      const v = Number((req.body && (req.body as any).version) || 0);
+      const versionSeen = Number.isFinite(v) ? v : 0;
+      const updated = await userService.updateUserData(user._id, { $set: { onboarding_version_seen: versionSeen } as any });
+      return res.status(200).json({ versionSeen: Number(updated?.onboarding_version_seen || versionSeen), currentVersion: 1 });
+    } catch (e) {
+      return res.status(400).json({ message: 'Invalid onboarding payload' });
+    }
   });
 
 if (process.env.NODE_ENV === 'test') {

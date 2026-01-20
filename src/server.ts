@@ -231,6 +231,7 @@ app.get('/api/status', async (_req, res) => {
       enableRateLimiting: !!f.enableRateLimiting,
       enableWithdrawals: !!(f as any).enableWithdrawals,
       requireKyc: !!(f as any).requireKyc,
+      onboardingEnabled: (typeof (f as any).onboardingEnabled === 'boolean') ? !!(f as any).onboardingEnabled : true,
     };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {
@@ -244,6 +245,7 @@ app.get('/api/status', async (_req, res) => {
       enableRateLimiting: (process.env.NODE_ENV === 'production') || (process.env.ENABLE_RATE_LIMITING === 'true'),
       enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
       requireKyc: process.env.REQUIRE_KYC === 'true',
+      onboardingEnabled: process.env.ENABLE_ONBOARDING === 'false' ? false : true,
     };
   }
 
