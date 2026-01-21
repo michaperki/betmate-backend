@@ -40,6 +40,7 @@ import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
+import { requestContextMiddleware } from './helpers/request_context';
 // Ensure global type augmentations are included for type-checking only
 import type {} from './types/global';
 
@@ -54,9 +55,15 @@ app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
 // Define allowed origins for both CORS and Socket.IO
-const allowedOrigins = process.env.NODE_ENV === 'production'
+// If ALLOWED_ORIGINS is provided (comma-separated), use that; otherwise fall back to sensible defaults
+const envOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const defaultOrigins = process.env.NODE_ENV === 'production'
   ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
   : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
+const allowedOrigins = envOrigins.length ? envOrigins : defaultOrigins;
 
 // Log the allowed origins (debug-level)
 logger.log({ level: 'debug', event: 'startup_cors', context: { allowedOrigins } });
@@ -70,14 +77,26 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      // Log and fail CORS
+      try {
+        logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
+      } catch {}
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   // Allow admin header for in-app ops panel
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'x-admin-key'],
+  allowedHeaders: [
+    'Content-Type', 'Authorization',
+    'X-Admin-Key', 'x-admin-key',
+    'X-Request-Id', 'x-request-id',
+    'X-Trace-Id', 'x-trace-id',
+  ],
 }));
+
+// Attach request context (request id) after CORS so preflight doesn't allocate context
+app.use(requestContextMiddleware);
 
 // Setup Socket.IO with allowed origins
 const io = new Server(httpServer, {

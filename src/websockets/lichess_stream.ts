@@ -89,6 +89,7 @@ export const getStream = async (
   const game = new ChessGame();
 
   let canQueryMicroservice = false;
+  let markedStarted = false; // Fallback: mark game in progress on first move if start event is missed
   let startFen = '';
 
   // Set timeout to 10 minutes (600000ms) instead of 5 minutes for longer games
@@ -110,6 +111,12 @@ export const getStream = async (
           const moveData = d as LichessStreamMove;
 
           if (!canQueryMicroservice) canQueryMicroservice = true;
+          // If we never received an explicit start event from the stream, mark as in_progress on first move
+          if (!markedStarted) {
+            markedStarted = true;
+            chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
+            socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
+          }
           // if (!canQueryMicroservice && startFen === moveData.fen) canQueryMicroservice = true;
 
           if (moveData.lm === undefined) return;
