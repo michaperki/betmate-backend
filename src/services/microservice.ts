@@ -64,6 +64,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
           trace_id,
           context: {
             error: error.message,
+            status: error.response?.status,
             latency_ms: latency,
             fen_hash: fen.substring(0, 10)
           }

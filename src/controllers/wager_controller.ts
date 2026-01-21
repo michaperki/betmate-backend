@@ -5,6 +5,7 @@ import { Types } from 'mongoose';
 import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
 import { chessService, userService, wagerService, microserviceService } from '../services';
 import { getRiskConfig, oddsFromP, scaleCapsForConfidence, getFeatureFlags } from '../helpers/risk_config';
+import logger from '../helpers/axiom_logger';
 import { getGameExposure, getGlobalExposure, getPlayerGameLiability } from '../services/exposure_service';
 import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';
@@ -44,6 +45,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     // check game exists and hasn't ended
     const game = await chessService.getChessGame(game_id);
     if (game.complete) {
+      logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'GAME_ENDED', game_id, user_id: String(better_id) } });
       res.status(400).send({ error: 'Game has already ended' });
       return;
     }
@@ -54,6 +56,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     const featureFlags = await getRuntimeFeatures();
     const realAllowed = !!featureFlags.realModeEnabled;
     if (mode === 'real' && !realAllowed) {
+      logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'REAL_DISABLED', game_id, user_id: String(better_id) } });
       res.status(403).json({ error: 'Real mode is currently disabled' });
       return;
     }
@@ -66,6 +69,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
     // check user has enough money to place bet
     if (!effectiveBalance || amount > effectiveBalance) {
+      logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'INSUFFICIENT', game_id, user_id: String(better_id), amount, balance: effectiveBalance, mode } });
       res.status(401).json({ error: 'Insufficient funds' });
       return;
     }
@@ -79,6 +83,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       const maxWdl = Number(process.env.ARCADE_MAX_STAKE_WDL || 50);
       const maxAllowed = wdl ? maxWdl : maxMove;
       if (amount > maxAllowed) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_ARCADE', cap: maxAllowed, amount, game_id, user_id: String(better_id) } });
         res.status(400).json({ error: `Stake exceeds maximum for this bet (${maxAllowed})` });
         return;
       }
@@ -138,14 +143,17 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       // Feature flags and quick disables
       const flags = getFeatureFlags();
       if (!flags.enabled) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'REAL_WDL_DISABLED', game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Real WDL (house) is disabled' });
         return;
       }
       if (flags.disableWdl) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'WDL_DISABLED', game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'WDL betting is temporarily disabled' });
         return;
       }
       if (flags.disableDraw && data === 'draw') {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'DRAW_DISABLED', game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Draw betting is temporarily disabled' });
         return;
       }
@@ -159,6 +167,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       };
       const p = pMap[data] ?? 0;
       if (!(p > 0)) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'PRICING_UNAVAILABLE', game_id, user_id: String(better_id), outcome: data } });
         res.status(400).json({ error: 'Pricing unavailable for this outcome' });
         return;
       }
@@ -191,22 +200,27 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
       // Enforce caps
       if (betLiability > caps.perBetLiabilityCap) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_PER_BET', cap: caps.perBetLiabilityCap, projected: betLiability, game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Per-bet limit exceeded', code: 'CAP_PER_BET', cap: caps.perBetLiabilityCap, projected: betLiability });
         return;
       }
       if (playerProjected > caps.perPlayerPerGameCap) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_PER_PLAYER_GAME', cap: caps.perPlayerPerGameCap, projected: playerProjected, game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Per-player limit exceeded', code: 'CAP_PER_PLAYER_GAME', cap: caps.perPlayerPerGameCap, projected: playerProjected });
         return;
       }
       if (outcomeProjected > caps.perOutcomeCap[outcomeKey]) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_PER_OUTCOME', outcome: outcomeKey, cap: caps.perOutcomeCap[outcomeKey], projected: outcomeProjected, game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Outcome exposure limit reached', code: 'CAP_PER_OUTCOME', outcome: outcomeKey, cap: caps.perOutcomeCap[outcomeKey], projected: outcomeProjected });
         return;
       }
       if (gameWorstProjected > caps.perGameWorstCaseCap) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_PER_GAME', cap: caps.perGameWorstCaseCap, projected: gameWorstProjected, game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Game exposure limit reached', code: 'CAP_PER_GAME', cap: caps.perGameWorstCaseCap, projected: gameWorstProjected });
         return;
       }
       if (globalProjected > caps.globalExposureCap) {
+        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_GLOBAL', cap: caps.globalExposureCap, projected: globalProjected, game_id, user_id: String(better_id) } });
         res.status(403).json({ error: 'Global exposure limit reached', code: 'CAP_GLOBAL', cap: caps.globalExposureCap, projected: globalProjected });
         return;
       }

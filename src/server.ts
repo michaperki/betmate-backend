@@ -12,6 +12,7 @@ if (fs.existsSync(localEnvPath)) {
 dotenv.config();
 
 import cors from 'cors';
+import axios from 'axios';
 import express from 'express';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
@@ -93,7 +94,24 @@ app.use(cors({
     'X-Request-Id', 'x-request-id',
     'X-Trace-Id', 'x-trace-id',
   ],
+  // Let us post-process preflight to reflect requested headers when needed
+  preflightContinue: true,
 }));
+
+// Dynamic CORS header reflection for OPTIONS preflight requests.
+// Keeps static allowlist above as baseline but reflects client-requested headers to avoid misses.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const acrh = req.header('access-control-request-headers');
+    if (acrh) {
+      res.header('Access-Control-Allow-Headers', acrh);
+      // Ensure caches vary on requested headers
+      res.header('Vary', 'Access-Control-Request-Headers');
+    }
+    return res.sendStatus(204);
+  }
+  return next();
+});
 
 // Attach request context (request id) after CORS so preflight doesn't allocate context
 app.use(requestContextMiddleware);
@@ -297,6 +315,23 @@ app.get('/api/status', async (_req, res) => {
     riskPublic = {};
   }
 
+  // Quick microservice health probe (non-fatal)
+  let microservice: any = {};
+  try {
+    const { MICROSERVICE_URL } = constants as any;
+    const url = `${MICROSERVICE_URL}/dev/health`;
+    const started = Date.now();
+    const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
+    microservice = {
+      url: MICROSERVICE_URL,
+      healthy: !!(resp && resp.status >= 200 && resp.status < 500),
+      status: resp?.status ?? null,
+      latency_ms: resp ? (Date.now() - started) : null,
+    };
+  } catch {
+    microservice = { healthy: false };
+  }
+
   res.json({
     status: 'online',
     version: v.appVersion,
@@ -311,6 +346,9 @@ app.get('/api/status', async (_req, res) => {
     pricing,
     risk: riskPublic,
     limits,
+    cors: { allowedOrigins },
+    request: { requestIdHeaders: ['X-Request-Id', 'X-Trace-Id'] },
+    microservice,
   });
 });
 
