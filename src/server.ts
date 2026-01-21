@@ -12,6 +12,7 @@ if (fs.existsSync(localEnvPath)) {
 dotenv.config();
 
 import cors from 'cors';
+import axios from 'axios';
 import express from 'express';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
@@ -40,6 +41,7 @@ import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
+import { requestContextMiddleware } from './helpers/request_context';
 // Ensure global type augmentations are included for type-checking only
 import type {} from './types/global';
 
@@ -54,9 +56,15 @@ app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
 // Define allowed origins for both CORS and Socket.IO
-const allowedOrigins = process.env.NODE_ENV === 'production'
+// If ALLOWED_ORIGINS is provided (comma-separated), use that; otherwise fall back to sensible defaults
+const envOrigins = (process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
+const defaultOrigins = process.env.NODE_ENV === 'production'
   ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
   : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
+const allowedOrigins = envOrigins.length ? envOrigins : defaultOrigins;
 
 // Log the allowed origins (debug-level)
 logger.log({ level: 'debug', event: 'startup_cors', context: { allowedOrigins } });
@@ -70,14 +78,43 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      // Log and fail CORS
+      try {
+        logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
+      } catch {}
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   // Allow admin header for in-app ops panel
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'x-admin-key'],
+  allowedHeaders: [
+    'Content-Type', 'Authorization',
+    'X-Admin-Key', 'x-admin-key',
+    'X-Request-Id', 'x-request-id',
+    'X-Trace-Id', 'x-trace-id',
+  ],
+  // Let us post-process preflight to reflect requested headers when needed
+  preflightContinue: true,
 }));
+
+// Dynamic CORS header reflection for OPTIONS preflight requests.
+// Keeps static allowlist above as baseline but reflects client-requested headers to avoid misses.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const acrh = req.header('access-control-request-headers');
+    if (acrh) {
+      res.header('Access-Control-Allow-Headers', acrh);
+      // Ensure caches vary on requested headers
+      res.header('Vary', 'Access-Control-Request-Headers');
+    }
+    return res.sendStatus(204);
+  }
+  return next();
+});
+
+// Attach request context (request id) after CORS so preflight doesn't allocate context
+app.use(requestContextMiddleware);
 
 // Setup Socket.IO with allowed origins
 const io = new Server(httpServer, {
@@ -278,6 +315,23 @@ app.get('/api/status', async (_req, res) => {
     riskPublic = {};
   }
 
+  // Quick microservice health probe (non-fatal)
+  let microservice: any = {};
+  try {
+    const { MICROSERVICE_URL } = constants as any;
+    const url = `${MICROSERVICE_URL}/dev/health`;
+    const started = Date.now();
+    const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
+    microservice = {
+      url: MICROSERVICE_URL,
+      healthy: !!(resp && resp.status >= 200 && resp.status < 500),
+      status: resp?.status ?? null,
+      latency_ms: resp ? (Date.now() - started) : null,
+    };
+  } catch {
+    microservice = { healthy: false };
+  }
+
   res.json({
     status: 'online',
     version: v.appVersion,
@@ -292,6 +346,9 @@ app.get('/api/status', async (_req, res) => {
     pricing,
     risk: riskPublic,
     limits,
+    cors: { allowedOrigins },
+    request: { requestIdHeaders: ['X-Request-Id', 'X-Trace-Id'] },
+    microservice,
   });
 });
 

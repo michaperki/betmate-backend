@@ -6,6 +6,7 @@ import { MICROSERVICE_URL } from '../helpers/constants';
 import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/microservice';
 import { validate } from '../validation';
 import { generateCorrelationId } from '../helpers/utils';
+import { getRequestId } from '../helpers/request_context';
 import logger from '../helpers/axiom_logger';
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
@@ -18,7 +19,7 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  * @returns Promise of win/draw/loss odds, or null if issue occurs
  */
 const getWDL = (fen: string, white_time: number, black_time: number, correlationId?: string): Promise<WDLData> => {
-  const trace_id = correlationId || generateCorrelationId();
+  const trace_id = correlationId || getRequestId() || generateCorrelationId();
   const url = `${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`;
   const startTime = Date.now();
 
@@ -26,7 +27,8 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
     .get<MicroserviceResponse<WDLData>>(url, {
       headers: {
         'x-api-key': apiKey,
-        'x-trace-id': trace_id
+        'x-trace-id': trace_id,
+        'x-request-id': trace_id,
       },
       timeout: 5000,
     })
@@ -62,6 +64,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
           trace_id,
           context: {
             error: error.message,
+            status: error.response?.status,
             latency_ms: latency,
             fen_hash: fen.substring(0, 10)
           }
@@ -85,7 +88,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
  * @returns Promise of array containing at least `n` moves in SAN notation, or null if issue occurs
  */
 const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<TopMoveData> => {
-  const trace_id = correlationId || generateCorrelationId();
+  const trace_id = correlationId || getRequestId() || generateCorrelationId();
   const url = `${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n, enhanced: 'true' })}`;
   const startTime = Date.now();
 
@@ -93,7 +96,8 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
     .get<MicroserviceResponse<TopMoveData>>(url, {
       headers: {
         'x-api-key': apiKey,
-        'x-trace-id': trace_id
+        'x-trace-id': trace_id,
+        'x-request-id': trace_id,
       },
       timeout: 5000,
     })
@@ -173,7 +177,7 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
  * @returns Promise of move analysis data, or null if issue occurs
  */
 const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Promise<MoveAnalysisData> => {
-  const trace_id = correlationId || generateCorrelationId();
+  const trace_id = correlationId || getRequestId() || generateCorrelationId();
   // Add the enhanced flag to get the new format with move data
   const url = `${MICROSERVICE_URL}/move-analysis?${querystring.stringify({ fen, move, enhanced: 'true' })}`;
   const startTime = Date.now();
@@ -182,7 +186,8 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
     .get<MicroserviceResponse<MoveAnalysisData>>(url, {
       headers: {
         'x-api-key': apiKey,
-        'x-trace-id': trace_id
+        'x-trace-id': trace_id,
+        'x-request-id': trace_id,
       },
       timeout: 5000,
     })
