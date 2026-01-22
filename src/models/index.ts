@@ -8,6 +8,7 @@ import WithdrawalModel from './withdrawal_model';
 import RefreshTokenModel from './refresh_token_model';
 import MarketModel from './market_model';
 import HouseLedgerModel from './house_ledger_model';
+import SettlementJobModel from './settlement_job_model';
 
 export {
   UserModel as Users,
@@ -20,4 +21,5 @@ export {
   WithdrawalModel as Withdrawal,
   MarketModel as Market,
   HouseLedgerModel as HouseLedger,
+  SettlementJobModel as SettlementJob,
 };

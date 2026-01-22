@@ -314,7 +314,19 @@ const recordBalanceChange = async (
     });
 
     return await balanceHistory.save();
-  } catch (error) {
+  } catch (error: any) {
+    // Gracefully ignore duplicate ledger rows for idempotent replay (unique index)
+    if (error && (error.code === 11000 || String(error.message || '').includes('E11000'))) {
+      try {
+        const query: any = { user_id: userId, reason, currency };
+        if (referenceId) query.reference_id = referenceId;
+        if (referenceType) query.reference_type = referenceType;
+        const existing = await BalanceHistory.findOne(query).sort({ created_at: -1 });
+        // If found, return the existing document; else convert to a benign 200 with placeholder
+        if (existing) return existing as unknown as BalanceHistoryDoc;
+        // Fall through to generic handler if not found
+      } catch (_) {}
+    }
     return dbErrorHandler(error);
   }
 };

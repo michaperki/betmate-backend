@@ -36,12 +36,12 @@ import {
   matchesRouter,
 } from './routers';
 
-import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
 import { requestContextMiddleware } from './helpers/request_context';
+import { getRuntimeConfig, getPublicRuntimeConfig } from './config/runtime';
 // Ensure global type augmentations are included for type-checking only
 import type {} from './types/global';
 
@@ -55,16 +55,9 @@ const app = express();
 app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
-// Define allowed origins for both CORS and Socket.IO
-// If ALLOWED_ORIGINS is provided (comma-separated), use that; otherwise fall back to sensible defaults
-const envOrigins = (process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-const defaultOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
-  : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
-const allowedOrigins = envOrigins.length ? envOrigins : defaultOrigins;
+// Centralized runtime config + allowed origins for both CORS and Socket.IO
+const runtimeConfig = getRuntimeConfig();
+const allowedOrigins = runtimeConfig.cors.allowedOrigins;
 
 // Log the allowed origins (debug-level)
 logger.log({ level: 'debug', event: 'startup_cors', context: { allowedOrigins } });
@@ -86,14 +79,9 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // Allow admin header for in-app ops panel
-  allowedHeaders: [
-    'Content-Type', 'Authorization',
-    'X-Admin-Key', 'x-admin-key',
-    'X-Request-Id', 'x-request-id',
-    'X-Trace-Id', 'x-trace-id',
-  ],
+  methods: runtimeConfig.cors.methods,
+  // Allow admin/header/request-id headers for in-app ops panel and tracing
+  allowedHeaders: runtimeConfig.cors.allowedHeaders,
   // Let us post-process preflight to reflect requested headers when needed
   preflightContinue: true,
 }));
@@ -137,7 +125,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 // Setup common HTTP logging (opt-in)
-if (process.env.LOG_HTTP_DEBUG === 'true') {
+if (runtimeConfig.logging.httpDebug) {
   app.use(morgan('dev'));
 }
 
@@ -147,9 +135,8 @@ import opsMetrics from './utils/ops_metrics';
 import errorHandler from './middleware/error_handler';
 import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
 
-// Enable if in production or if a specific env var is set.
-// Apply selectively to avoid throttling core dashboard endpoints like /leaderboard and /wager.
-if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
+// Rate limiting enabled in production or when toggled via env (centralized)
+if (runtimeConfig.rateLimit.enabled) {
   // Separate limiters so we can attribute counters clearly
   const analysisLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -296,7 +283,7 @@ app.get('/api/status', async (_req, res) => {
 
   // Compute public risk summary using helper (safe: no exposure/bankroll)
   try {
-    const { getMargins, getConfidence } = require('./helpers/risk_config');
+    const { getMargins, getConfidence, getSkew } = require('./helpers/risk_config');
     const m = getMargins();
     const c = getConfidence();
     riskPublic = {
@@ -309,6 +296,7 @@ app.get('/api/status', async (_req, res) => {
         earlyMoveNum: c.earlyMoveNum,
       },
       maxOdds: m.maxOdds,
+      skew: getSkew(),
     };
   } catch (_err) {
     // leave riskPublic empty on error; FE will fall back to defaults
@@ -318,12 +306,12 @@ app.get('/api/status', async (_req, res) => {
   // Quick microservice health probe (non-fatal)
   let microservice: any = {};
   try {
-    const { MICROSERVICE_URL } = constants as any;
-    const url = `${MICROSERVICE_URL}/dev/health`;
+    const base = runtimeConfig.microservice.baseUrl;
+    const url = `${base}/dev/health`;
     const started = Date.now();
     const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
     microservice = {
-      url: MICROSERVICE_URL,
+      url: base,
       healthy: !!(resp && resp.status >= 200 && resp.status < 500),
       status: resp?.status ?? null,
       latency_ms: resp ? (Date.now() - started) : null,
@@ -347,7 +335,8 @@ app.get('/api/status', async (_req, res) => {
     risk: riskPublic,
     limits,
     cors: { allowedOrigins },
-    request: { requestIdHeaders: ['X-Request-Id', 'X-Trace-Id'] },
+    request: { requestIdHeaders: runtimeConfig.request.idHeaders },
+    config: getPublicRuntimeConfig(),
     microservice,
   });
 });
@@ -376,7 +365,7 @@ const connectSuccess = () => {
   // Axiom logging is initialized automatically on first use
 
   // Initialize bots (optional via ENABLE_BOTS)
-  if (process.env.ENABLE_BOTS === 'true') {
+  if (runtimeConfig.bots.enabled) {
     logger.log({ level: 'info', event: 'bots_init' });
     agentService.initializeBots().catch((error) => {
       logger.log({ level: 'error', event: 'bots_init_error', context: { error: error.message } });
@@ -478,8 +467,8 @@ function constructSrvUri(mongoUri) {
 }
 
 // Start the server
-const port = process.env.PORT || 9000;
-httpServer.listen(port, () => {
+const port = runtimeConfig.node.port || process.env.PORT || 9000;
+httpServer.listen(port as any, () => {
   const v = getVersionInfo();
   logger.log({
     level: 'info',

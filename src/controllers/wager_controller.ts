@@ -108,17 +108,12 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
         }
         if (!Number.isFinite(bestScore)) bestScore = 0;
 
-        // Bucketed raw probabilities based on delta from best (env-tunable)
-        const T1 = Number(process.env.ARCADE_DELTA_T1 ?? 30);
-        const T2 = Number(process.env.ARCADE_DELTA_T2 ?? 80);
-        const T3 = Number(process.env.ARCADE_DELTA_T3 ?? 200);
+        // Smooth weights via exponential decay on centipawn delta from best
+        const K = Math.max(0.001, Number(process.env.ARCADE_DELTA_EXP_K ?? 0.03));
         const rawP = (mv: string): number => {
           const sc = scoreByMove.has(mv) ? (scoreByMove.get(mv) as number) : (bestScore - 250);
-          const delta = bestScore - sc; // worse moves have larger delta
-          if (delta <= T1) return 0.5;
-          if (delta <= T2) return 0.3;
-          if (delta <= T3) return 0.15;
-          return 0.05;
+          const delta = Math.max(0, bestScore - sc); // worse moves have larger delta
+          return Math.exp(-K * delta);
         };
 
         // Work over the currently offered moves if available; otherwise use top list
@@ -130,8 +125,9 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
         const p = Math.max(1e-6, targetRaw / sum);
 
         const margin = Math.max(0, Math.min(0.25, Number(process.env.ARCADE_MOVE_MARGIN || 0.08)));
+        const MAX_ODDS = Math.max(1, Number(process.env.ARCADE_MOVE_MAX_ODDS ?? 25));
         const houseOdds = (1 - margin) / p;
-        computedOdds = Math.max(1, Number(houseOdds.toFixed(2)));
+        computedOdds = Math.max(1, Math.min(MAX_ODDS, Number(houseOdds.toFixed(2))));
       } catch (e) {
         // Fall back to client-provided odds if pricing fails
         computedOdds = Math.max(1, Number(odds) || 1);

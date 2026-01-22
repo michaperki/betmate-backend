@@ -21,6 +21,13 @@ const BalanceHistorySchema = new Schema({
   },
 });
 
+// Prevent duplicate ledger entries for the same reference (idempotency on retries)
+// Sparse so documents without a reference_id are not uniquely constrained.
+BalanceHistorySchema.index(
+  { user_id: 1, reference_id: 1, reference_type: 1, reason: 1, currency: 1 },
+  { unique: true, sparse: true, name: 'uniq_ledger_by_reference' }
+);
+
 const BalanceHistoryModel = mongoose.model<BalanceHistoryDoc>('BalanceHistory', BalanceHistorySchema);
 
 export default BalanceHistoryModel;

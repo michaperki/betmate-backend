@@ -9,6 +9,7 @@ import marketService from './market_service';
 import houseLedgerService from './house_ledger_service';
 import openingService from './opening_service';
 import moveBadgeService from './move_badge_service';
+import settlementService from './settlement_service';
 
 export {
   microservice as microserviceService,
@@ -22,4 +23,5 @@ export {
   houseLedgerService,
   openingService,
   moveBadgeService,
+  settlementService,
 };
