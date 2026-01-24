@@ -10,6 +10,7 @@ import adminWithdrawalsController from '../controllers/admin_withdrawals_control
 import adminOpsController from '../controllers/admin_ops_controller';
 import adminWagerController from '../controllers/admin_wager_controller';
 import adminKycController from '../controllers/admin_kyc_controller';
+import adminFeaturedController from '../controllers/admin_featured_controller';
 
 const router = express.Router();
 
@@ -95,5 +96,8 @@ router.post('/dev/stop-simulate', express.json(), requireAuth, (req, res, next) 
   }
   return stopSimulateDev(req, res, next);
 });
+
+// Inspect featured-game selector candidates and scores (admin)
+router.get('/featured/candidates', requireAdminAccess, adminFeaturedController.getFeaturedCandidates);
 
 export default router;

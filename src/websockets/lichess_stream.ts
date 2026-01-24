@@ -17,6 +17,7 @@ import dominanceTracker from '../services/dominance_tracker';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { Namespace } from 'socket.io';
 import lichessService from '../services/lichess_service';
+import featuredSelector from '../services/featured_selector';
 import { getLichessOutcome } from '../helpers/chess_logic';
 import { twitterService } from '../services';
 import logger from '../helpers/axiom_logger';
@@ -401,7 +402,10 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
     }
 
     // Proceed with creating a new game
-    const selectedGame = await lichessService.getTopGame();
+    const useSmartSelector = String(process.env.FEATURED_SELECTOR_ENABLED || '').toLowerCase() === 'true';
+    const selectedGame = useSmartSelector
+      ? await featuredSelector.selectFeaturedGame()
+      : await lichessService.getTopGame();
     const sanitizedGame = sanitizeLichessGame(selectedGame); // ✅ sanitize before use
 
     const gameFields = lichessService.createChessModelFields(sanitizedGame, GameSource.LOOP);
