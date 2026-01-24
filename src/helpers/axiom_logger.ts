@@ -1,4 +1,5 @@
 import * as axiom from '@axiomhq/axiom-node';
+import { getRequestId } from './request_context';
 
 /**
  * AxiomLogger - A utility for logging events to Axiom
@@ -79,7 +80,7 @@ class AxiomLogger {
       service: event.service || this.service,
       env: event.env || this.env,
       event: event.event,
-      trace_id: event.trace_id,
+      trace_id: event.trace_id || getRequestId(),
       message: event.message,
       ...event.context
     };

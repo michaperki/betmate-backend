@@ -24,30 +24,109 @@ function getPhase(moveCount: number): 'Opening' | 'Midgame' | 'Endgame' {
   return 'Endgame';
 }
 
+function speedFromTime(initial_seconds?: number): 'Bullet' | 'Blitz' | 'Rapid' | 'Classical' {
+  const minutes = Math.round((initial_seconds || 0) / 60);
+  if (minutes <= 2) return 'Bullet';
+  if (minutes <= 5) return 'Blitz';
+  if (minutes <= 15) return 'Rapid';
+  return 'Classical';
+}
+
+function ratingFlair(maxElo: number): '' | 'Elite' | 'Master' {
+  if (maxElo >= 2600) return 'Elite';
+  if (maxElo >= 2400) return 'Master';
+  return '';
+}
+
+function deriveBaseTier(initial_seconds: number, whiteElo: number, blackElo: number): string {
+  const speed = speedFromTime(initial_seconds);
+  const maxElo = Math.max(Number(whiteElo || 0), Number(blackElo || 0));
+  const flair = ratingFlair(maxElo);
+  return flair ? `${flair} ${speed}` : speed;
+}
+
+function computeStakeTier(perCurrency: Record<string, { total_pool: number }>): 'High Stakes' | 'Medium Stakes' | '' {
+  // Env-tunable thresholds (defaults chosen conservatively)
+  const USDT_HIGH = Number(process.env.STAKE_TIER_USDT_HIGH || 500);
+  const USDT_MED = Number(process.env.STAKE_TIER_USDT_MED || 100);
+  const BET_HIGH = Number(process.env.STAKE_TIER_BET_HIGH || 500);
+  const BET_MED = Number(process.env.STAKE_TIER_BET_MED || 100);
+
+  const usdt = Number(perCurrency?.USDT?.total_pool || 0);
+  const bet = Number(perCurrency?.BET?.total_pool || 0);
+
+  if (usdt >= USDT_HIGH || bet >= BET_HIGH) return 'High Stakes';
+  if (usdt >= USDT_MED || bet >= BET_MED) return 'Medium Stakes';
+  return '';
+}
+
+function isTimeTrouble(whiteSeconds?: number, blackSeconds?: number): boolean {
+  const THRESH = Number(process.env.TIME_TROUBLE_SECONDS || 60);
+  const w = Number(whiteSeconds || 0);
+  const b = Number(blackSeconds || 0);
+  if (w <= 0 || b <= 0) return false; // avoid pregame zeros being flagged
+  return (w <= THRESH || b <= THRESH);
+}
+
 const getFeaturedMatch: RequestHandler = async (_req, res) => {
   try {
-    // Choose the most recent active game as featured for now
-    const [game] = await chessService.getActiveGames(0, 1);
+    // Prefer an in‑progress game; fall back to the most recent not‑started one
+    let [game] = await chessService.getManyChessGames(
+      { game_status: GameStatus.IN_PROGRESS, complete: { $ne: true } },
+      undefined,
+      { created_at: -1 },
+      1
+    );
+    if (!game) {
+      [game] = await chessService.getManyChessGames(
+        { game_status: GameStatus.NOT_STARTED, complete: { $ne: true } },
+        undefined,
+        { created_at: -1 },
+        1
+      );
+    }
     if (!game) return res.status(404).json({ error: 'No active matches' });
 
     const { initial_seconds, increment_seconds } = parseTimeControl(game.time_format);
     const moveN = game.move_hist?.length || 0;
 
+    // Aggregate per-currency totals for a single game (lightweight)
+    const byCurrencyAgg = await (Wager as any).aggregate([
+      { $match: { game_id: game._id } },
+      { $group: { _id: '$currency', total_pool: { $sum: '$amount' } } },
+    ]).allowDiskUse(true);
+    const perCurrency: Record<string, { total_pool: number }> = { BET: { total_pool: 0 }, USDT: { total_pool: 0 } };
+    for (const row of byCurrencyAgg || []) {
+      const key = (row?._id || 'BET');
+      perCurrency[key] = { total_pool: Number(row?.total_pool || 0) };
+    }
+
+    // Tag only when meaningful; otherwise no baseline tag
+    let tier = '';
+    // Time Pressure override if clocks are low
+    const whiteSec = Number(game.time_white || 0);
+    const blackSec = Number(game.time_black || 0);
+    const live = (game.game_status === GameStatus.IN_PROGRESS) || (moveN > 0);
+    if (live && isTimeTrouble(whiteSec, blackSec)) {
+      tier = 'Time Trouble';
+    }
+
+    const liveStatus = (game.game_status === GameStatus.IN_PROGRESS) || (moveN > 0);
     const dto: any = {
       match_id: String(game._id),
-      status: mapStatus(game.game_status),
+      status: liveStatus ? 'in_progress' : mapStatus(game.game_status),
       time_control: { initial_seconds, increment_seconds },
       players: [
         { username: game.player_white?.name, rating: game.player_white?.elo, color: 'white' },
         { username: game.player_black?.name, rating: game.player_black?.elo, color: 'black' },
       ],
-      clocks: game.game_status === GameStatus.IN_PROGRESS ? {
+      clocks: (game.game_status === GameStatus.IN_PROGRESS || (game.move_hist?.length || 0) > 0) ? {
         white_ms: Math.max(0, Number(game.time_white || 0) * 1000),
         black_ms: Math.max(0, Number(game.time_black || 0) * 1000),
       } : undefined,
       opening: undefined, // optional; FE will fallback to Move N • phase
       stakes: {
-        tier: 'High Stakes',
+        tier,
         min_bet: 1,
         max_bet: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),
         currency: 'BET',
@@ -93,21 +172,33 @@ const getFeaturedMatch: RequestHandler = async (_req, res) => {
       stats_by_currency[key] = { total_bets: row?.total_bets || 0, total_pool: row?.total_pool || 0 };
     }
 
+    // Compute tag with same logic as featured (no baseline tag)
+    let tier = '';
+    const whiteSec = Number(game.time_white || 0);
+    const blackSec = Number(game.time_black || 0);
+    const live = (game.game_status === GameStatus.IN_PROGRESS) || (moveN > 0);
+    if (live && isTimeTrouble(whiteSec, blackSec)) {
+      tier = 'Time Trouble';
+    }
+
+    // no baseline tier; keep tier as set above (time pressure only)
+
+    const liveStatus2 = (game.game_status === GameStatus.IN_PROGRESS) || (moveN > 0);
     const dto: any = {
       match_id: String(game._id),
-      status: mapStatus(game.game_status),
+      status: liveStatus2 ? 'in_progress' : mapStatus(game.game_status),
       time_control: { initial_seconds, increment_seconds },
       players: [
         { username: game.player_white?.name, rating: game.player_white?.elo, color: 'white' },
         { username: game.player_black?.name, rating: game.player_black?.elo, color: 'black' },
       ],
-      clocks: game.game_status === GameStatus.IN_PROGRESS ? {
+      clocks: (game.game_status === GameStatus.IN_PROGRESS || (game.move_hist?.length || 0) > 0) ? {
         white_ms: Math.max(0, Number(game.time_white || 0) * 1000),
         black_ms: Math.max(0, Number(game.time_black || 0) * 1000),
       } : undefined,
       opening: undefined, // optional; FE will fallback to Move N • phase
       stakes: {
-        tier: 'High Stakes',
+        tier,
         min_bet: 1,
         max_bet: Number(process.env.ARCADE_MAX_STAKE_WDL || 50),
         currency: 'BET',

@@ -72,6 +72,28 @@ const getTopGame = (): Promise<LichessGame> => (
     })
 );
 
+// Fetch a small set of candidate games from a given TV channel (e.g., 'classical', 'rapid', 'blitz').
+// Returns sanitized and schema-validated LichessGame entries.
+const getTvGames = (channel: 'classical' | 'rapid' | 'blitz', nb: number = 30): Promise<LichessGame[]> => (
+  axios({
+    method: 'GET',
+    url: `${LICHESS_URL}/api/tv/${channel}`,
+    headers: { Accept: 'application/x-ndjson' },
+    params: { nb },
+  }).then((res: AxiosResponse<string>) => (
+    res.data
+      .split('\n')
+      .filter((s) => s.length > 0)
+      .map((s) => JSON.parse(s))
+      .map((g) => passiveValidate(LichessGameSchema)(sanitizeLichessGame(g)))
+      .filter((g) => numMoves(g) >= 2)
+  ))
+    .catch((error) => {
+      logger.log({ level: 'warn', event: 'lichess_error', context: { error: error.message } });
+      throw error;
+    })
+);
+
 const getActiveGameStreams = (): Promise<ChessDoc[]> => (
   chessService.getManyChessGames({
     game_status: GameStatus.IN_PROGRESS,
@@ -111,6 +133,7 @@ const lichessService = {
   getGame,
   getGameStream,
   getTopGame,
+  getTvGames,
   createChessModelFields,
   getActiveGameStreams,
   getActiveStreamers,

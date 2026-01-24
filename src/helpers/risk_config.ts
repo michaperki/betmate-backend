@@ -24,10 +24,13 @@ export type ConfidenceTuning = {
   extraMarginLowConf: number; // additional margin during low confidence
 };
 
+export type OutcomeSkew = Record<Outcome, number>;
+
 export type RiskConfig = RiskCaps & MarginCaps & ConfidenceTuning & {
   enabled: boolean;
   disableWdl: boolean;
   disableDraw: boolean;
+  skew: OutcomeSkew;
 };
 
 // In-memory overrides that can be set via admin API (non-persistent)
@@ -103,6 +106,19 @@ export function getCaps(): RiskCaps {
   };
 }
 
+export function getSkew(): OutcomeSkew {
+  const white = clamp(n(process.env.REAL_WDL_SKEW_WHITE, 1.0), 0.25, 4);
+  const black = clamp(n(process.env.REAL_WDL_SKEW_BLACK, 1.0), 0.25, 4);
+  const draw = clamp(n(process.env.REAL_WDL_SKEW_DRAW, 1.0), 0.25, 4);
+  const o = overrides as any;
+  const ov = (o.skew || {}) as OutcomeSkew;
+  return {
+    white_win: ov.white_win ?? white,
+    black_win: ov.black_win ?? black,
+    draw: ov.draw ?? draw,
+  };
+}
+
 export function getFeatureFlags() {
   const enabled = b(process.env.REAL_WDL_HOUSE_ENABLED, true);
   const disableDraw = b(process.env.REAL_WDL_DISABLE_DRAW, false);
@@ -121,6 +137,7 @@ export function getRiskConfig(): RiskConfig {
     ...getMargins(),
     ...getConfidence(),
     ...getFeatureFlags(),
+    skew: getSkew(),
   } as RiskConfig;
 }
 
@@ -135,10 +152,13 @@ export function clearOverrides() {
 
 export function oddsFromP(p: number, outcome: Outcome, moveNum: number): number {
   const { baseMargin, drawExtraMargin, maxOdds } = getMargins();
+  const skew = getSkew();
   const { earlyMoveNum, extraMarginLowConf } = getConfidence();
   const isEarly = moveNum <= earlyMoveNum;
   const margin = baseMargin + (outcome === 'draw' ? drawExtraMargin : 0) + (isEarly ? extraMarginLowConf : 0);
-  const raw = (1 - clamp(margin, 0, 0.9)) / Math.max(1e-6, p);
+  // Apply optional book tilt via per-outcome probability multiplier (no renormalization needed)
+  const pAdj = Math.max(1e-6, p * Math.max(0.25, Math.min(4, skew[outcome] || 1)));
+  const raw = (1 - clamp(margin, 0, 0.9)) / pAdj;
   const capped = Math.min(raw, maxOdds[outcome]);
   return Math.max(1, Math.round(capped * 100) / 100); // 2 dp
 }
@@ -160,4 +180,3 @@ export function scaleCapsForConfidence(caps: RiskCaps, moveNum: number): RiskCap
     perPlayerPerGameCap: caps.perPlayerPerGameCap * s,
   };
 }
-

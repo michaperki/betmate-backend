@@ -12,6 +12,7 @@ if (fs.existsSync(localEnvPath)) {
 dotenv.config();
 
 import cors from 'cors';
+import axios from 'axios';
 import express from 'express';
 import bodyParser from 'body-parser';
 import morgan from 'morgan';
@@ -35,11 +36,12 @@ import {
   matchesRouter,
 } from './routers';
 
-import * as constants from './helpers/constants';
 import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
 import logger from './helpers/axiom_logger';
 import { getVersionInfo } from './helpers/version';
+import { requestContextMiddleware } from './helpers/request_context';
+import { getRuntimeConfig, getPublicRuntimeConfig } from './config/runtime';
 // Ensure global type augmentations are included for type-checking only
 import type {} from './types/global';
 
@@ -53,10 +55,9 @@ const app = express();
 app.set('trust proxy', 1);
 const httpServer = http.createServer(app);
 
-// Define allowed origins for both CORS and Socket.IO
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://betmate-prod.netlify.app', 'https://betmate-dev.netlify.app']
-  : ['http://localhost:3000', 'http://localhost:8000', 'http://localhost:8080'];
+// Centralized runtime config + allowed origins for both CORS and Socket.IO
+const runtimeConfig = getRuntimeConfig();
+const allowedOrigins = runtimeConfig.cors.allowedOrigins;
 
 // Log the allowed origins (debug-level)
 logger.log({ level: 'debug', event: 'startup_cors', context: { allowedOrigins } });
@@ -70,14 +71,38 @@ app.use(cors({
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
+      // Log and fail CORS
+      try {
+        logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
+      } catch {}
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  // Allow admin header for in-app ops panel
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'x-admin-key'],
+  methods: runtimeConfig.cors.methods,
+  // Allow admin/header/request-id headers for in-app ops panel and tracing
+  allowedHeaders: runtimeConfig.cors.allowedHeaders,
+  // Let us post-process preflight to reflect requested headers when needed
+  preflightContinue: true,
 }));
+
+// Dynamic CORS header reflection for OPTIONS preflight requests.
+// Keeps static allowlist above as baseline but reflects client-requested headers to avoid misses.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    const acrh = req.header('access-control-request-headers');
+    if (acrh) {
+      res.header('Access-Control-Allow-Headers', acrh);
+      // Ensure caches vary on requested headers
+      res.header('Vary', 'Access-Control-Request-Headers');
+    }
+    return res.sendStatus(204);
+  }
+  return next();
+});
+
+// Attach request context (request id) after CORS so preflight doesn't allocate context
+app.use(requestContextMiddleware);
 
 // Setup Socket.IO with allowed origins
 const io = new Server(httpServer, {
@@ -100,7 +125,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 // Setup common HTTP logging (opt-in)
-if (process.env.LOG_HTTP_DEBUG === 'true') {
+if (runtimeConfig.logging.httpDebug) {
   app.use(morgan('dev'));
 }
 
@@ -110,9 +135,8 @@ import opsMetrics from './utils/ops_metrics';
 import errorHandler from './middleware/error_handler';
 import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
 
-// Enable if in production or if a specific env var is set.
-// Apply selectively to avoid throttling core dashboard endpoints like /leaderboard and /wager.
-if (process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true') {
+// Rate limiting enabled in production or when toggled via env (centralized)
+if (runtimeConfig.rateLimit.enabled) {
   // Separate limiters so we can attribute counters clearly
   const analysisLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -231,6 +255,7 @@ app.get('/api/status', async (_req, res) => {
       enableRateLimiting: !!f.enableRateLimiting,
       enableWithdrawals: !!(f as any).enableWithdrawals,
       requireKyc: !!(f as any).requireKyc,
+      onboardingEnabled: (typeof (f as any).onboardingEnabled === 'boolean') ? !!(f as any).onboardingEnabled : true,
     };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {
@@ -244,6 +269,7 @@ app.get('/api/status', async (_req, res) => {
       enableRateLimiting: (process.env.NODE_ENV === 'production') || (process.env.ENABLE_RATE_LIMITING === 'true'),
       enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
       requireKyc: process.env.REQUIRE_KYC === 'true',
+      onboardingEnabled: process.env.ENABLE_ONBOARDING === 'false' ? false : true,
     };
   }
 
@@ -257,7 +283,7 @@ app.get('/api/status', async (_req, res) => {
 
   // Compute public risk summary using helper (safe: no exposure/bankroll)
   try {
-    const { getMargins, getConfidence } = require('./helpers/risk_config');
+    const { getMargins, getConfidence, getSkew } = require('./helpers/risk_config');
     const m = getMargins();
     const c = getConfidence();
     riskPublic = {
@@ -270,10 +296,28 @@ app.get('/api/status', async (_req, res) => {
         earlyMoveNum: c.earlyMoveNum,
       },
       maxOdds: m.maxOdds,
+      skew: getSkew(),
     };
   } catch (_err) {
     // leave riskPublic empty on error; FE will fall back to defaults
     riskPublic = {};
+  }
+
+  // Quick microservice health probe (non-fatal)
+  let microservice: any = {};
+  try {
+    const base = runtimeConfig.microservice.baseUrl;
+    const url = `${base}/dev/health`;
+    const started = Date.now();
+    const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
+    microservice = {
+      url: base,
+      healthy: !!(resp && resp.status >= 200 && resp.status < 500),
+      status: resp?.status ?? null,
+      latency_ms: resp ? (Date.now() - started) : null,
+    };
+  } catch {
+    microservice = { healthy: false };
   }
 
   res.json({
@@ -290,6 +334,10 @@ app.get('/api/status', async (_req, res) => {
     pricing,
     risk: riskPublic,
     limits,
+    cors: { allowedOrigins },
+    request: { requestIdHeaders: runtimeConfig.request.idHeaders },
+    config: getPublicRuntimeConfig(),
+    microservice,
   });
 });
 
@@ -317,7 +365,7 @@ const connectSuccess = () => {
   // Axiom logging is initialized automatically on first use
 
   // Initialize bots (optional via ENABLE_BOTS)
-  if (process.env.ENABLE_BOTS === 'true') {
+  if (runtimeConfig.bots.enabled) {
     logger.log({ level: 'info', event: 'bots_init' });
     agentService.initializeBots().catch((error) => {
       logger.log({ level: 'error', event: 'bots_init_error', context: { error: error.message } });
@@ -419,8 +467,8 @@ function constructSrvUri(mongoUri) {
 }
 
 // Start the server
-const port = process.env.PORT || 9000;
-httpServer.listen(port, () => {
+const port = runtimeConfig.node.port || process.env.PORT || 9000;
+httpServer.listen(port as any, () => {
   const v = getVersionInfo();
   logger.log({
     level: 'info',

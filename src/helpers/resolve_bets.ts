@@ -1,11 +1,11 @@
 import { UpdateQuery, Types } from 'mongoose';
-import { userService, wagerService, houseLedgerService } from '../services';
+import { userService, wagerService, houseLedgerService, settlementService } from '../services';
 import { UserDoc } from '../types/models/user';
 import {
   ProcessedWager, UserWagers, UserWinnings, WagerDoc, WagerOutcomes, WagerProcessor, WagerResults, WagerStatus,
 } from '../types/models/wager';
 
-import { delay, generateCorrelationId } from './utils';
+import { generateCorrelationId } from './utils';
 import logger from '../helpers/axiom_logger';
 
 const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
@@ -306,7 +306,17 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
     logger.log({ level: 'debug', event: 'critical_move_resolution_start', context: { correlationId, gameId, moveNum, lastMove, topMoves } });
   }
 
-  await delay(500); // ensures all wagers are present in database
+  // Acquire settlement job for idempotency
+  const claim = await settlementService.acquire(gameId, 'critical_move', moveNum);
+  if (claim.alreadyCompleted) {
+    if (verboseGameLogs) logger.log({ level: 'debug', event: 'critical_move_already_settled', context: { correlationId, gameId, moveNum } });
+    return {};
+  }
+  if (!claim.acquired) {
+    // Another worker is handling or lease active; skip
+    if (verboseGameLogs) logger.log({ level: 'debug', event: 'critical_move_settlement_skipped', context: { correlationId, gameId, moveNum } });
+    return {};
+  }
 
   const wagers = await wagerService.getWagers({
     game_id: Types.ObjectId(gameId),
@@ -314,8 +324,14 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
     move_number: moveNum,
     resolved: false,
   });
-
-  return resolveWagers(wagers, correctMove, processCriticalMoveWagers, correlationId, { gameId, moveNum, type: 'critical_move' });
+  try {
+    const result = await resolveWagers(wagers, correctMove, processCriticalMoveWagers, correlationId, { gameId, moveNum, type: 'critical_move' });
+    await settlementService.complete(claim.job!);
+    return result;
+  } catch (e) {
+    await settlementService.fail(claim.job!, e);
+    throw e;
+  }
 };
 
 /**
@@ -330,15 +346,30 @@ export const resolveWdlWagers = async (gameId: string, gameStatus: string): Prom
     logger.log({ level: 'debug', event: 'wdl_resolution_start', context: { correlationId, gameId, gameStatus } });
   }
 
-  await delay(500); // ensures all wagers are present in database
+  // Acquire settlement job for idempotency (wdl has move_number=0)
+  const claim = await settlementService.acquire(gameId, 'wdl', 0);
+  if (claim.alreadyCompleted) {
+    if (verboseGameLogs) logger.log({ level: 'debug', event: 'wdl_already_settled', context: { correlationId, gameId } });
+    return {};
+  }
+  if (!claim.acquired) {
+    if (verboseGameLogs) logger.log({ level: 'debug', event: 'wdl_settlement_skipped', context: { correlationId, gameId } });
+    return {};
+  }
 
   const wagers = await wagerService.getWagers({
     game_id: Types.ObjectId(gameId),
     wdl: true,
     resolved: false,
   });
-
-  return resolveWagers(wagers, gameStatus, processWDLWagers, correlationId, { gameId, type: 'wdl' });
+  try {
+    const result = await resolveWagers(wagers, gameStatus, processWDLWagers, correlationId, { gameId, type: 'wdl' });
+    await settlementService.complete(claim.job!);
+    return result;
+  } catch (e) {
+    await settlementService.fail(claim.job!, e);
+    throw e;
+  }
 };
 
 /**
@@ -354,7 +385,10 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: str
     logger.log({ level: 'debug', event: 'critical_move_cancel_all', context: { correlationId, gameId, moveNum } });
   }
 
-  await delay(500); // ensures all wagers are present in database
+  // Acquire job for cancel path as well to ensure single execution
+  const claim = await settlementService.acquire(gameId, 'critical_move', moveNum);
+  if (claim.alreadyCompleted) return {};
+  if (!claim.acquired) return {};
 
   const wagers = await wagerService.getWagers({
     game_id: Types.ObjectId(gameId),
@@ -362,6 +396,12 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: str
     move_number: moveNum,
     resolved: false,
   });
-
-  return resolveWagers(wagers, 'no data', processCriticalMoveWagers, correlationId);
+  try {
+    const result = await resolveWagers(wagers, 'no data', processCriticalMoveWagers, correlationId);
+    await settlementService.complete(claim.job!);
+    return result;
+  } catch (e) {
+    await settlementService.fail(claim.job!, e);
+    throw e;
+  }
 };
