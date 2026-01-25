@@ -245,7 +245,8 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
       await userService.updateUserData(req.user._id, { $inc: { cash_balance: -amount } });
     } else {
       // Initialize token_balance to legacy account if missing, then debit.
-      const update: any = { $inc: { token_balance: -amount } };
+      // Mirror legacy `account` field during migration to keep Arcade views consistent
+      const update: any = { $inc: { token_balance: -amount, account: -amount } };
       if ((req.user as any).token_balance == null) {
         update.$set = { token_balance: arcadeBalance };
       }

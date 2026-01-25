@@ -345,10 +345,30 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     const raw = Number(req.body?.amount ?? 100);
     if (!Number.isFinite(raw)) return res.status(400).json({ error: 'Invalid amount' });
     const amount = Math.max(1, Math.min(10000, Math.round(raw * 100) / 100));
+    // Optional currency selector: 'BET' | 'USDT' | 'both' (default: both for backward compatibility)
+    const bodyCurrency = String(req.body?.currency || 'both').toUpperCase();
+    const creditTokens = (bodyCurrency === 'BET' || bodyCurrency === 'BOTH');
+    const creditCash = (bodyCurrency === 'USDT' || bodyCurrency === 'BOTH');
+    // Demo ratio 1 USD = 100 BET.
+    const tokenAmt = Math.max(1, Math.round(amount * 100));
 
-    await userService.updateUserData(req.user._id, { $inc: { cash_balance: amount } });
-    await userService.recordBalanceChange(req.user._id, amount, 'Faucet credit', undefined, 'Faucet', 'USDT');
-    return res.status(200).json({ ok: true, credited: amount });
+    const inc: any = {};
+    const ledgerTasks: Array<Promise<any>> = [];
+    if (creditCash) {
+      inc.cash_balance = (inc.cash_balance || 0) + amount;
+    }
+    if (creditTokens) {
+      inc.token_balance = (inc.token_balance || 0) + tokenAmt;
+      // Maintain legacy `account` mirror during migration
+      inc.account = (inc.account || 0) + tokenAmt;
+    }
+    if (Object.keys(inc).length) {
+      await userService.updateUserData(req.user._id, { $inc: inc } as any);
+    }
+    if (creditCash) ledgerTasks.push(userService.recordBalanceChange(req.user._id, amount, 'Faucet credit', undefined, 'Faucet', 'USDT'));
+    if (creditTokens) ledgerTasks.push(userService.recordBalanceChange(req.user._id, tokenAmt, 'Faucet credit', undefined, 'Faucet', 'BET'));
+    await Promise.allSettled(ledgerTasks);
+    return res.status(200).json({ ok: true, credited: creditCash ? amount : 0, tokens: creditTokens ? tokenAmt : 0 });
   } catch (e) {
     return res.status(500).json({ error: 'Faucet error' });
   }
