@@ -74,6 +74,10 @@ app.use(cors({
       // Log and fail CORS
       try {
         logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
+        // Temporary debug: print exact Origin seen by server
+        // Remove after confirming correct value is added to ALLOWED_ORIGINS
+        // eslint-disable-next-line no-console
+        console.log('CORS origin blocked:', origin, '\nAllowed:', allowedOrigins);
       } catch {}
       callback(new Error('Not allowed by CORS'));
     }
