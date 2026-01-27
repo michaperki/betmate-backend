@@ -374,6 +374,12 @@ const connectSuccess = () => {
   
   // Axiom logging is initialized automatically on first use
 
+  // Initialize risk overrides from DB (persisted between restarts)
+  try {
+    const { loadOverridesFromDB } = require('./helpers/risk_config');
+    void loadOverridesFromDB();
+  } catch {}
+
   // Initialize bots (optional via ENABLE_BOTS)
   if (runtimeConfig.bots.enabled) {
     logger.log({ level: 'info', event: 'bots_init' });

@@ -399,7 +399,7 @@ export const listWithdrawals: RequestHandler = async (req: ValidatedRequestWithJ
 // Request a withdrawal (places a hold immediately)
 export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    const { amount, currency = 'USDTTRC20', address } = req.body || {};
+    const { amount, currency = 'USDTTRC20', address, method, handle } = req.body || {};
     if (!req.user?._id) return res.status(401).json({ error: 'Unauthorized' });
 
     // Feature flags
@@ -422,27 +422,39 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
     if (amt < minUSD || amt > maxUSD) return res.status(400).json({ error: `Amount out of bounds (${minUSD}-${maxUSD})` });
 
     // Allowed payout currencies
+    const requestedMethod = String(method || '').toLowerCase();
+    const isManual = (requestedMethod === 'manual' || requestedMethod === 'venmo');
     const allowedList = (process.env.WITHDRAW_ALLOWED_CURRENCIES || process.env.NOWPAYMENTS_ALLOWED_CURRENCIES || 'USDTTRC20,USDTBEP20,USDTERC20,USDC,BTC,ETH')
       .split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
-    const payCurrency = String(currency || '').toUpperCase();
-    if (!allowedList.includes(payCurrency)) {
+    const payCurrency = isManual ? 'USD' : String(currency || '').toUpperCase();
+    if (!isManual && !allowedList.includes(payCurrency)) {
       return res.status(400).json({ error: 'Unsupported currency', allowed: allowedList });
     }
 
     // Basic address validation heuristics
-    const addr = String(address || '').trim();
-    if (!addr) return res.status(400).json({ error: 'Missing address' });
-    const isEvm = payCurrency.includes('ERC20') || payCurrency.includes('BEP20') || payCurrency === 'USDC' || payCurrency === 'ETH' || payCurrency === 'USDT';
-    const isTron = payCurrency.includes('TRC20');
-    if (isEvm) {
-      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ error: 'Invalid EVM address format' });
-    } else if (isTron) {
-      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)) return res.status(400).json({ error: 'Invalid TRON address format' });
-    } else if (payCurrency === 'BTC') {
-      // Basic BTC address heuristic: legacy (1/3...) or bech32 (bc1...)
-      if (!/^(bc1[0-9a-z]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(addr)) {
-        return res.status(400).json({ error: 'Invalid BTC address format' });
+    let dest = '';
+    if (isManual) {
+      const h = String(handle || address || '').trim();
+      if (!h) return res.status(400).json({ error: 'Missing payout handle' });
+      // Minimal Venmo handle heuristic: allow @name or name without spaces
+      if (!/^@?[A-Za-z0-9_\-\.]{2,64}$/.test(h)) return res.status(400).json({ error: 'Invalid payout handle format' });
+      dest = h;
+    } else {
+      const addr = String(address || '').trim();
+      if (!addr) return res.status(400).json({ error: 'Missing address' });
+      const isEvm = payCurrency.includes('ERC20') || payCurrency.includes('BEP20') || payCurrency === 'USDC' || payCurrency === 'ETH' || payCurrency === 'USDT';
+      const isTron = payCurrency.includes('TRC20');
+      if (isEvm) {
+        if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ error: 'Invalid EVM address format' });
+      } else if (isTron) {
+        if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)) return res.status(400).json({ error: 'Invalid TRON address format' });
+      } else if (payCurrency === 'BTC') {
+        // Basic BTC address heuristic: legacy (1/3...) or bech32 (bc1...)
+        if (!/^(bc1[0-9a-z]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(addr)) {
+          return res.status(400).json({ error: 'Invalid BTC address format' });
+        }
       }
+      dest = addr;
     }
 
     // Velocity limit: restrict concurrent open withdrawals
@@ -461,9 +473,10 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
       user_id: req.user._id,
       amount: amt,
       currency: payCurrency,
-      address: addr,
+      address: dest,
       status: 'requested',
       provider: 'manual',
+      metadata: isManual ? { method: 'manual', subtype: 'venmo' } : undefined,
     }).save();
 
     // Place hold by debiting cash_balance

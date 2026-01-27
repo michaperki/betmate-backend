@@ -92,8 +92,7 @@ router.route('/onboarding')
     }
   });
 
-if (process.env.NODE_ENV === 'test') {
-  router.use(handleValidationError);
-}
+// Always handle validation errors from express-joi-validation
+router.use(handleValidationError);
 
 export default router;

@@ -109,7 +109,7 @@ export const enhancedLoggerMiddleware = (req: Request, res: Response, next: Next
     }
 
     // Create structured log data
-    const logData = {
+    const logData: any = {
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
@@ -122,6 +122,16 @@ export const enhancedLoggerMiddleware = (req: Request, res: Response, next: Next
       userId,
       gameId,
     };
+
+    // For auth endpoints on client errors, include a redacted snapshot of request body
+    if (res.statusCode >= 400 && context.startsWith('auth:')) {
+      try {
+        const body = { ...(req.body || {}) } as Record<string, any>;
+        if ('password' in body) body.password = '[REDACTED]';
+        if ('confirmPassword' in body) body.confirmPassword = '[REDACTED]';
+        logData.body = body;
+      } catch {}
+    }
 
     // Log based on status code with structured events
     if (res.statusCode >= 500) {
