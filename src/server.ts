@@ -38,7 +38,7 @@ import {
 
 import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
-import logger from './helpers/axiom_logger';
+import logger from './helpers/logger';
 import { getVersionInfo } from './helpers/version';
 import { requestContextMiddleware } from './helpers/request_context';
 import { getRuntimeConfig, getPublicRuntimeConfig } from './config/runtime';
@@ -137,7 +137,7 @@ if (runtimeConfig.logging.httpDebug) {
 import { rateLimit } from 'express-rate-limit';
 import opsMetrics from './utils/ops_metrics';
 import errorHandler from './middleware/error_handler';
-import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
+import { enhancedLoggerMiddleware } from './middleware/enhanced_logger_middleware';
 
 // Rate limiting enabled in production or when toggled via env (centralized)
 if (runtimeConfig.rateLimit.enabled) {
@@ -195,8 +195,14 @@ if (runtimeConfig.rateLimit.enabled) {
   // Intentional: leaderboard, wager, admin are not behind the limiter
 }
 
-// Add Axiom logging middleware
-app.use(axiomLoggerMiddleware);
+// Add development logger middleware (dev only)
+if (process.env.NODE_ENV === 'development') {
+  const { devLoggerMiddleware } = require('./middleware/dev_logger_middleware');
+  app.use(devLoggerMiddleware);
+}
+
+// Add enhanced logging middleware
+app.use(enhancedLoggerMiddleware);
 
 // declare routers
 app.use('/auth', authRouter);

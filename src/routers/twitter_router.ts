@@ -29,18 +29,4 @@ router.get('/queue', requireAuth, twitterController.getTweetQueueStatus);
  */
 router.post('/tweet/game', requireAuth, twitterController.tweetNewGame);
 
-/**
- * @route POST /api/twitter/tweet/result
- * @description Post a tweet about game results
- * @access Private (Admin)
- */
-router.post('/tweet/result', requireAuth, twitterController.tweetGameResult);
-
-/**
- * @route POST /api/twitter/tweet/betting
- * @description Post a tweet about a significant betting event
- * @access Private (Admin)
- */
-router.post('/tweet/betting', requireAuth, twitterController.tweetBettingEvent);
-
 export default router;

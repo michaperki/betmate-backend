@@ -1,0 +1,9 @@
+{
+  "entryFiles": [
+    "src/server.ts"
+  ],
+  "ignorePatterns": [
+    "src/__tests__/**",
+    "src/__jest__/**"
+  ]
+}
