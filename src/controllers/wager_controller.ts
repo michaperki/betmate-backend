@@ -63,8 +63,8 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
 
     // Enforce currency by mode: Arcade=BET, Real=USDT (ignore client override)
     const currency = mode === 'real' ? 'USDT' : 'BET';
-    // Prefer token_balance for Arcade; fall back to legacy account if undefined
-    const arcadeBalance = Number((req.user as any).token_balance ?? (req.user as any).account ?? 0);
+    // Arcade uses token_balance only
+    const arcadeBalance = Number((req.user as any).token_balance || 0);
     const effectiveBalance = mode === 'real' ? Number((req.user as any).cash_balance || 0) : arcadeBalance;
 
     // check user has enough money to place bet
@@ -77,17 +77,8 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     // Extract only the fields we need for a user wager (ensure is_bot is false)
     const { wdl, data, odds, move_number } = req.body;
 
-    // Enforce simple Arcade stake caps (configurable via env)
-    if (mode === 'arcade') {
-      const maxMove = Number(process.env.ARCADE_MAX_STAKE_MOVE || 25);
-      const maxWdl = Number(process.env.ARCADE_MAX_STAKE_WDL || 50);
-      const maxAllowed = wdl ? maxWdl : maxMove;
-      if (amount > maxAllowed) {
-        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_ARCADE', cap: maxAllowed, amount, game_id, user_id: String(better_id) } });
-        res.status(400).json({ error: `Stake exceeds maximum for this bet (${maxAllowed})` });
-        return;
-      }
-    }
+    // Accept Arcade (K-Bits) wagers without stake caps
+    // (No-op: previously enforced ARCADE_MAX_STAKE_* caps)
 
     // If Arcade move bet, compute house-priced odds from engine deltas (Level-0)
     let computedOdds = odds;
@@ -244,14 +235,7 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     if (mode === 'real') {
       await userService.updateUserData(req.user._id, { $inc: { cash_balance: -amount } });
     } else {
-      // Initialize token_balance to legacy account if missing, then debit.
-      const update: any = { $inc: { token_balance: -amount } };
-      if ((req.user as any).token_balance == null) {
-        update.$set = { token_balance: arcadeBalance };
-      }
-      // Keep legacy account in sync during migration to avoid UI discrepancies
-      update.$inc.account = -amount;
-      await userService.updateUserData(req.user._id, update);
+      await userService.updateUserData(req.user._id, { $inc: { token_balance: -amount } });
     }
 
     // Record balance history
@@ -265,6 +249,11 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     );
 
     res.status(200).json(doc);
+    try {
+      if (mode === 'arcade') {
+        logger.log({ level: 'info', event: 'arcade_wager_placed', context: { game_id, user_id: String(better_id), wdl, amount, odds: computedOdds } });
+      }
+    } catch {}
     return;
   } catch (error) {
     if (!res.headersSent) {
@@ -308,70 +297,6 @@ const getUserWagersRequest: RequestHandler = (req: ValidatedRequestWithJWT<GetWa
     .catch(handleFailure(res))
 );
 
-/**
- * Create wager from house bot service
- *
- * This endpoint is only accessible via the internal API and is authenticated
- * with a shared secret key. It allows the bot service to place wagers.
- *
- * Bot wagers are handled similarly to user wagers but:
- * - They're tagged with isBot = true
- * - They don't require user authentication
- * - They don't deduct from a user account (house bankroll is managed by the bot service)
- */
-const createBotWager: RequestHandler = async (req, res) => {
-  try {
-    const { gameId, moveNumber, amount, outcomeType, moveNotation, isBot, skip_game_check } = req.body;
-
-    if (!isBot) {
-      return res.status(400).json({ error: 'Missing bot flag' });
-    }
-
-    // Validate required fields
-    if (!gameId || !moveNumber || !amount || !outcomeType) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Check game exists and hasn't ended
-    let skipGameCheck = skip_game_check || false;
-    if (!skipGameCheck) {
-      try {
-        const game = await chessService.getChessGame(gameId);
-        if (!game) {
-          return res.status(404).json({ error: 'Game not found' });
-        }
-
-        if (game.complete) {
-          return res.status(400).json({ error: 'Game has already ended' });
-        }
-      } catch (gameError) {
-        // For bot wagers with mock game IDs, we can continue without a real game
-        skipGameCheck = true;
-      }
-    }
-
-    // Create a special bot user ID
-    const botUserId = Types.ObjectId("000000000000000000000000");
-
-    // Format the wager for the database
-    const wagerData = {
-      game_id: gameId,
-      better_id: botUserId, // Use a placeholder ObjectId for bot wagers
-      move_number: moveNumber,
-      amount,
-      is_bot: true,
-      wdl: outcomeType === 'WHITE_WIN' || outcomeType === 'BLACK_WIN' || outcomeType === 'DRAW',
-      data: moveNotation || outcomeType,
-      odds: 0, // Will be calculated by the system
-      skip_game_check: skipGameCheck,
-    };
-
-    const doc = await wagerService.createWager(wagerData);
-    return res.status(200).json(doc);
-  } catch (error) {
-    return handleFailure(res)(error);
-  }
-};
 
 /**
  * Get user's betting statistics (total wagers and win rate)
@@ -445,7 +370,6 @@ const wagerController = {
   createWagerRequest,
   getWagerRequest,
   getUserWagersRequest,
-  createBotWager,
   getUserBettingStats,
   getUserActiveWagers,
   getUserWagerHistory

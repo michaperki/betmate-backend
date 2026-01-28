@@ -64,6 +64,13 @@ export default adminRiskController;
 
 // Presets: lightweight mapping for quick ops defaults
 const PRESETS: Record<string, any> = {
+  beta: {
+    bankroll: 80000,
+    baseMargin: 0.055,
+    drawExtraMargin: 0.075,
+    perBetLiabilityCap: 300,
+    perPlayerPerGameCap: 900,
+  },
   low: {
     bankroll: 50000,
     baseMargin: 0.06,
@@ -90,7 +97,7 @@ const PRESETS: Record<string, any> = {
 export const applyRiskPresetHandler: import('express').RequestHandler = async (req, res) => {
   try {
     const lvl = String(req.body?.level || '').toLowerCase();
-    if (!['low', 'med', 'high'].includes(lvl)) {
+    if (!['beta', 'low', 'med', 'high'].includes(lvl)) {
       return res.status(400).json({ error: 'Invalid level' });
     }
     const patch = PRESETS[lvl];

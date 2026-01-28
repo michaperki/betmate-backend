@@ -2,11 +2,25 @@ import joi from 'joi';
 import { ExpressJoiError } from 'express-joi-validation';
 import { ErrorRequestHandler } from 'express';
 import HttpError from '../helpers/errors';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 export const handleValidationError: ErrorRequestHandler = (err: ExpressJoiError, req, res, next) => {
   if (err.error?.isJoi) {
     const errors = err.error.details.map((d) => d.message.replace(/"/g, "'"));
+    try {
+      const body = { ...(req.body || {}) } as Record<string, any>;
+      if ('password' in body) body.password = '[REDACTED]';
+      if ('confirmPassword' in body) body.confirmPassword = '[REDACTED]';
+      logger.log({ level: 'debug', event: 'validation_error', context: {
+        method: req.method,
+        path: req.path,
+        errors,
+        body,
+        query: req.query,
+        ip: req.ip,
+        userAgent: req.get('user-agent') || 'unknown',
+      } });
+    } catch {}
     res.status(400).send({ message: 'Request error', errors });
   } else {
     next(err);

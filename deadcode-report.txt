@@ -1,0 +1,151 @@
+
+> betmate-backend@2.0.1 deadcode:all
+> npm run deadcode:unimported && npm run deadcode:tsprune && npm run deadcode:depcheck
+
+
+> betmate-backend@2.0.1 deadcode:unimported
+> unimported
+
+
+> betmate-backend@2.0.1 deadcode:tsprune
+> ts-prune
+
+src/server.ts:497 - app (used in module)
+src/server.ts:497 - httpServer (used in module)
+src/agents/seedBot.ts:138 - processBotWager (used in module)
+src/agents/seedBot.ts:236 - refreshBotBankrolls (used in module)
+src/agents/seedBot.ts:262 - registerBot (used in module)
+src/agents/seedBot.ts:31 - BotUser (used in module)
+src/authentication/requireAdminAccess.ts:26 - default
+src/authentication/requireAdminKey.ts:15 - default
+src/config/move_badges.ts:1 - BadgeConfig (used in module)
+src/config/move_badges.ts:21 - moveBadgeConfig (used in module)
+src/config/runtime.ts:5 - RuntimeConfig (used in module)
+src/config/runtime.ts:106 - default (used in module)
+src/controllers/admin_dev_controller.ts:11 - clearAllWagers (used in module)
+src/controllers/admin_featured_controller.ts:4 - getFeaturedCandidates (used in module)
+src/controllers/admin_features_controller.ts:54 - getFeatures (used in module)
+src/controllers/admin_features_controller.ts:59 - updateFeatures (used in module)
+src/controllers/admin_home_controller.ts:9 - getAdminHome (used in module)
+src/controllers/admin_kyc_controller.ts:4 - listKycUsers (used in module)
+src/controllers/admin_kyc_controller.ts:24 - approveKyc (used in module)
+src/controllers/admin_kyc_controller.ts:35 - rejectKyc (used in module)
+src/controllers/admin_ops_controller.ts:6 - getOpsStats (used in module)
+src/controllers/admin_ops_controller.ts:16 - pingMicroservice (used in module)
+src/controllers/admin_risk_controller.ts:6 - getRiskConfigHandler (used in module)
+src/controllers/admin_risk_controller.ts:15 - updateRiskConfigHandler (used in module)
+src/controllers/admin_risk_controller.ts:24 - getGlobalExposureHandler (used in module)
+src/controllers/admin_risk_controller.ts:40 - getGameExposureHandler (used in module)
+src/controllers/admin_wager_controller.ts:9 - clearStaleWagers (used in module)
+src/controllers/admin_wallet_controller.ts:4 - listDeposits (used in module)
+src/controllers/admin_wallet_controller.ts:34 - clearStaleInvoices (used in module)
+src/controllers/admin_withdrawals_controller.ts:7 - listWithdrawals (used in module)
+src/controllers/admin_withdrawals_controller.ts:47 - approveWithdrawal (used in module)
+src/controllers/admin_withdrawals_controller.ts:83 - rejectWithdrawal (used in module)
+src/controllers/admin_withdrawals_controller.ts:98 - markProcessing (used in module)
+src/controllers/admin_withdrawals_controller.ts:113 - markPaid (used in module)
+src/controllers/admin_withdrawals_controller.ts:128 - markFailed (used in module)
+src/controllers/billing_controller.ts:13 - createDepositIntent (used in module)
+src/controllers/billing_controller.ts:113 - listDeposits (used in module)
+src/controllers/billing_controller.ts:136 - coinpaymentsWebhook (used in module)
+src/controllers/billing_controller.ts:165 - quoteDeposit (used in module)
+src/controllers/billing_controller.ts:196 - nowpaymentsWebhook (used in module)
+src/controllers/billing_controller.ts:238 - nowpaymentsPayoutWebhook (used in module)
+src/controllers/billing_controller.ts:285 - nowpaymentsWebhookMock (used in module)
+src/controllers/billing_controller.ts:322 - faucetCredit (used in module)
+src/controllers/billing_controller.ts:378 - listWithdrawals (used in module)
+src/controllers/billing_controller.ts:400 - requestWithdrawal (used in module)
+src/controllers/billing_controller.ts:485 - cancelWithdrawal (used in module)
+src/controllers/billing_controller.ts:513 - reconcileNowpaymentsPending (used in module)
+src/controllers/billing_controller.ts:554 - reconcileNowpaymentsPayouts (used in module)
+src/controllers/billing_controller.ts:593 - reissueNowpaymentsInvoice (used in module)
+src/controllers/index.ts:16 - realMarketController (used in module)
+src/controllers/real_market_controller.ts:7 - getWdlMarket (used in module)
+src/controllers/twitter_controller.ts:13 - checkTwitterConfig (used in module)
+src/controllers/twitter_controller.ts:26 - getTweetQueueStatus (used in module)
+src/controllers/twitter_controller.ts:43 - tweetNewGame (used in module)
+src/helpers/axiom_logger.ts:12 - LogEvent (used in module)
+src/helpers/constants.ts:3 - getSuccessfulDeletionMessage
+src/helpers/constants.ts:7 - PORT (used in module)
+src/helpers/enhanced_logger.ts:16 - LogEvent (used in module)
+src/helpers/lmsr.ts:1 - WDLKeys (used in module)
+src/helpers/lmsr.ts:3 - QState (used in module)
+src/helpers/lmsr.ts:4 - PState (used in module)
+src/helpers/log_helpers.ts:3 - LogContext (used in module)
+src/helpers/log_helpers.ts:15 - logGameEvent (used in module)
+src/helpers/log_helpers.ts:35 - logWagerEvent (used in module)
+src/helpers/log_helpers.ts:57 - logUserEvent (used in module)
+src/helpers/log_helpers.ts:75 - logPerformance (used in module)
+src/helpers/log_helpers.ts:90 - default
+src/helpers/logger_config.ts:151 - loggerConfig (used in module)
+src/helpers/logger.ts:30 - originalLogger (used in module)
+src/helpers/logger.ts:31 - LoggerConfig
+src/helpers/logger.ts:31 - loadLoggerConfig
+src/helpers/resolve_bets.ts:134 - getUserWagers (used in module)
+src/helpers/risk_config.ts:50 - getMargins (used in module)
+src/helpers/risk_config.ts:66 - getConfidence (used in module)
+src/helpers/risk_config.ts:78 - getCaps (used in module)
+src/helpers/risk_config.ts:109 - getSkew (used in module)
+src/helpers/risk_config.ts:149 - clearOverrides
+src/helpers/risk_config.ts:4 - Outcome (used in module)
+src/helpers/risk_config.ts:6 - RiskCaps (used in module)
+src/helpers/risk_config.ts:15 - MarginCaps (used in module)
+src/helpers/risk_config.ts:21 - ConfidenceTuning (used in module)
+src/helpers/risk_config.ts:27 - OutcomeSkew (used in module)
+src/helpers/risk_config.ts:29 - RiskConfig (used in module)
+src/helpers/version.ts:1 - VersionInfo (used in module)
+src/helpers/version.ts:19 - default
+src/middleware/axiom_logger_middleware.ts:77 - axiomLoggerMiddleware (used in module)
+src/middleware/axiom_logger_middleware.ts:178 - default
+src/middleware/dev_logger_middleware.ts:24 - devLoggerMiddleware (used in module)
+src/middleware/dev_logger_middleware.ts:92 - default
+src/middleware/enhanced_logger_middleware.ts:178 - default
+src/middleware/error_handler.ts:52 - errorHandler (used in module)
+src/middleware/rate_limiter.ts:13 - apiLimiter
+src/models/config_model.ts:3 - ConfigDoc (used in module)
+src/models/deposit_model.ts:3 - DepositDoc (used in module)
+src/models/helper_schemas.ts:41 - AnonMoveWagerSchema (used in module)
+src/models/index.ts:19 - RefreshToken
+src/models/withdrawal_model.ts:3 - WithdrawalStatus (used in module)
+src/models/withdrawal_model.ts:5 - WithdrawalDoc (used in module)
+src/services/agent_service.ts:29 - initializeBots (used in module)
+src/services/agent_service.ts:153 - handleNewMoveEvent (used in module)
+src/services/agent_service.ts:166 - processBotWagersForGame (used in module)
+src/services/agent_service.ts:228 - processEmptyMoveBars (used in module)
+src/services/agent_service.ts:306 - scheduleRefreshBankrolls (used in module)
+src/services/dominance_tracker.ts:22 - dominanceTracker (used in module)
+src/services/exposure_service.ts:4 - OutcomeKey (used in module)
+src/services/exposure_service.ts:6 - OutcomeExposure (used in module)
+src/services/exposure_service.ts:8 - GameExposure (used in module)
+src/services/featured_selector.ts:137 - computeFeaturedCandidates (used in module)
+src/services/featured_selector.ts:171 - selectFeaturedGame (used in module)
+src/services/featured_selector.ts:107 - CandidateScore (used in module)
+src/services/index.ts:24 - openingService (used in module)
+src/services/move_badge_service.ts:43 - resolveBadgesForTopMoves (used in module)
+src/services/move_badge_service.ts:4 - WDL (used in module)
+src/services/move_badge_service.ts:6 - TopMove (used in module)
+src/services/move_badge_service.ts:17 - MoveBadge (used in module)
+src/services/opening_service.ts:5 - OpeningEntry (used in module)
+src/services/opening_service.ts:12 - OpeningMatch (used in module)
+src/services/opening_service.ts:232 - openingService (used in module)
+src/services/settlement_service.ts:75 - settlementService (used in module)
+src/services/wager_cleanup_service.ts:11 - cleanupOrphanAndFinishedWagers
+src/utils/features_runtime.ts:3 - FeatureFlags (used in module)
+src/utils/ops_metrics.ts:13 - opsMetrics (used in module)
+src/validation/analysis.ts:4 - GetMoveAnalysisQuery (used in module)
+src/validation/analysis.ts:19 - BatchMoveAnalysisBody (used in module)
+src/validation/chess.ts:20 - GetManyGamesQuery (used in module)
+src/validation/leaderboard.ts:10 - GetLeaderboardQuery (used in module)
+src/websockets/game_loop.ts:342 - run300Loop
+src/websockets/game_loop.ts:343 - run900Loop
+src/authentication/__mocks__/requireAuth.ts:12 - default
+src/services/providers/coinbase_commerce.ts:37 - verifyWebhookSignature
+src/services/providers/coinbase_commerce.ts:15 - CreateChargeResult (used in module)
+src/services/providers/coinpayments.ts:15 - CreateTxResult (used in module)
+src/services/providers/nowpayments_payouts.ts:5 - CreatePayoutInput (used in module)
+src/services/providers/nowpayments_payouts.ts:13 - CreatePayoutResult (used in module)
+src/services/providers/nowpayments.ts:17 - CreatePaymentResult (used in module)
+src/services/providers/nowpayments.ts:60 - CreateInvoiceResult (used in module)
+src/types/models/market.ts:3 - MarketType (used in module)
+src/types/models/market.ts:4 - MarketStatus (used in module)
+src/types/models/wager.ts:8 - WagerWDL

@@ -172,7 +172,6 @@ const updateUserWinnings = async (processedWagers: ProcessedWager[]): Promise<Us
   const updates = Object.entries(credits).map(async ([id, amounts]) => {
     const inc: any = {};
     if (amounts.BET && amounts.BET > 0) {
-      inc.account = (inc.account || 0) + amounts.BET;
       inc.token_balance = (inc.token_balance || 0) + amounts.BET;
     }
     if (amounts.USDT && amounts.USDT > 0) {

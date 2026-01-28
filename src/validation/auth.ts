@@ -10,14 +10,20 @@ interface SignUpUserBody {
   firstName?: string
   lastName?: string
   is_bot?: boolean
+  invite_code: string
+  device_id?: string
 }
 
 export const SignUpUserSchema = joi.object<SignUpUserBody>({
   email: joi.string().email().required(),
-  password: joi.string().required(),
-  firstName: joi.string(),
-  lastName: joi.string(),
+  // Enforce minimum length to match model pre-save hook
+  password: joi.string().min(8).required(),
+  // Frontend may submit empty strings; allow and trim
+  firstName: joi.string().trim().allow('').optional(),
+  lastName: joi.string().trim().allow('').optional(),
   is_bot: joi.boolean(),
+  invite_code: joi.string().trim().required(),
+  device_id: joi.string().trim().optional(),
 });
 
 export interface SignUpUserRequest extends ValidatedRequestSchema {

@@ -5,7 +5,6 @@ import leaderboardRouter from './leaderboard_router';
 import lichessRouter from './lichess_router';
 import analysisRouter from './analysis_router';
 import internalRouter from './internal_router';
-import raffleRouter from './raffle_router';
 import logRouter from './log_router';
 import twitterRouter from './twitter_router';
 import billingRouter from './billing_router';
@@ -21,7 +20,6 @@ export {
   lichessRouter,
   analysisRouter,
   internalRouter,
-  raffleRouter,
   logRouter,
   twitterRouter,
   billingRouter,

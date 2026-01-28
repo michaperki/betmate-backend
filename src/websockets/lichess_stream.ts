@@ -11,7 +11,7 @@ import { Types } from 'mongoose';
 import { Chess as ChessGame } from 'chess.js';
 import { Chess } from '../models';
 import { cancelCriticalMoveWagers, resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
-import { chessService, microserviceService, agentService, moveBadgeService } from '../services';
+import { chessService, microserviceService, moveBadgeService } from '../services';
 import moveBadgeConfig from '../config/move_badges';
 import dominanceTracker from '../services/dominance_tracker';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
@@ -213,14 +213,7 @@ export const getStream = async (
           // Save current betting options before updating to new position
           const previousMoveOptions = [...liveTopMoves];
 
-          // Trigger bot wagers for the new position (only if bots are enabled)
-          if (process.env.ENABLE_BOTS === 'true') {
-            agentService.processBotWagersForGame(gameId, socket).catch(err => {
-              if (process.env.NODE_ENV !== 'test') {
-                console.log(`Bot wager processing error: ${err.message}`);
-              }
-            });
-          }
+          // Bot wagers removed
 
           (previousMoveOptions.length > 0
             ? resolveCriticalMoveWagers(gameId, history, previousMoveOptions)

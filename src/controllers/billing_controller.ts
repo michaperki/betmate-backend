@@ -345,10 +345,28 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     const raw = Number(req.body?.amount ?? 100);
     if (!Number.isFinite(raw)) return res.status(400).json({ error: 'Invalid amount' });
     const amount = Math.max(1, Math.min(10000, Math.round(raw * 100) / 100));
+    // Optional currency selector: 'BET' | 'USDT' | 'both' (default: both for backward compatibility)
+    const bodyCurrency = String(req.body?.currency || 'both').toUpperCase();
+    const creditTokens = (bodyCurrency === 'BET' || bodyCurrency === 'BOTH');
+    const creditCash = (bodyCurrency === 'USDT' || bodyCurrency === 'BOTH');
+    // Demo ratio 1 USD = 100 BET.
+    const tokenAmt = Math.max(1, Math.round(amount * 100));
 
-    await userService.updateUserData(req.user._id, { $inc: { cash_balance: amount } });
-    await userService.recordBalanceChange(req.user._id, amount, 'Faucet credit', undefined, 'Faucet', 'USDT');
-    return res.status(200).json({ ok: true, credited: amount });
+    const inc: any = {};
+    const ledgerTasks: Array<Promise<any>> = [];
+    if (creditCash) {
+      inc.cash_balance = (inc.cash_balance || 0) + amount;
+    }
+    if (creditTokens) {
+      inc.token_balance = (inc.token_balance || 0) + tokenAmt;
+    }
+    if (Object.keys(inc).length) {
+      await userService.updateUserData(req.user._id, { $inc: inc } as any);
+    }
+    if (creditCash) ledgerTasks.push(userService.recordBalanceChange(req.user._id, amount, 'Faucet credit', undefined, 'Faucet', 'USDT'));
+    if (creditTokens) ledgerTasks.push(userService.recordBalanceChange(req.user._id, tokenAmt, 'Faucet credit', undefined, 'Faucet', 'BET'));
+    await Promise.allSettled(ledgerTasks);
+    return res.status(200).json({ ok: true, credited: creditCash ? amount : 0, tokens: creditTokens ? tokenAmt : 0 });
   } catch (e) {
     return res.status(500).json({ error: 'Faucet error' });
   }
@@ -379,7 +397,7 @@ export const listWithdrawals: RequestHandler = async (req: ValidatedRequestWithJ
 // Request a withdrawal (places a hold immediately)
 export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res) => {
   try {
-    const { amount, currency = 'USDTTRC20', address } = req.body || {};
+    const { amount, currency = 'USDTTRC20', address, method, handle } = req.body || {};
     if (!req.user?._id) return res.status(401).json({ error: 'Unauthorized' });
 
     // Feature flags
@@ -402,33 +420,60 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
     if (amt < minUSD || amt > maxUSD) return res.status(400).json({ error: `Amount out of bounds (${minUSD}-${maxUSD})` });
 
     // Allowed payout currencies
+    const requestedMethod = String(method || '').toLowerCase();
+    const isManual = (requestedMethod === 'manual' || requestedMethod === 'venmo');
     const allowedList = (process.env.WITHDRAW_ALLOWED_CURRENCIES || process.env.NOWPAYMENTS_ALLOWED_CURRENCIES || 'USDTTRC20,USDTBEP20,USDTERC20,USDC,BTC,ETH')
       .split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
-    const payCurrency = String(currency || '').toUpperCase();
-    if (!allowedList.includes(payCurrency)) {
+    const payCurrency = isManual ? 'USD' : String(currency || '').toUpperCase();
+    if (!isManual && !allowedList.includes(payCurrency)) {
       return res.status(400).json({ error: 'Unsupported currency', allowed: allowedList });
     }
 
     // Basic address validation heuristics
-    const addr = String(address || '').trim();
-    if (!addr) return res.status(400).json({ error: 'Missing address' });
-    const isEvm = payCurrency.includes('ERC20') || payCurrency.includes('BEP20') || payCurrency === 'USDC' || payCurrency === 'ETH' || payCurrency === 'USDT';
-    const isTron = payCurrency.includes('TRC20');
-    if (isEvm) {
-      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ error: 'Invalid EVM address format' });
-    } else if (isTron) {
-      if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)) return res.status(400).json({ error: 'Invalid TRON address format' });
-    } else if (payCurrency === 'BTC') {
-      // Basic BTC address heuristic: legacy (1/3...) or bech32 (bc1...)
-      if (!/^(bc1[0-9a-z]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(addr)) {
-        return res.status(400).json({ error: 'Invalid BTC address format' });
+    let dest = '';
+    if (isManual) {
+      const h = String(handle || address || '').trim();
+      if (!h) return res.status(400).json({ error: 'Missing payout handle' });
+      // Minimal Venmo handle heuristic: allow @name or name without spaces
+      if (!/^@?[A-Za-z0-9_\-\.]{2,64}$/.test(h)) return res.status(400).json({ error: 'Invalid payout handle format' });
+      dest = h;
+    } else {
+      const addr = String(address || '').trim();
+      if (!addr) return res.status(400).json({ error: 'Missing address' });
+      const isEvm = payCurrency.includes('ERC20') || payCurrency.includes('BEP20') || payCurrency === 'USDC' || payCurrency === 'ETH' || payCurrency === 'USDT';
+      const isTron = payCurrency.includes('TRC20');
+      if (isEvm) {
+        if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return res.status(400).json({ error: 'Invalid EVM address format' });
+      } else if (isTron) {
+        if (!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(addr)) return res.status(400).json({ error: 'Invalid TRON address format' });
+      } else if (payCurrency === 'BTC') {
+        // Basic BTC address heuristic: legacy (1/3...) or bech32 (bc1...)
+        if (!/^(bc1[0-9a-z]{11,71}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})$/.test(addr)) {
+          return res.status(400).json({ error: 'Invalid BTC address format' });
+        }
       }
+      dest = addr;
     }
 
     // Velocity limit: restrict concurrent open withdrawals
     const maxOpen = Math.max(1, Number(process.env.WITHDRAW_MAX_OPEN || 1));
     const openCount = await Withdrawal.countDocuments({ user_id: req.user._id, status: { $in: ['requested', 'approved', 'processing'] } });
     if (openCount >= maxOpen) return res.status(429).json({ error: 'Too many open withdrawals' });
+
+    // Daily limit: cap total requested in the last 24h
+    const maxDailyUSD = Math.max(0, Number(process.env.WITHDRAW_MAX_DAILY_USD || 500));
+    if (maxDailyUSD > 0) {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await Withdrawal.aggregate([
+        { $match: { user_id: (req.user as any)._id, created_at: { $gte: since } } },
+        { $match: { status: { $in: ['requested', 'approved', 'processing', 'paid'] } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      const recentTotal = Number((recent && recent[0]?.total) || 0);
+      if (recentTotal + amt > maxDailyUSD) {
+        return res.status(429).json({ error: 'Daily withdrawal limit reached', code: 'WITHDRAW_DAILY_LIMIT', cap: maxDailyUSD, projected: recentTotal + amt });
+      }
+    }
 
     // Check user balance
     const freshUser = await Users.findById(req.user._id);
@@ -441,9 +486,10 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
       user_id: req.user._id,
       amount: amt,
       currency: payCurrency,
-      address: addr,
+      address: dest,
       status: 'requested',
       provider: 'manual',
+      metadata: isManual ? { method: 'manual', subtype: 'venmo' } : undefined,
     }).save();
 
     // Place hold by debiting cash_balance

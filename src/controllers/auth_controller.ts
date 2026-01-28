@@ -7,6 +7,7 @@ import { userService, refreshTokenService } from '../services';
 import { tokenForUser } from '../helpers/utils';
 import { SignUpUserRequest } from '../validation/auth';
 import { handleFailure } from './utils';
+import { InviteCode } from '../models';
 
 /**
  * Sign up user from request
@@ -21,8 +22,25 @@ import { handleFailure } from './utils';
 const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUserRequest>, res) => {
   try {
     const {
-      email, password, firstName, lastName,
+      email, password, firstName, lastName, invite_code, device_id,
     } = req.body;
+
+    // Enforce invite gating
+    const rawCode = String(invite_code || '').trim();
+    if (!rawCode) {
+      return res.status(403).json({ message: 'Invite code required', code: 'INVITE_REQUIRED' });
+    }
+    // Lookup invite and validate constraints atomically when redeeming later
+    const invite = await InviteCode.findOne({ code: rawCode, active: true }).lean();
+    if (!invite) {
+      return res.status(403).json({ message: 'Invalid invite code', code: 'INVITE_INVALID' });
+    }
+    if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+      return res.status(403).json({ message: 'Invite expired', code: 'INVITE_EXPIRED' });
+    }
+    if ((invite.redeemed_count || 0) >= (invite.max_redemptions || 0)) {
+      return res.status(403).json({ message: 'Invite fully redeemed', code: 'INVITE_EXHAUSTED' });
+    }
 
     const isEmailAvailable = await userService.emailAvailable(email);
     if (!isEmailAvailable) {
@@ -37,6 +55,49 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
       first_name: firstName,
       last_name: lastName
     });
+
+    // Attach basic signup context
+    try {
+      const ip = (req.ip || '').toString();
+      const ua = (req.headers['user-agent'] || '').toString();
+      const dev = (device_id || req.header('X-Device-Id') || req.header('x-device-id') || '').toString();
+      await userService.updateUserData(user._id, { $set: { signup_ip: ip || undefined, signup_user_agent: ua || undefined, signup_device_id: dev || undefined } } as any);
+    } catch {}
+
+    // Atomically redeem invite (increment count only if under cap)
+    try {
+      const upd = await InviteCode.findOneAndUpdate(
+        {
+          _id: (invite as any)._id,
+          active: true,
+          redeemed_count: { $lt: Number((invite as any).max_redemptions || 0) },
+          ...(invite.expires_at ? { expires_at: { $gt: new Date() } } : {}),
+        },
+        { $inc: { redeemed_count: 1 } },
+        { new: true }
+      );
+      if (!upd) {
+        return res.status(403).json({ message: 'Invite unavailable', code: 'INVITE_RACE' });
+      }
+      // Automatic dual-currency grants
+      const grantTokens = Number(upd.grant_tokens || process.env.SIGNUP_GRANT_BET || 0);
+      const grantCash = Number(upd.grant_cash_usd || process.env.SIGNUP_GRANT_USD || 0);
+      const inc: any = {};
+      if (grantTokens > 0) {
+        inc.token_balance = (inc.token_balance || 0) + grantTokens;
+      }
+      if (grantCash > 0) {
+        inc.cash_balance = (inc.cash_balance || 0) + grantCash;
+      }
+      if (Object.keys(inc).length) {
+        await userService.updateUserData(user._id, { $inc: inc } as any);
+      }
+      // Ledger entries
+      if (grantTokens > 0) await userService.recordBalanceChange(user._id, grantTokens, 'Signup bonus', (upd as any)._id, 'Invite', 'BET');
+      if (grantCash > 0) await userService.recordBalanceChange(user._id, grantCash, 'Signup bonus', (upd as any)._id, 'Invite', 'USDT');
+    } catch (e) {
+      // soft-fail on bonus if invite could not be redeemed (should be rare)
+    }
     
     // Generate CSRF token
     const csrfToken = uuidv4();
@@ -52,18 +113,20 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
     });
     */
     
+    // Refresh the user snapshot to reflect any grants applied
+    const refUser = await userService.getUser(user._id);
     // Generate refresh token
     const refreshToken = await refreshTokenService.createRefreshToken(user._id);
     
     // Generate JWT token with shorter expiration time (15 minutes)
-    const jwtToken = tokenForUser(user, 15); 
+    const jwtToken = tokenForUser(refUser || user, 15); 
     
     // Return all tokens to frontend
     return res.status(201).json({ 
       token: jwtToken, 
       refreshToken: refreshToken.token,
       csrfToken,  // Send in body for frontend to store
-      user 
+      user: (refUser || user)
     });
   } catch (error) {
     if (!res.headersSent) {

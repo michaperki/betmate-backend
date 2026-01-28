@@ -174,28 +174,6 @@ const tweetNewGame = async (
   return { id: `queued-${Date.now()}` };
 };
 
-/**
- * NO LONGER USED - We don't tweet about game results anymore
- * @deprecated Not in use - only new game tweets are supported
- */
-const tweetGameResult = async (
-  gameId: string,
-  whitePlayer: string,
-  blackPlayer: string,
-  result: string
-) => {
-  logger.info(`Game result tweets are disabled, ignoring request for game ${gameId}`);
-  return { id: `disabled-${Date.now()}` };
-};
-
-/**
- * NO LONGER USED - We don't tweet about betting events
- * @deprecated Not in use - only new game tweets are supported
- */
-const tweetBettingEvent = async (gameId: string, message: string) => {
-  logger.info(`Betting event tweets are disabled, ignoring request for game ${gameId}`);
-  return { id: `disabled-${Date.now()}` };
-};
 
 /**
  * Get current tweet queue status
@@ -208,8 +186,6 @@ const getTweetQueueStatus = () => {
 const twitterService = {
   isConfigured,
   tweetNewGame,
-  tweetGameResult,
-  tweetBettingEvent,
   getTweetQueueStatus
 };
 

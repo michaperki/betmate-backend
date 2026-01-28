@@ -2,8 +2,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import opsMetrics from '../utils/ops_metrics';
 import { getPublicRuntimeConfig } from '../config/runtime';
-import { wagerController } from '../controllers';
-import { requireBotAuth } from '../authentication';
+import { requireAdminKey } from '../authentication';
 
 const router = express.Router();
 
@@ -19,14 +18,14 @@ const router = express.Router();
  * @description Submit a wager from the house bot service
  * @access Private (requires bot authentication)
  */
-router.post('/bot_wager', requireBotAuth, wagerController.createBotWager);
+// bot_wager removed
 
 /**
  * @route GET /internal/metrics
  * @description Lightweight counters and config snapshot for internal consumers
  * @access Private (requires bot authentication)
  */
-router.get('/metrics', requireBotAuth, (_req, res) => {
+router.get('/metrics', requireAdminKey, (_req, res) => {
   const dbOk = mongoose.connection?.readyState === 1 || mongoose.connection?.readyState === 2;
   const counters = opsMetrics.get();
   const cfg = getPublicRuntimeConfig();

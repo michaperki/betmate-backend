@@ -22,8 +22,14 @@ const UserSchema = new Schema({
   // New dual-wallet fields (backward compatible)
   token_balance: { type: Number, default: 1000 },
   cash_balance: { type: Number, default: 0 },
+  // Basic fraud context (beta): capture signup IP / UA / device id
+  signup_ip: { type: String, default: undefined },
+  signup_user_agent: { type: String, default: undefined },
+  signup_device_id: { type: String, default: undefined },
   // Onboarding state (versioned, simple counter)
   onboarding_version_seen: { type: Number, default: 0 },
+  // Terms and conditions acceptance (versioned)
+  terms_version_accepted: { type: Number, default: 0 },
   // KYC state machine (mock for now)
   kyc_status: { type: String, enum: ['none', 'required', 'pending', 'approved', 'rejected'], default: 'none', index: true },
   kyc_meta: { type: Schema.Types.Mixed, default: undefined },

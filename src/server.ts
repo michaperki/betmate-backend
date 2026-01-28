@@ -24,13 +24,13 @@ import { Server } from 'socket.io';
 // Import MongoDB caching plugin
 import './helpers/mongo_cache';
 
-import { chessService, agentService } from './services';
+import { chessService } from './services';
 import leaderboardService from './services/leaderboard_service';
 import { handleValidationError } from './validation';
 import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
-  analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter, billingRouter,
+  analysisRouter, internalRouter, logRouter, twitterRouter, billingRouter,
   realMarketsRouter,
   adminRouter,
   matchesRouter,
@@ -38,7 +38,7 @@ import {
 
 import { chessWS } from './websockets';
 import { setChessNamespace } from './websockets/namespace';
-import logger from './helpers/axiom_logger';
+import logger from './helpers/logger';
 import { getVersionInfo } from './helpers/version';
 import { requestContextMiddleware } from './helpers/request_context';
 import { getRuntimeConfig, getPublicRuntimeConfig } from './config/runtime';
@@ -74,6 +74,10 @@ app.use(cors({
       // Log and fail CORS
       try {
         logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
+        // Temporary debug: print exact Origin seen by server
+        // Remove after confirming correct value is added to ALLOWED_ORIGINS
+        // eslint-disable-next-line no-console
+        console.log('CORS origin blocked:', origin, '\nAllowed:', allowedOrigins);
       } catch {}
       callback(new Error('Not allowed by CORS'));
     }
@@ -133,7 +137,7 @@ if (runtimeConfig.logging.httpDebug) {
 import { rateLimit } from 'express-rate-limit';
 import opsMetrics from './utils/ops_metrics';
 import errorHandler from './middleware/error_handler';
-import { axiomLoggerMiddleware } from './middleware/axiom_logger_middleware';
+import { enhancedLoggerMiddleware } from './middleware/enhanced_logger_middleware';
 
 // Rate limiting enabled in production or when toggled via env (centralized)
 if (runtimeConfig.rateLimit.enabled) {
@@ -191,8 +195,14 @@ if (runtimeConfig.rateLimit.enabled) {
   // Intentional: leaderboard, wager, admin are not behind the limiter
 }
 
-// Add Axiom logging middleware
-app.use(axiomLoggerMiddleware);
+// Add development logger middleware (dev only)
+if (process.env.NODE_ENV === 'development') {
+  const { devLoggerMiddleware } = require('./middleware/dev_logger_middleware');
+  app.use(devLoggerMiddleware);
+}
+
+// Add enhanced logging middleware
+app.use(enhancedLoggerMiddleware);
 
 // declare routers
 app.use('/auth', authRouter);
@@ -201,7 +211,6 @@ app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
 app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
-app.use('/raffle', raffleRouter);
 app.use('/api/log', logRouter); // Frontend logging endpoint
 app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 app.use('/billing', billingRouter); // Wallet deposit/withdrawal endpoints (flag‑gated in FE)
@@ -229,7 +238,6 @@ app.get('/', (req, res) => {
       wager: '/wager',
       leaderboard: '/leaderboard',
       analysis: '/analysis',
-      raffle: '/raffle',
       twitter: '/api/twitter',
       matches: '/matches',
       websocket: '/chessws'
@@ -309,7 +317,8 @@ app.get('/api/status', async (_req, res) => {
     const base = runtimeConfig.microservice.baseUrl;
     const url = `${base}/dev/health`;
     const started = Date.now();
-    const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
+    const timeoutMs = Math.max(200, Number(process.env.MICROSERVICE_HEALTH_TIMEOUT_MS || 1500));
+    const resp = await axios.get(url, { timeout: timeoutMs }).catch(() => null);
     microservice = {
       url: base,
       healthy: !!(resp && resp.status >= 200 && resp.status < 500),
@@ -364,15 +373,13 @@ const connectSuccess = () => {
   
   // Axiom logging is initialized automatically on first use
 
-  // Initialize bots (optional via ENABLE_BOTS)
-  if (runtimeConfig.bots.enabled) {
-    logger.log({ level: 'info', event: 'bots_init' });
-    agentService.initializeBots().catch((error) => {
-      logger.log({ level: 'error', event: 'bots_init_error', context: { error: error.message } });
-    });
-  } else {
-    logger.log({ level: 'debug', event: 'bots_disabled' });
-  }
+  // Initialize risk overrides from DB (persisted between restarts)
+  try {
+    const { loadOverridesFromDB } = require('./helpers/risk_config');
+    void loadOverridesFromDB();
+  } catch {}
+
+  // Bots removed
   
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {

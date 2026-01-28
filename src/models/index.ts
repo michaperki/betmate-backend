@@ -9,6 +9,7 @@ import RefreshTokenModel from './refresh_token_model';
 import MarketModel from './market_model';
 import HouseLedgerModel from './house_ledger_model';
 import SettlementJobModel from './settlement_job_model';
+import InviteCodeModel from './invite_code_model';
 
 export {
   UserModel as Users,
@@ -22,4 +23,5 @@ export {
   MarketModel as Market,
   HouseLedgerModel as HouseLedger,
   SettlementJobModel as SettlementJob,
+  InviteCodeModel as InviteCode,
 };

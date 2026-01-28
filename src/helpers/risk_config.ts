@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import { clamp } from './utils';
+import Config from '../models/config_model';
 
 export type Outcome = 'white_win' | 'draw' | 'black_win';
 
@@ -35,6 +36,7 @@ export type RiskConfig = RiskCaps & MarginCaps & ConfidenceTuning & {
 
 // In-memory overrides that can be set via admin API (non-persistent)
 const overrides: Partial<RiskConfig> = {};
+const OVERRIDES_KEY = 'risk_overrides';
 
 const n = (v: any, d: number) => {
   const x = Number(v);
@@ -143,11 +145,27 @@ export function getRiskConfig(): RiskConfig {
 
 export function updateOverrides(partial: Partial<RiskConfig>) {
   Object.assign(overrides, partial);
+  // Persist asynchronously so changes survive restarts
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    Config.updateOne({ key: OVERRIDES_KEY }, { $set: { data: overrides } }, { upsert: true }).exec();
+  } catch {}
   return getRiskConfig();
 }
 
 export function clearOverrides() {
   for (const k of Object.keys(overrides)) delete (overrides as any)[k];
+}
+
+// Load overrides from DB on startup (best-effort)
+export async function loadOverridesFromDB() {
+  try {
+    const doc = await Config.findOne({ key: OVERRIDES_KEY }).lean();
+    if (doc && doc.data && typeof doc.data === 'object') {
+      Object.assign(overrides, doc.data as Partial<RiskConfig>);
+    }
+  } catch {}
+  return getRiskConfig();
 }
 
 export function oddsFromP(p: number, outcome: Outcome, moveNum: number): number {
