@@ -1,5 +1,5 @@
 import mongoose, { Document } from 'mongoose';
-import { BotPersona } from '../../agents/seedBot';
+// Bot support removed; keep BotConfig shape with a loose persona type
 
 /* -------- Main Types -------- */
 
@@ -13,7 +13,7 @@ export type CompareCallback = (err: Error, isMatch?: boolean) => void;
 
 // Bot configuration
 export interface BotConfig {
-  persona: BotPersona;
+  persona: string;
   riskFactor: number; // 0-1 scale determining how much of allowance to bet
   maxBankroll: number; // Maximum tokens this bot can hold
   minWagerAmount: number; // Minimum wager amount

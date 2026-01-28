@@ -28,6 +28,8 @@ const UserSchema = new Schema({
   signup_device_id: { type: String, default: undefined },
   // Onboarding state (versioned, simple counter)
   onboarding_version_seen: { type: Number, default: 0 },
+  // Terms and conditions acceptance (versioned)
+  terms_version_accepted: { type: Number, default: 0 },
   // KYC state machine (mock for now)
   kyc_status: { type: String, enum: ['none', 'required', 'pending', 'approved', 'rejected'], default: 'none', index: true },
   kyc_meta: { type: Schema.Types.Mixed, default: undefined },

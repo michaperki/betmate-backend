@@ -359,8 +359,6 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     }
     if (creditTokens) {
       inc.token_balance = (inc.token_balance || 0) + tokenAmt;
-      // Maintain legacy `account` mirror during migration
-      inc.account = (inc.account || 0) + tokenAmt;
     }
     if (Object.keys(inc).length) {
       await userService.updateUserData(req.user._id, { $inc: inc } as any);
@@ -461,6 +459,21 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
     const maxOpen = Math.max(1, Number(process.env.WITHDRAW_MAX_OPEN || 1));
     const openCount = await Withdrawal.countDocuments({ user_id: req.user._id, status: { $in: ['requested', 'approved', 'processing'] } });
     if (openCount >= maxOpen) return res.status(429).json({ error: 'Too many open withdrawals' });
+
+    // Daily limit: cap total requested in the last 24h
+    const maxDailyUSD = Math.max(0, Number(process.env.WITHDRAW_MAX_DAILY_USD || 500));
+    if (maxDailyUSD > 0) {
+      const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const recent = await Withdrawal.aggregate([
+        { $match: { user_id: (req.user as any)._id, created_at: { $gte: since } } },
+        { $match: { status: { $in: ['requested', 'approved', 'processing', 'paid'] } } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]);
+      const recentTotal = Number((recent && recent[0]?.total) || 0);
+      if (recentTotal + amt > maxDailyUSD) {
+        return res.status(429).json({ error: 'Daily withdrawal limit reached', code: 'WITHDRAW_DAILY_LIMIT', cap: maxDailyUSD, projected: recentTotal + amt });
+      }
+    }
 
     // Check user balance
     const freshUser = await Users.findById(req.user._id);

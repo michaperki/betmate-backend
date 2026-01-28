@@ -84,7 +84,6 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
       const grantCash = Number(upd.grant_cash_usd || process.env.SIGNUP_GRANT_USD || 0);
       const inc: any = {};
       if (grantTokens > 0) {
-        inc.account = (inc.account || 0) + grantTokens;
         inc.token_balance = (inc.token_balance || 0) + grantTokens;
       }
       if (grantCash > 0) {

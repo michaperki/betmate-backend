@@ -24,13 +24,13 @@ import { Server } from 'socket.io';
 // Import MongoDB caching plugin
 import './helpers/mongo_cache';
 
-import { chessService, agentService } from './services';
+import { chessService } from './services';
 import leaderboardService from './services/leaderboard_service';
 import { handleValidationError } from './validation';
 import { streamLoop } from './websockets/lichess_stream';
 import {
   authRouter, chessRouter, wagerRouter, leaderboardRouter, lichessRouter,
-  analysisRouter, internalRouter, raffleRouter, logRouter, twitterRouter, billingRouter,
+  analysisRouter, internalRouter, logRouter, twitterRouter, billingRouter,
   realMarketsRouter,
   adminRouter,
   matchesRouter,
@@ -211,7 +211,6 @@ app.use('/wager', wagerRouter);
 app.use('/leaderboard', leaderboardRouter);
 app.use('/analysis', analysisRouter);
 app.use('/internal', internalRouter);
-app.use('/raffle', raffleRouter);
 app.use('/api/log', logRouter); // Frontend logging endpoint
 app.use('/api/twitter', twitterRouter); // Twitter integration endpoints
 app.use('/billing', billingRouter); // Wallet deposit/withdrawal endpoints (flag‑gated in FE)
@@ -239,7 +238,6 @@ app.get('/', (req, res) => {
       wager: '/wager',
       leaderboard: '/leaderboard',
       analysis: '/analysis',
-      raffle: '/raffle',
       twitter: '/api/twitter',
       matches: '/matches',
       websocket: '/chessws'
@@ -319,7 +317,8 @@ app.get('/api/status', async (_req, res) => {
     const base = runtimeConfig.microservice.baseUrl;
     const url = `${base}/dev/health`;
     const started = Date.now();
-    const resp = await axios.get(url, { timeout: 1500 }).catch(() => null);
+    const timeoutMs = Math.max(200, Number(process.env.MICROSERVICE_HEALTH_TIMEOUT_MS || 1500));
+    const resp = await axios.get(url, { timeout: timeoutMs }).catch(() => null);
     microservice = {
       url: base,
       healthy: !!(resp && resp.status >= 200 && resp.status < 500),
@@ -380,15 +379,7 @@ const connectSuccess = () => {
     void loadOverridesFromDB();
   } catch {}
 
-  // Initialize bots (optional via ENABLE_BOTS)
-  if (runtimeConfig.bots.enabled) {
-    logger.log({ level: 'info', event: 'bots_init' });
-    agentService.initializeBots().catch((error) => {
-      logger.log({ level: 'error', event: 'bots_init_error', context: { error: error.message } });
-    });
-  } else {
-    logger.log({ level: 'debug', event: 'bots_disabled' });
-  }
+  // Bots removed
   
   // Clean up any stale games left from previous server runs
   if (process.env.NODE_ENV !== 'test') {

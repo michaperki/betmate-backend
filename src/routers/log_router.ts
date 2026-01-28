@@ -26,6 +26,7 @@ const logCorsOptions = {
  */
 router.options('/', cors(logCorsOptions)); // Handle OPTIONS preflight
 router.post('/', cors(logCorsOptions), logController.clientLogRequest);
+router.post('/issue', cors(logCorsOptions), logController.reportIssue);
 
 // Add a fallback handler for other methods to prevent 404s
 router.all('/', (req, res) => {

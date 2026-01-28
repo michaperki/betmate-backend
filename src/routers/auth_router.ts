@@ -92,6 +92,30 @@ router.route('/onboarding')
     }
   });
 
+// Terms acceptance endpoints (simple versioned acceptance)
+router.route('/terms')
+  .get(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      const accepted = Number((user as any)?.terms_version_accepted || 0);
+      const currentVersion = 1;
+      return res.status(200).json({ accepted, currentVersion });
+    } catch (e) {
+      return res.status(200).json({ accepted: 0, currentVersion: 1 });
+    }
+  })
+  .put(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      const v = Number((req.body && (req.body as any).version) || 0);
+      const versionAccepted = Number.isFinite(v) ? v : 0;
+      const updated = await userService.updateUserData(user._id, { $set: { terms_version_accepted: versionAccepted } as any });
+      return res.status(200).json({ accepted: Number((updated as any)?.terms_version_accepted || versionAccepted), currentVersion: 1 });
+    } catch (e) {
+      return res.status(400).json({ message: 'Invalid terms payload' });
+    }
+  });
+
 // Always handle validation errors from express-joi-validation
 router.use(handleValidationError);
 
