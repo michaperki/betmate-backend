@@ -148,13 +148,16 @@ const createWager = async (fields: CreateWagerQuery): Promise<WagerDoc> => {
 
     // Different validation rules for move-specific wagers vs. game outcome (WDL) wagers
     let wagerValid = fields.wdl
-      // For WDL wagers, we only check odds, not move number
       ? (oddsCorrect || specialDrawCase)
-      // For move wagers, they must be for the next move
       : (fields.move_number === currentMove + 1);
 
     // Allow Real-mode WDL wagers priced server-side with margin and clamps
     if (fields.wdl && (fields as any).mode === 'real') {
+      wagerValid = true;
+    }
+
+    // Always accept Arcade (K-Bits) wagers regardless of odds/move checks
+    if ((fields as any).mode === 'arcade') {
       wagerValid = true;
     }
 

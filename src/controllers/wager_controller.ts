@@ -77,17 +77,8 @@ const createWagerRequest: RequestHandler = async (req: ValidatedRequestWithJWT<C
     // Extract only the fields we need for a user wager (ensure is_bot is false)
     const { wdl, data, odds, move_number } = req.body;
 
-    // Enforce simple Arcade stake caps (configurable via env)
-    if (mode === 'arcade') {
-      const maxMove = Number(process.env.ARCADE_MAX_STAKE_MOVE || 25);
-      const maxWdl = Number(process.env.ARCADE_MAX_STAKE_WDL || 50);
-      const maxAllowed = wdl ? maxWdl : maxMove;
-      if (amount > maxAllowed) {
-        logger.log({ level: 'info', event: 'wager_reject', context: { reason: 'CAP_ARCADE', cap: maxAllowed, amount, game_id, user_id: String(better_id) } });
-        res.status(400).json({ error: `Stake exceeds maximum for this bet (${maxAllowed})` });
-        return;
-      }
-    }
+    // Accept Arcade (K-Bits) wagers without stake caps
+    // (No-op: previously enforced ARCADE_MAX_STAKE_* caps)
 
     // If Arcade move bet, compute house-priced odds from engine deltas (Level-0)
     let computedOdds = odds;
