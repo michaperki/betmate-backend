@@ -154,7 +154,8 @@ const updateInviteCode = async (req: RequestWithJWT, res: Response): Promise<voi
   try {
     const { id } = req.params;
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    // Use mongoose.isValidObjectId for compatibility with current @types
+    if (!mongoose.isValidObjectId(id)) {
       res.status(400).json({ error: 'Invalid invite code ID' });
       return;
     }
@@ -200,7 +201,8 @@ const deleteInviteCode = async (req: RequestWithJWT, res: Response): Promise<voi
   try {
     const { id } = req.params;
     
-    if (!mongoose.Types.ObjectId.isValid(id)) {
+    // Use mongoose.isValidObjectId for compatibility with current @types
+    if (!mongoose.isValidObjectId(id)) {
       res.status(400).json({ error: 'Invalid invite code ID' });
       return;
     }
