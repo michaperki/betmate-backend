@@ -11,6 +11,7 @@ import adminOpsController from '../controllers/admin_ops_controller';
 import adminWagerController from '../controllers/admin_wager_controller';
 import adminKycController from '../controllers/admin_kyc_controller';
 import adminFeaturedController from '../controllers/admin_featured_controller';
+import adminInvitesController from '../controllers/admin_invites_controller';
 
 const router = express.Router();
 
@@ -99,5 +100,13 @@ router.post('/dev/stop-simulate', express.json(), requireAuth, (req, res, next) 
 
 // Inspect featured-game selector candidates and scores (admin)
 router.get('/featured/candidates', requireAdminAccess, adminFeaturedController.getFeaturedCandidates);
+
+// Invite code management
+router.get('/invites', requireAdminAccess, adminInvitesController.listInviteCodes);
+router.get('/invites/stats', requireAdminAccess, adminInvitesController.getInviteStats);
+router.post('/invites', express.json(), requireAdminAccess, adminInvitesController.createInviteCode);
+router.post('/invites/bulk', express.json(), requireAdminAccess, adminInvitesController.createBulkInviteCodes);
+router.put('/invites/:id', express.json(), requireAdminAccess, adminInvitesController.updateInviteCode);
+router.delete('/invites/:id', requireAdminAccess, adminInvitesController.deleteInviteCode);
 
 export default router;
