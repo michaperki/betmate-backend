@@ -8,6 +8,7 @@ type FeatureFlags = {
   pricingModelVersion: string;
   enableWithdrawals?: boolean;
   requireKyc?: boolean;
+  requireEmailVerification?: boolean;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -29,6 +30,7 @@ function defaults(): FeatureFlags {
     pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
     enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
     requireKyc: process.env.REQUIRE_KYC === 'true',
+    requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true',
   };
 }
 
@@ -45,6 +47,7 @@ async function readFeatures(): Promise<FeatureFlags> {
       pricingModelVersion: String(data.pricingModelVersion ?? d.pricingModelVersion),
       enableWithdrawals: toBool((data as any).enableWithdrawals, d.enableWithdrawals || false),
       requireKyc: toBool((data as any).requireKyc, d.requireKyc || false),
+      requireEmailVerification: toBool((data as any).requireEmailVerification, d.requireEmailVerification || false),
     };
   } catch (_e) {
     return defaults();

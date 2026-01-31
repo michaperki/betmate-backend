@@ -6,7 +6,7 @@ import {
 } from 'mongoose';
 import { CreateWagerQuery, PopulatedWagerDoc, WagerDoc } from '../types/models/wager';
 import chessService from './chess_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { dbErrorHandler, dbNullDocHandler } from './utils';
 
 /**

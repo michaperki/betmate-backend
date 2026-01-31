@@ -2,7 +2,7 @@ import { FilterQuery, UpdateQuery } from 'mongoose';
 import { Market } from '../models';
 import { MarketDoc } from '../types/models/market';
 import { Chess } from '../models';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { lmsrPrices, normalizeP, probsToQ } from '../helpers/lmsr';
 
 const REAL_B_DEFAULT = Number(process.env.REAL_MARKET_LMSR_B || 500);

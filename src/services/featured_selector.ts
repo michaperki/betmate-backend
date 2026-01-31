@@ -1,6 +1,6 @@
 import { LichessGame, LichessStreamer } from '../types/lichess';
 import lichessService from './lichess_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import featuredPlayers from '../config/featured_players.json';
 
 type Channel = 'classical' | 'rapid' | 'blitz';

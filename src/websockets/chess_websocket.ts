@@ -5,7 +5,7 @@ import { chessService } from '../services';
 import { ChessEmitEvents, ChessListenEvents } from '../types/websocket';
 import { ChessDoc } from '../types/models/chess';
 import { decodeToken } from '../helpers/utils';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import {
   GameChatSchema,
   JoinAuthSchema, JoinGameSchema, LeaveAuthSchema, LeaveGameSchema, PoolWagerSchema,

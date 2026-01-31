@@ -5,7 +5,7 @@ import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
 import { createPayment as createNowPayment, createInvoice as createNowInvoice, estimatePayAmountUSD, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import type { RequestWithJWT } from '../types/requests';
 import { verifyWebhookSignature as verifyNowSig } from '../services/providers/nowpayments';
 import { getPayout as getNowPayout } from '../services/providers/nowpayments_payouts';

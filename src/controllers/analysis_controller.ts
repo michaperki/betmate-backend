@@ -3,7 +3,7 @@ import { ValidatedRequest } from 'express-joi-validation';
 import { microserviceService, moveBadgeService, chessService } from '../services';
 import { GetMoveAnalysisRequest, BatchMoveAnalysisRequest } from '../validation/analysis';
 import { handleSuccess, handleFailure } from './utils';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 /**
  * Get move analysis data from request.

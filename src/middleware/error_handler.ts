@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 /**
  * Extracts context information from the request path - same as in axiom_logger_middleware

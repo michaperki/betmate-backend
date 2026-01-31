@@ -1,7 +1,7 @@
 import axios, { AxiosResponse } from 'axios';
 import env from 'env-var';
 import { LICHESS_URL } from '../helpers/constants';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { Readable } from 'stream';
 import { LichessGame, LichessStreamer } from '../types/lichess';
 import {
@@ -27,13 +27,22 @@ const getGame = (id: string): Promise<LichessGame> => (
     })
 );
 
+let warnedMissingStreamKey = false;
 const getGameStream = (id: string): Promise<Readable> => (
   axios({
     method: 'GET',
     url: `${LICHESS_URL}/api/stream/game/${id}`,
     responseType: 'stream',
+    headers: { Accept: 'application/x-ndjson' },
     params: { key: env.get('STREAM_KEY').default('').asString() },
-  }).then((d: AxiosResponse<Readable>) => d.data)
+  }).then((d: AxiosResponse<Readable>) => {
+    const key = env.get('STREAM_KEY').default('').asString();
+    if (!key && !warnedMissingStreamKey) {
+      warnedMissingStreamKey = true;
+      logger.log({ level: 'warn', event: 'lichess_stream_key_missing', context: { message: 'STREAM_KEY not set; connecting anonymously may be rate limited' } });
+    }
+    return d.data;
+  })
 );
 
 const createChessModelFields = (game: LichessGame, source: GameSource): CreateChessQuery => ({

@@ -7,7 +7,7 @@ import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/micr
 import { validate } from '../validation';
 import { generateCorrelationId } from '../helpers/utils';
 import { getRequestId } from '../helpers/request_context';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
 /**

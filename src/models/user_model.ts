@@ -34,6 +34,10 @@ const UserSchema = new Schema({
   kyc_status: { type: String, enum: ['none', 'required', 'pending', 'approved', 'rejected'], default: 'none', index: true },
   kyc_meta: { type: Schema.Types.Mixed, default: undefined },
   kyc_updated_at: { type: Date },
+  // Email verification fields
+  email_verified: { type: Boolean, default: false },
+  verification_token: { type: String, default: undefined },
+  verification_token_expires: { type: Date, default: undefined },
   role: {
     type: String,
     default: UserRole.USER,

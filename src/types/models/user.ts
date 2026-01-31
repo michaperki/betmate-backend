@@ -35,6 +35,9 @@ export interface UserDoc extends Document {
   role?: UserRole,
   is_bot: boolean,
   botConfig?: BotConfig,
+  email_verified?: boolean,
+  verification_token?: string,
+  verification_token_expires?: Date,
   isNew: boolean,
   isModified: (path: string) => boolean,
   comparePassword: (password: string, callback: CompareCallback) => void

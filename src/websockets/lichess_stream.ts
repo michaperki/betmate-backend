@@ -20,7 +20,37 @@ import lichessService from '../services/lichess_service';
 import featuredSelector from '../services/featured_selector';
 import { getLichessOutcome } from '../helpers/chess_logic';
 import { twitterService } from '../services';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
+
+// Backoff state for resilient Lichess polling/stream loop
+let consecutiveErrors = 0;
+let cooldownUntil = 0; // epoch ms until next attempt allowed
+
+function parseRetryAfter(header?: string | number): number | null {
+  if (!header && header !== 0) return null;
+  try {
+    if (typeof header === 'number') return Math.max(0, header) * 1000;
+    const s = String(header).trim();
+    const secs = Number(s);
+    if (Number.isFinite(secs)) return Math.max(0, secs) * 1000;
+    const dateMs = Date.parse(s);
+    if (!Number.isNaN(dateMs)) return Math.max(0, dateMs - Date.now());
+  } catch {}
+  return null;
+}
+
+function backoffDelay(kind: '429' | '5xx' | 'nocandidates' | 'network' | 'unknown'): number {
+  // Base windows
+  if (kind === 'nocandidates') return 15000 + Math.floor(Math.random() * 5000); // 15–20s
+  if (kind === '429') return 60000 + Math.floor(Math.random() * 10000); // 60–70s
+
+  const capped = Math.min(consecutiveErrors, 6); // cap exponent growth
+  const base = 2000 * Math.pow(2, capped); // 2s, 4s, 8s, ... up to ~128s
+  const jitter = Math.floor(Math.random() * 1000);
+  const max = 120000; // 2 minutes
+  const delay = Math.min(base + jitter, max);
+  return delay;
+}
 
 const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
 
@@ -284,6 +314,20 @@ export const getStream = async (
             // console.log(`🛰️ Emitting new_odds to gameId=${gameId} →`, oddsUpdate);
             socket.to(gameId).emit('new_odds', { gameId, ...oddsUpdate });
           }
+        } else if ((d as any)?.type === 'gameFull') {
+          // Lichess sends a gameFull object at stream start
+          try {
+            const full: any = d;
+            const fen = full?.state?.fen || full?.fen || '';
+            if (fen) startFen = String(fen).split(' ').slice(0, 2).join(' ');
+            chessService.updateChessGame(gameId, { game_status: GameStatus.IN_PROGRESS });
+            socket.to(gameId).emit('start_game', { gameId, game_status: GameStatus.IN_PROGRESS });
+          } catch {}
+        } else if ((d as any)?.type === 'gameState') {
+          // State updates without full move payload; ignore for now (handled by explicit move events)
+          if (verboseGameLogs) {
+            logger.log({ level: 'debug', event: 'lichess_game_state', context: { gameId } });
+          }
         } else if (matchesSchema(StreamEndSchema, d)) {
           // allow .on('end') to handle game ending
         } else if (matchesSchema(StatusEventSchema, d)) {
@@ -307,7 +351,10 @@ export const getStream = async (
             console.log(`Game ${gameId} status event: ${statusEvent.status.name}`);
           }
         } else {
-          console.warn('FAIL: Unrecognized Lichess stream event', JSON.stringify(d, null, 2));
+          // Downgrade to debug to avoid noise during normal stream messages
+          if (verboseGameLogs) {
+            logger.log({ level: 'debug', event: 'lichess_unrecognized_event', context: { keys: Object.keys(d || {}), sample: JSON.stringify(d).slice(0, 200) } });
+          }
         }
       } catch (error) {
         console.log('Error:', error.message);
@@ -348,6 +395,17 @@ export const getStream = async (
 
 export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
+    // Respect any active cooldown
+    const now = Date.now();
+    if (cooldownUntil > now) {
+      const waitMs = cooldownUntil - now;
+      try {
+        logger.log({ level: 'debug', event: 'lichess_cooldown_wait', context: { wait_ms: waitMs, consecutive_errors: consecutiveErrors } });
+      } catch {}
+      setTimeout(() => streamLoop(socket), waitMs);
+      return;
+    }
+
     // Check for existing active games before creating a new one
     const activeGames = await chessService.getActiveGames(0, 10);
     const inProgressGames = activeGames.filter(game => game.game_status === GameStatus.IN_PROGRESS);
@@ -403,9 +461,52 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
 
     const gameFields = lichessService.createChessModelFields(sanitizedGame, GameSource.LOOP);
 
+    // Success path: reset error counters and start stream
+    consecutiveErrors = 0;
+    cooldownUntil = 0;
     getStream(sanitizedGame.id, gameFields, socket, () => streamLoop(socket));
   } catch (error) {
-    console.log(error);
-    setTimeout(() => streamLoop(socket), 100);
+    // Derive error classification and decide backoff
+    let kind: '429' | '5xx' | 'nocandidates' | 'network' | 'unknown' = 'unknown';
+    let waitMs: number | null = null;
+    let status: number | null = null;
+    try {
+      status = (error as any)?.response?.status ?? null;
+      const message = (error as any)?.message || String(error);
+      if (status === 429) {
+        kind = '429';
+        const ra = parseRetryAfter((error as any)?.response?.headers?.['retry-after']);
+        waitMs = typeof ra === 'number' ? ra : backoffDelay('429');
+      } else if (status && status >= 500) {
+        kind = '5xx';
+        waitMs = backoffDelay('5xx');
+      } else if (/No TV candidates available/i.test(message)) {
+        kind = 'nocandidates';
+        waitMs = backoffDelay('nocandidates');
+      } else if ((error as any)?.code === 'ECONNABORTED' || /timeout/i.test(message) || /ENOTFOUND|EAI_AGAIN|ECONNRESET/i.test(message)) {
+        kind = 'network';
+        waitMs = backoffDelay('network');
+      } else {
+        kind = 'unknown';
+        waitMs = backoffDelay('unknown');
+      }
+    } catch {
+      kind = 'unknown';
+      waitMs = backoffDelay('unknown');
+    }
+
+    consecutiveErrors += 1;
+    cooldownUntil = Date.now() + (waitMs || 2000);
+
+    try {
+      logger.log({ level: kind === '5xx' || kind === 'unknown' ? 'warn' : 'info', event: 'lichess_stream_error_retry', context: {
+        kind,
+        status,
+        wait_ms: waitMs,
+        consecutive_errors: consecutiveErrors,
+      } });
+    } catch {}
+
+    setTimeout(() => streamLoop(socket), waitMs || 2000);
   }
 };

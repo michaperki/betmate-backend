@@ -4,7 +4,7 @@ import { chessService } from '../services';
 import { GameSource, GameStatus, MoveData } from '../types/models/chess';
 import { Chess as ChessGame } from 'chess.js';
 import { resolveCriticalMoveWagers, resolveWdlWagers } from '../helpers/resolve_bets';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { getChessStatus } from '../helpers/chess_logic';
 import { getChessNamespace } from '../websockets/namespace';
 

@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { RequestHandler } from 'express';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 // Helper: consider rate limiting enabled only in production unless explicitly turned on
 const isRateLimitingEnabled = (): boolean => (

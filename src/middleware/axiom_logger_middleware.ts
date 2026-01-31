@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 // Extend Request interface to include trace_id
 declare global {

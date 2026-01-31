@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 // Use Node 18 global fetch if available; otherwise lazy import node-fetch
 const getFetch = async () => (typeof (global as any).fetch !== 'undefined'

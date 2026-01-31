@@ -8,7 +8,7 @@ import { ReplaySchema, GameData } from '../types/game_loop';
 import { chessService, microserviceService, moveBadgeService } from '../services';
 import moveBadgeConfig from '../config/move_badges';
 import dominanceTracker from '../services/dominance_tracker';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 import data300 from '../assets/game_data_300.json';
 import data900 from '../assets/game_data_900.json';
