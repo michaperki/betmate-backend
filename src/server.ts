@@ -260,6 +260,8 @@ app.get('/api/status', async (_req, res) => {
       enableWithdrawals: !!(f as any).enableWithdrawals,
       requireKyc: !!(f as any).requireKyc,
       onboardingEnabled: (typeof (f as any).onboardingEnabled === 'boolean') ? !!(f as any).onboardingEnabled : true,
+      pauseGameIntake: !!(f as any).pauseGameIntake,
+      pauseMessage: (f as any).pauseMessage || undefined,
     };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {

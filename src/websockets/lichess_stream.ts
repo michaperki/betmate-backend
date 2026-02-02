@@ -25,6 +25,7 @@ import logger from '../helpers/logger';
 // Backoff state for resilient Lichess polling/stream loop
 let consecutiveErrors = 0;
 let cooldownUntil = 0; // epoch ms until next attempt allowed
+let lastSweepAt = 0; // throttle orphan wager sweep in loop
 
 function parseRetryAfter(header?: string | number): number | null {
   if (!header && header !== 0) return null;
@@ -412,6 +413,28 @@ export const getStream = async (
 
 export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitEvents>): Promise<void> => {
   try {
+    // Respect operational pause flag (admin-controlled)
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const flags = await getFeatures();
+      if (flags && (flags as any).pauseGameIntake) {
+        try {
+          logger.log({ level: 'info', event: 'game_intake_paused', context: { reason: (flags as any).pauseMessage || '' } });
+        } catch {}
+        setTimeout(() => streamLoop(socket), 30000);
+        return;
+      }
+    } catch {}
+
+    // Opportunistically sweep orphan/aborted wagers at most once per minute
+    try {
+      const nowMs = Date.now();
+      if (nowMs - lastSweepAt > 60000) {
+        lastSweepAt = nowMs;
+        const { cleanupOrphanAndFinishedWagers } = require('../services/wager_cleanup_service');
+        cleanupOrphanAndFinishedWagers().catch(() => {});
+      }
+    } catch {}
     // Respect any active cooldown
     const now = Date.now();
     if (cooldownUntil > now) {
@@ -459,6 +482,12 @@ export const streamLoop = async (socket: Namespace<ChessListenEvents, ChessEmitE
       // Re-fetch the active games after cleanup
       const updatedActiveGames = await chessService.getActiveGames(0, 10);
       const updatedInProgressGames = updatedActiveGames.filter(game => game.game_status === GameStatus.IN_PROGRESS);
+
+      // After aborting stales, sweep for any pending wagers that should be cancelled
+      try {
+        const { cleanupOrphanAndFinishedWagers } = require('../services/wager_cleanup_service');
+        cleanupOrphanAndFinishedWagers().catch(() => {});
+      } catch {}
 
       // If we still have non-stale in-progress games, respect them
       if (updatedInProgressGames.length > 0) {

@@ -13,6 +13,8 @@ type FeatureFlags = {
   enableEmailDeposits?: boolean;
   enableEmailWithdrawals?: boolean;
   enableEmailInvites?: boolean;
+  pauseGameIntake?: boolean;
+  pauseMessage?: string;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -38,6 +40,8 @@ function defaults(): FeatureFlags {
     enableEmailDeposits: process.env.ENABLE_EMAIL_DEPOSITS === 'true',
     enableEmailWithdrawals: process.env.ENABLE_EMAIL_WITHDRAWALS === 'true',
     enableEmailInvites: process.env.ENABLE_EMAIL_INVITES === 'true',
+    pauseGameIntake: false,
+    pauseMessage: '',
   };
 }
 
@@ -58,6 +62,8 @@ async function readFeatures(): Promise<FeatureFlags> {
       enableEmailDeposits: toBool((data as any).enableEmailDeposits, d.enableEmailDeposits || false),
       enableEmailWithdrawals: toBool((data as any).enableEmailWithdrawals, d.enableEmailWithdrawals || false),
       enableEmailInvites: toBool((data as any).enableEmailInvites, d.enableEmailInvites || false),
+      pauseGameIntake: toBool((data as any).pauseGameIntake, d.pauseGameIntake || false),
+      pauseMessage: String((data as any).pauseMessage ?? (d.pauseMessage || '')),
     };
   } catch (_e) {
     return defaults();

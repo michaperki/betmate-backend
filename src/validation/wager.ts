@@ -6,7 +6,8 @@ import { Condition } from 'mongodb';
 import { WagerDoc, WagerStatus } from '../types/models/wager';
 
 export const isWagerStatus = (v: string): boolean => Object.values(WagerStatus).includes(v as WagerStatus);
-export const isWagerResolved = (v: string): boolean => [WagerStatus.WON, WagerStatus.LOST].includes(v as WagerStatus);
+// Treat CANCELLED as resolved to ensure cancelled wagers do not appear active
+export const isWagerResolved = (v: string): boolean => [WagerStatus.WON, WagerStatus.LOST, WagerStatus.CANCELLED].includes(v as WagerStatus);
 
 const objectIdValidator = (value: any, helpers: joi.CustomHelpers) => (
   isValidObjectId(value)
