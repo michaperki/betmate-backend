@@ -3,11 +3,15 @@ import { Types } from 'mongoose';
 import { Chess, Wager } from '../models';
 import { WagerStatus } from '../types/models/wager';
 import { userService } from '../services';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 // Dev/Staging: mark PENDING Real WDL wagers as CANCELLED when their game is complete and older than N minutes.
 // Also refunds the stake to the user's cash_balance and records a BalanceHistory item.
 export const clearStaleWagers: RequestHandler = async (req, res) => {
   try {
+    if (process.env.NODE_ENV === 'production' && String(process.env.ENABLE_DANGER_ZONE || 'false').toLowerCase() !== 'true') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const minutes = Math.max(1, Math.min(1440, Number(req.body?.olderThanMinutes || 60)));
     const cutoff = new Date(Date.now() - minutes * 60 * 1000);
 
@@ -63,6 +67,7 @@ export const clearStaleWagers: RequestHandler = async (req, res) => {
       }
     }
 
+    try { await writeAuditEntry(req as any, 'wager.clear_stale_wagers', undefined, `updated=${updated}`, { olderThanMinutes: minutes }); } catch {}
     return res.status(200).json({ ok: true, updated, olderThanMinutes: minutes });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to clear stale wagers' });

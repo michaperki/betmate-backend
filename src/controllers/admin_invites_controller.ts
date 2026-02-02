@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { RequestWithJWT } from '../types/requests';
 import { InviteCode } from '../models';
+import { writeAuditEntry } from '../utils/admin_audit';
 import { handleFailure } from './utils';
 
 /**
@@ -97,6 +98,7 @@ const createInviteCode = async (req: RequestWithJWT, res: Response): Promise<voi
     });
     
     await inviteCode.save();
+    try { await writeAuditEntry(req as any, 'invite.create', String(inviteCode._id), inviteCode.code, { campaign }); } catch {}
     res.status(201).json(inviteCode);
   } catch (error) {
     handleFailure(res)(error);
@@ -141,6 +143,7 @@ const createBulkInviteCodes = async (req: RequestWithJWT, res: Response): Promis
     }
     
     const result = await InviteCode.insertMany(codes);
+    try { await writeAuditEntry(req as any, 'invite.bulk_create', undefined, `count=${result.length}`, { campaign, count: result.length }); } catch {}
     res.status(201).json(result);
   } catch (error) {
     handleFailure(res)(error);
@@ -188,6 +191,7 @@ const updateInviteCode = async (req: RequestWithJWT, res: Response): Promise<voi
       return;
     }
     
+    try { await writeAuditEntry(req as any, 'invite.update', String(id)); } catch {}
     res.status(200).json(updatedCode);
   } catch (error) {
     handleFailure(res)(error);
@@ -214,6 +218,7 @@ const deleteInviteCode = async (req: RequestWithJWT, res: Response): Promise<voi
       return;
     }
     
+    try { await writeAuditEntry(req as any, 'invite.delete', String(id)); } catch {}
     res.status(200).json({ message: 'Invite code deleted successfully' });
   } catch (error) {
     handleFailure(res)(error);

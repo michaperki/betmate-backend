@@ -10,6 +10,8 @@ import MarketModel from './market_model';
 import HouseLedgerModel from './house_ledger_model';
 import SettlementJobModel from './settlement_job_model';
 import InviteCodeModel from './invite_code_model';
+import AdminAuditModel from './admin_audit_model';
+import FeaturedSnapshotModel from './featured_snapshot_model';
 
 export {
   UserModel as Users,
@@ -24,4 +26,6 @@ export {
   HouseLedgerModel as HouseLedger,
   SettlementJobModel as SettlementJob,
   InviteCodeModel as InviteCode,
+  AdminAuditModel as AdminAudit,
+  FeaturedSnapshotModel as FeaturedSnapshot,
 };

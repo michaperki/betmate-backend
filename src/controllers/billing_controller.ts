@@ -9,6 +9,7 @@ import logger from '../helpers/logger';
 import type { RequestWithJWT } from '../types/requests';
 import { verifyWebhookSignature as verifyNowSig } from '../services/providers/nowpayments';
 import { getPayout as getNowPayout } from '../services/providers/nowpayments_payouts';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 export const createDepositIntent: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
@@ -563,6 +564,7 @@ export const cancelWithdrawal: RequestHandler = async (req: RequestWithJWT, res)
 // Admin-only: reconcile NOWPayments pending deposits by polling provider
 export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
   try {
+    const dry = String((req.query.dryRun || req.query.dry_run || '') as string).toLowerCase() === 'true';
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const items = await Deposit.find({ provider: 'nowpayments', status: 'pending' }).sort({ created_at: 1 }).limit(limit);
     const results: any[] = [];
@@ -575,26 +577,31 @@ export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
         const confirmed = status === 'confirmed' || status === 'finished' || status === 'completed' || status === 'paid';
         const failed = status === 'failed' || status === 'cancelled';
         if (confirmed && dep.status !== 'confirmed') {
-          dep.status = 'confirmed';
-          await dep.save();
-          try {
-            await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
-            await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
-          } catch (creditErr) {
-            logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
+          if (!dry) {
+            dep.status = 'confirmed';
+            await dep.save();
+            try {
+              await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
+              await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
+            } catch (creditErr) {
+              logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
+            }
           }
-          results.push({ id: String(dep._id), provider_ref: ref, status: 'confirmed' });
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'confirmed', dryRun: dry });
         } else if (failed && dep.status !== 'confirmed') {
-          dep.status = 'failed';
-          await dep.save();
-          results.push({ id: String(dep._id), provider_ref: ref, status: 'failed' });
+          if (!dry) {
+            dep.status = 'failed';
+            await dep.save();
+          }
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'failed', dryRun: dry });
         } else {
-          results.push({ id: String(dep._id), provider_ref: ref, status: dep.status });
+          results.push({ id: String(dep._id), provider_ref: ref, status: dep.status, dryRun: dry });
         }
       } catch (e) {
-        results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+        results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed', dryRun: dry });
       }
     }
+    try { await writeAuditEntry(req as any, 'payments.reconcile.deposits', undefined, `count=${results.length}`); } catch {}
     return res.status(200).json({ ok: true, count: results.length, results });
   } catch (e) {
     return res.status(500).json({ error: 'Reconciliation error' });
@@ -604,6 +611,7 @@ export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
 // Admin-only: reconcile NOWPayments pending payouts by polling provider
 export const reconcileNowpaymentsPayouts: RequestHandler = async (req, res) => {
   try {
+    const dry = String((req.query.dryRun || req.query.dry_run || '') as string).toLowerCase() === 'true';
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const items = await Withdrawal.find({ provider: 'nowpayments', status: { $in: ['processing','approved'] } }).sort({ created_at: 1 }).limit(limit);
     const results: any[] = [];
@@ -616,24 +624,29 @@ export const reconcileNowpaymentsPayouts: RequestHandler = async (req, res) => {
         const confirmed = ['confirmed','finished','completed','paid','success'].includes(status);
         const failed = ['failed','cancelled','rejected','error'].includes(status);
         if (confirmed && wd.status !== 'paid') {
-          wd.status = 'paid';
-          await wd.save();
-          results.push({ id: String(wd._id), provider_ref: ref, status: 'paid' });
+          if (!dry) {
+            wd.status = 'paid';
+            await wd.save();
+          }
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'paid', dryRun: dry });
         } else if (failed && wd.status !== 'paid') {
-          try {
-            await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
-            await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
-          } catch {}
-          wd.status = 'failed';
-          await wd.save();
-          results.push({ id: String(wd._id), provider_ref: ref, status: 'failed' });
+          if (!dry) {
+            try {
+              await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
+              await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
+            } catch {}
+            wd.status = 'failed';
+            await wd.save();
+          }
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'failed', dryRun: dry });
         } else {
-          results.push({ id: String(wd._id), provider_ref: ref, status: wd.status });
+          results.push({ id: String(wd._id), provider_ref: ref, status: wd.status, dryRun: dry });
         }
       } catch (e) {
-        results.push({ id: String(wd._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+        results.push({ id: String(wd._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed', dryRun: dry });
       }
     }
+    try { await writeAuditEntry(req as any, 'payments.reconcile.payouts', undefined, `count=${results.length}`); } catch {}
     return res.status(200).json({ ok: true, count: results.length, results });
   } catch (e) {
     return res.status(500).json({ error: 'Reconciliation error' });
@@ -679,6 +692,7 @@ export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
     dep.status = 'pending';
     await dep.save();
     const url = (dep.metadata as any)?.payment_url || '#';
+    try { await writeAuditEntry(req as any, 'payments.reissue.invoice', String(dep._id), String(dep.provider_ref || '')); } catch {}
     return res.status(200).json({ ok: true, deposit_id: String(dep._id), provider_ref: dep.provider_ref, payment_url: url });
   } catch (e) {
     return res.status(500).json({ error: 'Reissue error' });

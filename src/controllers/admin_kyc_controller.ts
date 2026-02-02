@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import { Users } from '../models';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 export const listKycUsers: RequestHandler = async (req, res) => {
   try {
@@ -26,6 +27,7 @@ export const approveKyc: RequestHandler = async (req, res) => {
     const id = String(req.params.id || '');
     const u = await Users.findByIdAndUpdate(id, { $set: { kyc_status: 'approved', kyc_updated_at: new Date() } }, { new: true });
     if (!u) return res.status(404).json({ error: 'User not found' });
+    try { await writeAuditEntry(req as any, 'kyc.approve', String(u._id)); } catch {}
     res.status(200).json({ ok: true, user: { _id: String(u._id), kyc_status: (u as any).kyc_status } });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Approve KYC error' });
@@ -37,6 +39,7 @@ export const rejectKyc: RequestHandler = async (req, res) => {
     const id = String(req.params.id || '');
     const u = await Users.findByIdAndUpdate(id, { $set: { kyc_status: 'rejected', kyc_updated_at: new Date() } }, { new: true });
     if (!u) return res.status(404).json({ error: 'User not found' });
+    try { await writeAuditEntry(req as any, 'kyc.reject', String(u._id)); } catch {}
     res.status(200).json({ ok: true, user: { _id: String(u._id), kyc_status: (u as any).kyc_status } });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Reject KYC error' });
@@ -44,4 +47,3 @@ export const rejectKyc: RequestHandler = async (req, res) => {
 };
 
 export default { listKycUsers, approveKyc, rejectKyc };
-

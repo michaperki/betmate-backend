@@ -1,4 +1,5 @@
 import { RequestHandler } from 'express';
+import { writeAuditEntry } from '../utils/admin_audit';
 import { Wager } from '../models';
 import { chessService } from '../services';
 import { GameSource, GameStatus, MoveData } from '../types/models/chess';
@@ -8,11 +9,16 @@ import logger from '../helpers/logger';
 import { getChessStatus } from '../helpers/chess_logic';
 import { getChessNamespace } from '../websockets/namespace';
 
-export const clearAllWagers: RequestHandler = async (_req, res) => {
+export const clearAllWagers: RequestHandler = async (req, res) => {
   // Danger: dev/staging only. This deletes ALL wagers.
   try {
+    if (process.env.NODE_ENV === 'production' && String(process.env.ENABLE_DANGER_ZONE || 'false').toLowerCase() !== 'true') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const result = await Wager.deleteMany({});
-    res.status(200).json({ ok: true, deleted: result?.deletedCount || 0 });
+    const deleted = result?.deletedCount || 0;
+    try { await writeAuditEntry(req as any, 'dev.clear_all_wagers', undefined, `deleted=${deleted}`); } catch {}
+    res.status(200).json({ ok: true, deleted });
   } catch (e: any) {
     res.status(500).json({ ok: false, error: e?.message || String(e) });
   }

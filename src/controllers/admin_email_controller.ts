@@ -5,6 +5,7 @@ import { sendTestEmail, sendVerificationEmail, sendWithdrawalStatusEmail, sendDe
 import userService from '../services/user_service';
 import { InviteCode } from '../models';
 import crypto from 'crypto';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 2000;
@@ -29,6 +30,7 @@ async function sendTestEmailHandler(req: Request, res: Response) {
 
     try {
       const result = await sendTestEmail({ to, subject: safeSubject, message: safeMessage });
+      try { await writeAuditEntry(req as any, 'email.test', undefined, `to=${to}`); } catch {}
       return res.status(200).json({ ok: true, messageId: result.messageId, previewUrl: result.previewUrl });
     } catch (e: any) {
       logger.log({ level: 'error', event: 'admin_test_email_failed', context: { to, error: e?.message || String(e) } });
@@ -57,6 +59,7 @@ const adminEmailController = {
       const expires = new Date(Date.now() + ttlMin * 60 * 1000);
       await userService.updateUserData(user._id, { $set: { verification_token: token, verification_token_expires: expires } } as any);
       await sendVerificationEmail(user.email, token, (user as any)?.first_name);
+      try { await writeAuditEntry(req as any, 'email.resend_verification', String(user._id), user.email); } catch {}
       return res.status(200).json({ ok: true, sent: true });
     } catch (e: any) {
       return res.status(500).json({ ok: false, error: 'Failed to send' });
@@ -97,6 +100,7 @@ const adminEmailController = {
           created.push({ to, code, error: 'send_failed' });
         }
       }
+      try { await writeAuditEntry(req as any, 'email.invites.bulk', undefined, `count=${created.length}`, { campaign: camp }); } catch {}
       return res.status(200).json({ ok: true, count: created.length, results: created });
     } catch (e: any) {
       return res.status(500).json({ ok: false, error: 'Bulk invite failed' });

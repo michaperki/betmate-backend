@@ -1,6 +1,7 @@
 import { RequestHandler } from 'express';
 import { getGlobalExposure as svcGetGlobal, getGameExposure as svcGetGame } from '../services/exposure_service';
 import { getRiskConfig, updateOverrides } from '../helpers/risk_config';
+import { writeAuditEntry } from '../utils/admin_audit';
 import { handleFailure } from './utils';
 
 export const getRiskConfigHandler: RequestHandler = async (_req, res) => {
@@ -15,6 +16,7 @@ export const getRiskConfigHandler: RequestHandler = async (_req, res) => {
 export const updateRiskConfigHandler: RequestHandler = async (req, res) => {
   try {
     const cfg = updateOverrides(req.body || {});
+    try { await writeAuditEntry(req as any, 'risk.update', undefined, Object.keys(req.body || {}).join(',')); } catch {}
     res.status(200).json(cfg);
   } catch (error) {
     if (!res.headersSent) return handleFailure(res)(error);
@@ -102,6 +104,7 @@ export const applyRiskPresetHandler: import('express').RequestHandler = async (r
     }
     const patch = PRESETS[lvl];
     const cfg = updateOverrides(patch);
+    try { await writeAuditEntry(req as any, 'risk.preset', undefined, lvl); } catch {}
     return res.status(200).json(cfg);
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed to apply preset' });

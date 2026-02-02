@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import Config from '../models/config_model';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 type FeatureFlags = {
   realModeEnabled: boolean;
@@ -81,6 +82,10 @@ export const updateFeatures: RequestHandler = async (req, res) => {
 
     // Return the normalized flags (merged with defaults for missing fields)
     const normalized = await readFeatures();
+    try {
+      const keys = Object.keys(patch || {});
+      await writeAuditEntry(req as any, 'feature.update', 'features', keys.join(','), { keys });
+    } catch {}
     res.status(200).json(normalized);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Failed to update features' });
