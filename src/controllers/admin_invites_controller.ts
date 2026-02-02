@@ -143,7 +143,9 @@ const createBulkInviteCodes = async (req: RequestWithJWT, res: Response): Promis
     }
     
     const result = await InviteCode.insertMany(codes);
-    try { await writeAuditEntry(req as any, 'invite.bulk_create', undefined, `count=${result.length}`, { campaign, count: result.length }); } catch {}
+    // Some Mongoose typings may infer a single doc; use codes.length for audit count to avoid TS issues
+    const createdCount = Array.isArray(result) ? (result as any[]).length : codes.length;
+    try { await writeAuditEntry(req as any, 'invite.bulk_create', undefined, `count=${createdCount}`, { campaign, count: createdCount }); } catch {}
     res.status(201).json(result);
   } catch (error) {
     handleFailure(res)(error);

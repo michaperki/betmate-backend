@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { Users } from '../models';
 import userService from '../services/user_service';
 import { writeAuditEntry } from '../utils/admin_audit';
@@ -14,7 +14,8 @@ export const searchUsers: RequestHandler = async (req, res) => {
     if (q) {
       // search by email substring; if q looks like ObjectId, also allow exact _id match
       const arr: any[] = [{ email: { $regex: q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }];
-      if (Types.ObjectId.isValid(q)) arr.push({ _id: Types.ObjectId(q) });
+      // Use mongoose.isValidObjectId for broad @types compatibility
+      if (mongoose.isValidObjectId(q)) arr.push({ _id: Types.ObjectId(q) });
       filter.$or = arr;
     }
 
@@ -45,7 +46,7 @@ export const searchUsers: RequestHandler = async (req, res) => {
 export const getUserLedger: RequestHandler = async (req, res) => {
   try {
     const id = String(req.params.id || '');
-    if (!Types.ObjectId.isValid(id)) return res.status(400).json({ error: 'Invalid user id' });
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: 'Invalid user id' });
     const limit = Math.max(1, Math.min(200, Number(req.query.limit) || 50));
     const skip = Math.max(0, Number(req.query.skip) || 0);
     const currency = String(req.query.currency || '').toUpperCase();
@@ -103,4 +104,4 @@ export const updateRole: RequestHandler = async (req, res) => {
   }
 };
 
-export default { searchUsers, getUserLedger };
+export default { searchUsers, getUserLedger, adjustBalance, updateRole };
