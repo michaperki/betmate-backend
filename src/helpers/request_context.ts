@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'async_hooks';
 import { Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
 
 type Store = { requestId: string };
 
@@ -10,7 +11,7 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
   const header = (req.headers['x-request-id'] as string) || (req.headers['x-trace-id'] as string);
   const requestId = header && typeof header === 'string' && header.trim().length > 0
     ? header.trim()
-    : Math.random().toString(36).slice(2, 12);
+    : (() => { try { return randomUUID(); } catch { return Math.random().toString(36).slice(2, 12); } })();
 
   // Expose back to client
   res.setHeader('X-Request-Id', requestId);
@@ -22,4 +23,3 @@ export function requestContextMiddleware(req: Request, res: Response, next: Next
 export function getRequestId(): string | undefined {
   return als.getStore()?.requestId;
 }
-

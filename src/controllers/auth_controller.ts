@@ -5,6 +5,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { RequestWithJWT } from '../types/requests';
 import { userService, refreshTokenService } from '../services';
 import { tokenForUser } from '../helpers/utils';
+import crypto from 'crypto';
+import { sendVerificationEmail } from '../services/email_service';
 import { SignUpUserRequest } from '../validation/auth';
 import { handleFailure } from './utils';
 import { InviteCode } from '../models';
@@ -25,21 +27,29 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
       email, password, firstName, lastName, invite_code, device_id,
     } = req.body;
 
-    // Enforce invite gating
+    // Enforce invite gating only when enabled
+    const gatingEnabled = (process.env.INVITE_GATING_ENABLED || '').toLowerCase() === 'true'
+      || (process.env.NODE_ENV === 'production');
     const rawCode = String(invite_code || '').trim();
-    if (!rawCode) {
+
+    let invite: any = null;
+    if (rawCode) {
+      // Lookup invite if supplied
+      invite = await InviteCode.findOne({ code: rawCode, active: true }).lean();
+      if (!invite && gatingEnabled) {
+        return res.status(403).json({ message: 'Invalid invite code', code: 'INVITE_INVALID' });
+      }
+      if (invite && invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
+        if (gatingEnabled) return res.status(403).json({ message: 'Invite expired', code: 'INVITE_EXPIRED' });
+        invite = null; // ignore expired in non-gated mode
+      }
+      if (invite && (invite.redeemed_count || 0) >= (invite.max_redemptions || 0)) {
+        if (gatingEnabled) return res.status(403).json({ message: 'Invite fully redeemed', code: 'INVITE_EXHAUSTED' });
+        invite = null; // ignore exhausted in non-gated mode
+      }
+    } else if (gatingEnabled) {
+      // No code provided and gating required
       return res.status(403).json({ message: 'Invite code required', code: 'INVITE_REQUIRED' });
-    }
-    // Lookup invite and validate constraints atomically when redeeming later
-    const invite = await InviteCode.findOne({ code: rawCode, active: true }).lean();
-    if (!invite) {
-      return res.status(403).json({ message: 'Invalid invite code', code: 'INVITE_INVALID' });
-    }
-    if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
-      return res.status(403).json({ message: 'Invite expired', code: 'INVITE_EXPIRED' });
-    }
-    if ((invite.redeemed_count || 0) >= (invite.max_redemptions || 0)) {
-      return res.status(403).json({ message: 'Invite fully redeemed', code: 'INVITE_EXHAUSTED' });
     }
 
     const isEmailAvailable = await userService.emailAvailable(email);
@@ -65,38 +75,41 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
     } catch {}
 
     // Atomically redeem invite (increment count only if under cap)
-    try {
-      const upd = await InviteCode.findOneAndUpdate(
-        {
-          _id: (invite as any)._id,
-          active: true,
-          redeemed_count: { $lt: Number((invite as any).max_redemptions || 0) },
-          ...(invite.expires_at ? { expires_at: { $gt: new Date() } } : {}),
-        },
-        { $inc: { redeemed_count: 1 } },
-        { new: true }
-      );
-      if (!upd) {
-        return res.status(403).json({ message: 'Invite unavailable', code: 'INVITE_RACE' });
+    if (invite) {
+      try {
+        const upd = await InviteCode.findOneAndUpdate(
+          {
+            _id: (invite as any)._id,
+            active: true,
+            redeemed_count: { $lt: Number((invite as any).max_redemptions || 0) },
+            ...(invite.expires_at ? { expires_at: { $gt: new Date() } } : {}),
+          },
+          { $inc: { redeemed_count: 1 } },
+          { new: true }
+        );
+        if (!upd) {
+          if (gatingEnabled) return res.status(403).json({ message: 'Invite unavailable', code: 'INVITE_RACE' });
+        } else {
+          // Automatic dual-currency grants
+          const grantTokens = Number(upd.grant_tokens || process.env.SIGNUP_GRANT_BET || 0);
+          const grantCash = Number(upd.grant_cash_usd || process.env.SIGNUP_GRANT_USD || 0);
+          const inc: any = {};
+          if (grantTokens > 0) {
+            inc.token_balance = (inc.token_balance || 0) + grantTokens;
+          }
+          if (grantCash > 0) {
+            inc.cash_balance = (inc.cash_balance || 0) + grantCash;
+          }
+          if (Object.keys(inc).length) {
+            await userService.updateUserData(user._id, { $inc: inc } as any);
+          }
+          // Ledger entries
+          if (grantTokens > 0) await userService.recordBalanceChange(user._id, grantTokens, 'Signup bonus', (upd as any)._id, 'Invite', 'BET');
+          if (grantCash > 0) await userService.recordBalanceChange(user._id, grantCash, 'Signup bonus', (upd as any)._id, 'Invite', 'USDT');
+        }
+      } catch (e) {
+        // soft-fail on bonus if invite could not be redeemed
       }
-      // Automatic dual-currency grants
-      const grantTokens = Number(upd.grant_tokens || process.env.SIGNUP_GRANT_BET || 0);
-      const grantCash = Number(upd.grant_cash_usd || process.env.SIGNUP_GRANT_USD || 0);
-      const inc: any = {};
-      if (grantTokens > 0) {
-        inc.token_balance = (inc.token_balance || 0) + grantTokens;
-      }
-      if (grantCash > 0) {
-        inc.cash_balance = (inc.cash_balance || 0) + grantCash;
-      }
-      if (Object.keys(inc).length) {
-        await userService.updateUserData(user._id, { $inc: inc } as any);
-      }
-      // Ledger entries
-      if (grantTokens > 0) await userService.recordBalanceChange(user._id, grantTokens, 'Signup bonus', (upd as any)._id, 'Invite', 'BET');
-      if (grantCash > 0) await userService.recordBalanceChange(user._id, grantCash, 'Signup bonus', (upd as any)._id, 'Invite', 'USDT');
-    } catch (e) {
-      // soft-fail on bonus if invite could not be redeemed (should be rare)
     }
     
     // Generate CSRF token
@@ -113,7 +126,20 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
     });
     */
     
-    // Refresh the user snapshot to reflect any grants applied
+    // Generate email verification token if feature enabled
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.requireEmailVerification === true) {
+        const token = crypto.randomBytes(24).toString('hex');
+        const ttlMin = Math.max(5, Number(process.env.VERIFICATION_TOKEN_TTL_MIN || 60));
+        const expires = new Date(Date.now() + ttlMin * 60 * 1000);
+        await userService.updateUserData((user as any)._id, { $set: { verification_token: token, verification_token_expires: expires, email_verified: false } } as any);
+        try { await sendVerificationEmail(user.email, token, (user as any)?.first_name); } catch {}
+      }
+    } catch {}
+
+    // Refresh the user snapshot
     const refUser = await userService.getUser(user._id);
     // Generate refresh token
     const refreshToken = await refreshTokenService.createRefreshToken(user._id);

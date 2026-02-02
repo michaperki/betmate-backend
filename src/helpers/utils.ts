@@ -1,4 +1,5 @@
 import jwt from 'jwt-simple';
+import { randomUUID } from 'crypto';
 import env from 'env-var';
 import { UserDoc } from '../types/models/user';
 
@@ -51,7 +52,11 @@ export const decodeToken = (token: string, noVerify = false): any => {
  * @returns 8-character alphanumeric string
  */
 export const generateCorrelationId = (): string => {
-  return Math.random().toString(36).substring(2, 10);
+  try {
+    return randomUUID();
+  } catch {
+    return Math.random().toString(36).substring(2, 10);
+  }
 };
 
 /**

@@ -105,8 +105,12 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
   const rakeCollected = returnReal ? 0 : (totalReal * rake);
   try {
     const hadAny = (totalArcade + totalReal) > 0;
-    const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
-    logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    const verbose = process.env.LOG_GAME_EVENTS === 'true';
+    // Only log at info when there were wagers. Otherwise, log at debug (or skip entirely unless verbose is enabled)
+    if (hadAny || verbose) {
+      const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
+      logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    }
   } catch {}
 
   return { processedWagers, meta: { totalReal, winReal, returnReal, shareReal, rake, rakeCollected } };

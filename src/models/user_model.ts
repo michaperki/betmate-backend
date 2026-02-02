@@ -14,7 +14,7 @@ const BotConfigSchema = new Schema({
 }, { _id: false });
 
 const UserSchema = new Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   first_name: { type: String, default: '' },
   last_name: { type: String, default: '' },

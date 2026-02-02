@@ -68,11 +68,29 @@ export const approveWithdrawal: RequestHandler = async (req, res) => {
       wd.provider_ref = out.payout_id;
       (wd as any).metadata = { ...(wd as any).metadata, provider_status: out.status };
       await wd.save();
+      try {
+        const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+        const ff = await getRuntimeFeatures();
+        if ((ff as any)?.enableEmailWithdrawals) {
+          const user = await userService.getUser(wd.user_id);
+          const { sendWithdrawalStatusEmail } = require('../services/email_service');
+          if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'processing', wd.amount, wd.currency, String(wd._id));
+        }
+      } catch {}
       return res.status(200).json({ ok: true, status: wd.status, provider_ref: wd.provider_ref });
     } catch (e: any) {
       // Fallback: mark approved only (manual payout path)
       wd.status = 'approved';
       await wd.save();
+      try {
+        const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+        const ff = await getRuntimeFeatures();
+        if ((ff as any)?.enableEmailWithdrawals) {
+          const user = await userService.getUser(wd.user_id);
+          const { sendWithdrawalStatusEmail } = require('../services/email_service');
+          if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'approved', wd.amount, wd.currency, String(wd._id));
+        }
+      } catch {}
       return res.status(200).json({ ok: true, status: wd.status, note: 'Payout provider error; manual approval set' });
     }
   } catch (e: any) {
@@ -89,6 +107,15 @@ export const rejectWithdrawal: RequestHandler = async (req, res) => {
     await refundHoldIfNeeded(wd);
     wd.status = 'rejected';
     await wd.save();
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const user = await userService.getUser(wd.user_id);
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'rejected', wd.amount, wd.currency, String(wd._id));
+      }
+    } catch {}
     return res.status(200).json({ ok: true, status: wd.status });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Reject error' });
@@ -104,6 +131,15 @@ export const markProcessing: RequestHandler = async (req, res) => {
     if (wd.status !== 'approved') return res.status(400).json({ error: `Cannot mark processing from status ${wd.status}` });
     wd.status = 'processing';
     await wd.save();
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const user = await userService.getUser(wd.user_id);
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'processing', wd.amount, wd.currency, String(wd._id));
+      }
+    } catch {}
     return res.status(200).json({ ok: true, status: wd.status });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Processing error' });
@@ -119,6 +155,15 @@ export const markPaid: RequestHandler = async (req, res) => {
     if (!['approved','processing'].includes(wd.status)) return res.status(400).json({ error: `Cannot mark paid from status ${wd.status}` });
     wd.status = 'paid';
     await wd.save();
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const user = await userService.getUser(wd.user_id);
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'paid', wd.amount, wd.currency, String(wd._id));
+      }
+    } catch {}
     return res.status(200).json({ ok: true, status: wd.status });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Paid error' });
@@ -135,6 +180,15 @@ export const markFailed: RequestHandler = async (req, res) => {
     await refundHoldIfNeeded(wd);
     wd.status = 'failed';
     await wd.save();
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const user = await userService.getUser(wd.user_id);
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        if (user && (user as any).email) await sendWithdrawalStatusEmail((user as any).email, 'failed', wd.amount, wd.currency, String(wd._id));
+      }
+    } catch {}
     return res.status(200).json({ ok: true, status: wd.status });
   } catch (e: any) {
     return res.status(500).json({ error: e?.message || 'Failed mark error' });

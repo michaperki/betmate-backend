@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import logger from '../helpers/enhanced_logger';
+import logger from '../helpers/logger';
 import loggerConfig from '../helpers/logger_config';
+import { createHash } from 'crypto';
 
 // Extend Request interface to include trace_id
 declare global {
@@ -108,15 +109,48 @@ export const enhancedLoggerMiddleware = (req: Request, res: Response, next: Next
       gameId = gameIdMatch[1];
     }
 
+    // Determine environment-sensitive fields
+    const isProd = (process.env.NODE_ENV === 'production');
+
+    // Basic IP anonymization in production
+    const rawIp = req.ip || '';
+    const ipv4Match = rawIp.match(/(\d{1,3}\.){3}\d{1,3}/);
+    const ipv4 = ipv4Match ? ipv4Match[0] : '';
+    let ipForLog = rawIp;
+    if (isProd) {
+      if (ipv4) {
+        const parts = ipv4.split('.');
+        ipForLog = `${parts[0]}.${parts[1]}.${parts[2]}.0`;
+      } else if (rawIp.includes(':')) {
+        // IPv6: keep first 4 hextets
+        const hextets = rawIp.split(':');
+        ipForLog = `${hextets.slice(0, 4).join(':')}::`;
+      } else {
+        // Fallback to a short stable pseudonymized token
+        ipForLog = createHash('sha256').update(rawIp).digest('hex').slice(0, 12);
+      }
+    }
+
+    // Restrict query keys in production to reduce noise/PII
+    const safeQueryKeys = new Set(['status', 'limit', 'offset', 'n', 'polling', 'game_status', 'id', 'page', 'per_page', 'sort', 'order']);
+    const queryForLog: Record<string, any> = {};
+    if (isProd) {
+      try {
+        Object.entries(req.query || {}).forEach(([k, v]) => {
+          if (safeQueryKeys.has(k)) queryForLog[k] = v;
+        });
+      } catch {}
+    }
+
     // Create structured log data
     const logData: any = {
       method: req.method,
       path: req.path,
       statusCode: res.statusCode,
       latency_ms: duration,
-      ip: req.ip,
+      ip: ipForLog,
       userAgent: req.get('user-agent') || 'unknown',
-      query: req.query,
+      query: isProd ? queryForLog : req.query,
       context,
       isPolling,
       userId,

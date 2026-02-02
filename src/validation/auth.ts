@@ -10,7 +10,7 @@ interface SignUpUserBody {
   firstName?: string
   lastName?: string
   is_bot?: boolean
-  invite_code: string
+  invite_code?: string
   device_id?: string
 }
 
@@ -22,7 +22,8 @@ export const SignUpUserSchema = joi.object<SignUpUserBody>({
   firstName: joi.string().trim().allow('').optional(),
   lastName: joi.string().trim().allow('').optional(),
   is_bot: joi.boolean(),
-  invite_code: joi.string().trim().required(),
+  // Invite code is optional in local/dev by default; controller enforces gating when enabled
+  invite_code: joi.string().trim().allow('').optional(),
   device_id: joi.string().trim().optional(),
 });
 

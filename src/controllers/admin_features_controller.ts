@@ -9,6 +9,9 @@ type FeatureFlags = {
   enableWithdrawals?: boolean;
   requireKyc?: boolean;
   requireEmailVerification?: boolean;
+  enableEmailDeposits?: boolean;
+  enableEmailWithdrawals?: boolean;
+  enableEmailInvites?: boolean;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -31,6 +34,9 @@ function defaults(): FeatureFlags {
     enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
     requireKyc: process.env.REQUIRE_KYC === 'true',
     requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true',
+    enableEmailDeposits: process.env.ENABLE_EMAIL_DEPOSITS === 'true',
+    enableEmailWithdrawals: process.env.ENABLE_EMAIL_WITHDRAWALS === 'true',
+    enableEmailInvites: process.env.ENABLE_EMAIL_INVITES === 'true',
   };
 }
 
@@ -48,6 +54,9 @@ async function readFeatures(): Promise<FeatureFlags> {
       enableWithdrawals: toBool((data as any).enableWithdrawals, d.enableWithdrawals || false),
       requireKyc: toBool((data as any).requireKyc, d.requireKyc || false),
       requireEmailVerification: toBool((data as any).requireEmailVerification, d.requireEmailVerification || false),
+      enableEmailDeposits: toBool((data as any).enableEmailDeposits, d.enableEmailDeposits || false),
+      enableEmailWithdrawals: toBool((data as any).enableEmailWithdrawals, d.enableEmailWithdrawals || false),
+      enableEmailInvites: toBool((data as any).enableEmailInvites, d.enableEmailInvites || false),
     };
   } catch (_e) {
     return defaults();

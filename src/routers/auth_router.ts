@@ -12,6 +12,8 @@ import { UserDoc } from '../types/models/user';
 import userService from '../services/user_service';
 import { SignUpUserSchema } from '../validation/auth';
 import { handleValidationError } from '../validation';
+import crypto from 'crypto';
+import { sendVerificationEmail } from '../services/email_service';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -60,6 +62,64 @@ router.route('/logout')
 
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
+
+// Email verification status
+router.route('/verification-status')
+  .get(requireAuth, async (req, res) => {
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const ff = await getFeatures();
+      const required = !!(ff as any).requireEmailVerification;
+      const verified = Boolean((req.user as any)?.email_verified);
+      return res.status(200).json({ verified, required });
+    } catch {
+      return res.status(200).json({ verified: false, required: false });
+    }
+  });
+
+// Resend verification email (authenticated)
+router.route('/resend-verification')
+  .post(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      if ((user as any)?.email_verified) return res.status(200).json({ sent: false });
+      const token = crypto.randomBytes(24).toString('hex');
+      const ttlMin = Math.max(5, Number(process.env.VERIFICATION_TOKEN_TTL_MIN || 60));
+      const expires = new Date(Date.now() + ttlMin * 60 * 1000);
+      await userService.updateUserData(user._id, { $set: { verification_token: token, verification_token_expires: expires } } as any);
+      try {
+        await sendVerificationEmail(user.email, token, (user as any)?.first_name);
+      } catch {}
+      return res.status(200).json({ sent: true });
+    } catch (e) {
+      return res.status(500).json({ sent: false });
+    }
+  });
+
+// Verify email by token
+router.route('/verify-email/:token')
+  .get(async (req, res) => {
+    try {
+      const token = String(req.params.token || '').trim();
+      if (!token) return res.status(400).json({ message: 'Invalid token', verified: false });
+      const now = new Date();
+      const users = await userService.getUsers({ verification_token: token } as any);
+      const match = (users || []).find((u: any) => u.verification_token === token);
+      if (!match) {
+        try { const logger = require('../helpers/logger').default; logger.log({ level: 'warn', event: 'email_verify_token_not_found', context: { token_prefix: token.slice(0, 6) } }); } catch {}
+        return res.status(400).json({ message: 'Invalid token', verified: false });
+      }
+      if (match.verification_token_expires && new Date(match.verification_token_expires).getTime() < now.getTime()) {
+        try { const logger = require('../helpers/logger').default; logger.log({ level: 'info', event: 'email_verify_token_expired', context: { user_id: String(match._id) } }); } catch {}
+        return res.status(400).json({ message: 'Token expired', verified: false });
+      }
+      const updated = await userService.updateUserData(match._id, { $set: { email_verified: true }, $unset: { verification_token: '', verification_token_expires: '' } } as any);
+      try { const logger = require('../helpers/logger').default; logger.log({ level: 'info', event: 'email_verified', context: { user_id: String(match._id), email: match.email } }); } catch {}
+      return res.status(200).json({ message: 'Email verified', verified: true, user: updated });
+    } catch (e) {
+      return res.status(500).json({ message: 'Verification failed', verified: false });
+    }
+  });
 
 // Mock KYC flow start (non-production only advisable)
 router.route('/kyc/start')

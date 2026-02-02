@@ -12,6 +12,7 @@ import adminWagerController from '../controllers/admin_wager_controller';
 import adminKycController from '../controllers/admin_kyc_controller';
 import adminFeaturedController from '../controllers/admin_featured_controller';
 import adminInvitesController from '../controllers/admin_invites_controller';
+import adminEmailController from '../controllers/admin_email_controller';
 
 const router = express.Router();
 
@@ -27,6 +28,11 @@ router.get('/exposure/games/:gameId', requireAdminAccess, adminRiskController.ge
 // Feature flags (DB-backed)
 router.get('/features', requireAdminAccess, adminFeaturesController.getFeatures);
 router.put('/features', express.json(), requireAdminAccess, adminFeaturesController.updateFeatures);
+
+// Email (admin-only)
+router.post('/email/test', express.json(), requireAdminAccess, adminEmailController.sendTestEmail);
+router.post('/email/resend-verification', express.json(), requireAdminAccess, adminEmailController.resendVerification);
+router.post('/email/invites/bulk', express.json(), requireAdminAccess, adminEmailController.sendInviteEmailsBulk);
 
 // Admin home snapshot
 router.get('/home', requireAdminAccess, adminHomeController.getAdminHome);

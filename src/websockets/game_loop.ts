@@ -201,7 +201,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         context: {
           gameId,
           moveNumber: nextMoveNumber,
-          full_fen: currentFen,
           move_just_played: move.san,
           fen_valid: isFenValid,
           fen_validation_error: fenValidationError
@@ -220,7 +219,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             context: {
               gameId,
               moveNumber: nextMoveNumber,
-              full_fen: currentFen,
               error: error.message
             }
           });
@@ -245,7 +243,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             moveNumber: nextMoveNumber,
             topMoves,
             topMovesCount: topMoves.length,
-            full_fen: currentFen
+            fen_hash: currentFen.substring(0, 10)
           }
         });
 
@@ -257,7 +255,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             context: {
               gameId,
               moveNumber: nextMoveNumber,
-              full_fen: currentFen,
+              fen_hash: currentFen.substring(0, 10),
               move_just_played: move.san,
               message: 'No legal moves returned from microservice - this will cause move wager cancellation'
             }

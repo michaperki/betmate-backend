@@ -152,6 +152,18 @@ export const coinpaymentsWebhook: RequestHandler = async (req, res) => {
       try {
         await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
         await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
+        // Notify user (best-effort)
+        try {
+          const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+          const ff = await getRuntimeFeatures();
+          if ((ff as any)?.enableEmailDeposits) {
+            const user = await Users.findById(dep.user_id).lean();
+            if (user && (user as any).email) {
+              const { sendDepositReceipt } = require('../services/email_service');
+              await sendDepositReceipt((user as any).email, Number(dep.amount || 0), String(dep.currency || 'USDT'), String(dep._id));
+            }
+          }
+        } catch {}
       } catch (creditErr) {
         logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
       }
@@ -324,21 +336,25 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     const isDev = process.env.NODE_ENV === 'development';
     const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
     const ff = await getRuntimeFeatures();
-    const enabled = ff.enableFaucet || process.env.ENABLE_FAUCET === 'true';
+    // If faucet is enabled via admin feature flag, treat it as fully enabled without extra admin-key guard.
+    const enabledViaFeature = !!ff.enableFaucet;
+    const enabledViaEnv = process.env.ENABLE_FAUCET === 'true';
+    const enabled = enabledViaFeature || enabledViaEnv;
     if (!enabled) {
       return res.status(403).json({ error: 'Faucet disabled' });
     }
 
-    // In non-dev environments, require an admin key by default to prevent abuse.
-    // You can explicitly disable this requirement by setting FAUCET_REQUIRE_ADMIN_KEY=false
-    // (useful on staging). If unset, the default is to require the key.
-    const requireKeyEnv = process.env.FAUCET_REQUIRE_ADMIN_KEY;
-    const requireAdminKey = (requireKeyEnv == null) ? true : (String(requireKeyEnv).toLowerCase() === 'true');
-    if (!isDev && requireAdminKey) {
-      const adminKey = process.env.ADMIN_API_KEY;
-      const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
-      if (!adminKey || !provided || provided !== adminKey) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    // If faucet is enabled via DB feature toggle, allow any authenticated user to use it.
+    // Otherwise (enabled only via env), enforce the admin key outside of dev unless explicitly disabled.
+    if (!enabledViaFeature) {
+      const requireKeyEnv = process.env.FAUCET_REQUIRE_ADMIN_KEY;
+      const requireAdminKey = (requireKeyEnv == null) ? true : (String(requireKeyEnv).toLowerCase() === 'true');
+      if (!isDev && requireAdminKey) {
+        const adminKey = process.env.ADMIN_API_KEY;
+        const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
+        if (!adminKey || !provided || provided !== adminKey) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
       }
     }
 
@@ -500,6 +516,15 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
       try { wd.status = 'failed'; await wd.save(); } catch {}
       return res.status(500).json({ error: 'Failed to place hold' });
     }
+
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        await sendWithdrawalStatusEmail((freshUser as any).email, 'requested', amt, payCurrency, String(wd._id));
+      }
+    } catch {}
 
     return res.status(200).json({ ok: true, withdrawal_id: String(wd._id) });
   } catch (e) {

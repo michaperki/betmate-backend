@@ -53,7 +53,7 @@ const clientLogRequest: RequestHandler = async (req, res) => {
 
     return res.status(200).json({ message: 'Log recorded successfully' });
   } catch (error) {
-    console.error('Error processing client log:', error);
+    logger.log({ level: 'error', event: 'client_log_processing_error', context: { error: (error as Error)?.message || String(error) } });
     // Always return 200 even on error to prevent frontend issues
     return res.status(200).json({ message: 'Log request received' });
   }

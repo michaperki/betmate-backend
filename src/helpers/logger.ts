@@ -8,20 +8,11 @@
 import originalLogger from './axiom_logger';
 import enhancedLogger from './enhanced_logger';
 
-// The flag to determine which logger to use
-const useEnhancedLogger = process.env.USE_ENHANCED_LOGGER === 'true' 
+// Select a single logger instance at module init to avoid duplicate initialization
+const useEnhancedLogger = process.env.USE_ENHANCED_LOGGER === 'true'
   || process.env.NODE_ENV === 'development';
 
-// Create a proxy to forward all calls to the appropriate logger
-const logger = new Proxy({} as typeof originalLogger, {
-  get(target, prop, receiver) {
-    if (useEnhancedLogger) {
-      return Reflect.get(enhancedLogger, prop, receiver);
-    } else {
-      return Reflect.get(originalLogger, prop, receiver);
-    }
-  }
-});
+const logger = useEnhancedLogger ? enhancedLogger : originalLogger;
 
 export default logger;
 

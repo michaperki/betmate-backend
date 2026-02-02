@@ -11,22 +11,25 @@ import { UserDoc } from '../types/models/user';
 const localOptions = { usernameField: 'email' };
 
 // Make a login strategy to check email and password against DB
-const localLogin = new LocalStrategy(localOptions, (email, password, done) => User.findOne({ email }, (error, user: UserDoc) => {
-  // Was a user with the given email able to be found?
-  if (error) return done(error);
-  if (!user) return done(null, false, { message: 'Email address not associated with a user' });
+const localLogin = new LocalStrategy(localOptions, (email, password, done) => {
+  const normalizedEmail = (email || '').toLowerCase().trim();
+  User.findOne({ email: normalizedEmail }, (error, user: UserDoc) => {
+    // Was a user with the given email able to be found?
+    if (error) return done(error);
+    if (!user) return done(null, false, { message: 'Email address not associated with a user' });
 
-  // Compare password associated with email and passed password
-  return user.comparePassword(password, (err, isMatch) => {
-    if (err) {
-      done(err);
-    } else if (!isMatch) {
-      done(null, false, { message: 'Incorrect password' });
-    } else {
-      done(null, user);
-    }
+    // Compare password associated with email and passed password
+    return user.comparePassword(password, (err, isMatch) => {
+      if (err) {
+        return done(err);
+      }
+      if (!isMatch) {
+        return done(null, false, { message: 'Incorrect password' });
+      }
+      return done(null, user);
+    });
   });
-}));
+});
 
 passport.use(localLogin);
 
