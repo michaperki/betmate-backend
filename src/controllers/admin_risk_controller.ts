@@ -66,33 +66,86 @@ export default adminRiskController;
 
 // Presets: lightweight mapping for quick ops defaults
 const PRESETS: Record<string, any> = {
+  // Extremely conservative caps for closed beta
   beta: {
-    bankroll: 80000,
-    baseMargin: 0.055,
-    drawExtraMargin: 0.075,
-    perBetLiabilityCap: 300,
-    perPlayerPerGameCap: 900,
+    enabled: true,
+    disableWdl: false,
+    disableDraw: false,
+    // Bankroll is mostly informational for derived defaults; we override absolute caps below
+    bankroll: 2000,
+    // Absolute risk caps
+    globalExposureCap: 500,
+    perGameWorstCaseCap: 200,
+    perOutcomeCap: { white_win: 80, black_win: 80, draw: 40 },
+    perBetLiabilityCap: 25,
+    perPlayerPerGameCap: 50,
+    // Pricing/odds margins and limits
+    baseMargin: 0.08,
+    drawExtraMargin: 0.10,
+    maxOdds: { white_win: 5, black_win: 5, draw: 7 },
+    // Confidence tuning
+    earlyMoveNum: 20,
+    capMultiplierEarly: 0.5,
+    extraMarginLowConf: 0.03,
+    // No tilt by default
+    skew: { white_win: 1.0, black_win: 1.0, draw: 1.0 },
   },
+  // Conservative
   low: {
+    enabled: true,
+    disableWdl: false,
+    disableDraw: false,
     bankroll: 50000,
-    baseMargin: 0.06,
-    drawExtraMargin: 0.08,
+    globalExposureCap: 5000,
+    perGameWorstCaseCap: 2000,
+    perOutcomeCap: { white_win: 800, black_win: 800, draw: 600 },
     perBetLiabilityCap: 200,
     perPlayerPerGameCap: 600,
+    baseMargin: 0.06,
+    drawExtraMargin: 0.08,
+    maxOdds: { white_win: 6, black_win: 6, draw: 8 },
+    earlyMoveNum: 20,
+    capMultiplierEarly: 0.6,
+    extraMarginLowConf: 0.03,
+    skew: { white_win: 1.0, black_win: 1.0, draw: 1.0 },
   },
+  // Balanced
   med: {
+    enabled: true,
+    disableWdl: false,
+    disableDraw: false,
     bankroll: 100000,
-    baseMargin: 0.05,
-    drawExtraMargin: 0.07,
+    globalExposureCap: 15000,
+    perGameWorstCaseCap: 5000,
+    perOutcomeCap: { white_win: 2000, black_win: 2000, draw: 1500 },
     perBetLiabilityCap: 400,
     perPlayerPerGameCap: 1200,
+    baseMargin: 0.05,
+    drawExtraMargin: 0.07,
+    maxOdds: { white_win: 7, black_win: 7, draw: 9 },
+    earlyMoveNum: 20,
+    capMultiplierEarly: 0.7,
+    extraMarginLowConf: 0.03,
+    skew: { white_win: 1.0, black_win: 1.0, draw: 1.0 },
   },
+  // Aggressive
   high: {
+    enabled: true,
+    disableWdl: false,
+    disableDraw: false,
     bankroll: 200000,
-    baseMargin: 0.04,
-    drawExtraMargin: 0.06,
+    globalExposureCap: 40000,
+    perGameWorstCaseCap: 15000,
+    perOutcomeCap: { white_win: 6000, black_win: 6000, draw: 4500 },
     perBetLiabilityCap: 800,
     perPlayerPerGameCap: 2400,
+    baseMargin: 0.04,
+    drawExtraMargin: 0.06,
+    maxOdds: { white_win: 8, black_win: 8, draw: 10 },
+    earlyMoveNum: 20,
+    capMultiplierEarly: 0.8,
+    extraMarginLowConf: 0.03,
+    skew: { white_win: 1.0, black_win: 1.0, draw: 1.0 },
   },
 };
 
