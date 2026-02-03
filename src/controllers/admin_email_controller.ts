@@ -163,7 +163,13 @@ const adminEmailController = {
         await userService.updateUserData((user as any)._id, { $set: { magic_login_token: token, magic_login_expires: expires, magic_login_used_at: undefined } } as any);
         const magicUrl = `${base}/magic/${encodeURIComponent(token)}?tour=1`;
         try {
-          await sendMagicLinkEmail(email, magicUrl, first || undefined, camp);
+          await sendMagicLinkEmail(email, magicUrl, {
+            name: first || undefined,
+            campaign: camp,
+            grantTokens: grantTok,
+            grantCashUsd: grantCash,
+            expiresAt: expires,
+          });
           results.push({ email, user_id: String((user as any)._id), magicUrl });
         } catch (_e) {
           results.push({ email, user_id: String((user as any)._id), magicUrl, error: 'send_failed' });
@@ -207,19 +213,82 @@ async function sendInviteEmail(to: string, code: string, campaign?: string) {
   await transporter.sendMail(tx);
 }
 
-async function sendMagicLinkEmail(to: string, magicUrl: string, name?: string, campaign?: string) {
+type MagicEmailOpts = {
+  name?: string;
+  campaign?: string;
+  grantTokens?: number;
+  grantCashUsd?: number;
+  expiresAt?: Date;
+};
+
+async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmailOpts = {}) {
   const transporter = getEmailTransporterLazy();
   const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
   const replyTo = process.env.REPLY_TO || undefined;
-  const subject = `Your BetMate access${campaign ? ` — ${campaign}` : ''}`;
-  const displayName = name ? escapeHtml(name) : 'there';
-  const text = `Hi ${displayName},\n\nTap this link to access your BetMate account:\n${magicUrl}\n\nThis link will expire soon. If you did not expect this, you can ignore the email.`;
-  const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px;">
+
+  const campaign = opts.campaign ? String(opts.campaign) : undefined;
+  const displayName = opts.name ? escapeHtml(opts.name) : 'there';
+  const grantTokens = Number(opts.grantTokens || 0);
+  const grantCash = Number(opts.grantCashUsd || 0);
+  const hasGrant = (grantTokens > 0) || (grantCash > 0);
+  const expText = opts.expiresAt ? new Date(opts.expiresAt).toLocaleString('en-US', { timeZone: 'UTC', hour12: false }) + ' UTC' : undefined;
+
+  const subject = `Your BetMate beta access${campaign ? ` — ${campaign}` : ''}`;
+
+  const grantLines: string[] = [];
+  if (grantCash > 0) grantLines.push(`• $${grantCash.toFixed(2)} BetMate Cash`);
+  if (grantTokens > 0) grantLines.push(`• ${Math.round(grantTokens)} K‑Bits`);
+
+  const text = [
+    `Hi ${displayName},`,
+    '',
+    `Your BetMate beta access is ready. Use this magic link to sign in:`,
+    magicUrl,
+    '',
+    ...(hasGrant ? [`We’ve also added a beta grant to your account:`, ...grantLines, ''] : []),
+    `Important notes:`,
+    `• This is a beta product. Features may change and availability is not guaranteed.`,
+    `• Only BetMate Cash winnings are eligible for withdrawal (subject to limits/verification and Terms).`,
+    `• This link is single‑use and will expire${expText ? ` on ${expText}` : ' soon'}.`,
+    '',
+    `If you did not request this, you can ignore this email.`,
+  ].join('\n');
+
+  const htmlGrant = hasGrant
+    ? `<div style="margin:14px 0;padding:12px;border:1px solid #eee;border-radius:8px;background:#fafafa">
+        <div style="font-weight:600;margin-bottom:6px">Your beta grant</div>
+        <ul style="margin:0;padding-left:18px;color:#333">
+          ${grantCash > 0 ? `<li><strong>$${grantCash.toFixed(2)} BetMate Cash</strong></li>` : ''}
+          ${grantTokens > 0 ? `<li><strong>${escapeHtml(String(Math.round(grantTokens)))} K‑Bits</strong></li>` : ''}
+        </ul>
+      </div>`
+    : '';
+
+  const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.45; color: #111;">
     <p>Hi ${displayName},</p>
-    <p>Your beta access is ready. Tap the button to jump in:</p>
-    <p><a href="${magicUrl}" style="background:#4a90e2;color:#fff;padding:10px 14px;border-radius:4px;text-decoration:none;display:inline-block">Open BetMate</a></p>
-    <p style="color:#666">Or open this link: <a href="${magicUrl}">${magicUrl}</a></p>
+    <p>Your <strong>BetMate beta access</strong> is ready. Tap below to sign in:</p>
+    <p>
+      <a href="${magicUrl}" style="background:#111;color:#fff;padding:12px 16px;border-radius:8px;text-decoration:none;display:inline-block">
+        Open BetMate
+      </a>
+    </p>
+    <p style="color:#666;margin-top:8px">Or open this link: <a href="${magicUrl}">${magicUrl}</a></p>
+
+    ${htmlGrant}
+
+    <div style="margin-top:14px;color:#444">
+      <div style="font-weight:600;margin-bottom:6px">Important notes</div>
+      <ul style="margin:0;padding-left:18px">
+        <li>This is a beta product; features may change and availability is not guaranteed.</li>
+        <li>Only <strong>BetMate Cash</strong> winnings are eligible for withdrawal (subject to limits/verification and Terms).</li>
+        <li>This link is single‑use and will expire${expText ? ` on <strong>${escapeHtml(expText)}</strong>` : ' soon'}.</li>
+      </ul>
+    </div>
+
+    <p style="color:#666;margin-top:14px">If you did not request this email, you can ignore it.</p>
+    <p style="color:#999;font-size:12px;margin-top:16px">Subject to BetMate Terms and Conditions.</p>
   </div>`;
+
   const tx: any = { from, to, subject, text, html };
   if (replyTo) tx.replyTo = replyTo;
   await transporter.sendMail(tx);
