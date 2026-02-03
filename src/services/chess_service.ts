@@ -1,4 +1,5 @@
 import { Chess, Wager } from '../models';
+import logger from '../helpers/logger';
 import {
   FilterQuery, Types, UpdateQuery,
 } from 'mongoose';
@@ -81,7 +82,7 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
       game_status: { $in: [GameStatus.IN_PROGRESS, GameStatus.NOT_STARTED] }
     });
 
-    console.log(`Found ${incompleteCount} incomplete games and ${inProgressCount} in-progress/not-started games`);
+    logger.log({ level: 'info', event: 'purge_stale_counts', context: { incompleteCount, inProgressCount } });
 
     // Mark any lingering or in-progress games as ABORTED instead of deleting,
     // so downstream cleanup (e.g., wagers) can reason about them.
@@ -121,7 +122,7 @@ const purgeStaleGames = async (): Promise<{success: boolean, deletedCount: numbe
       details: `Aborted ${totalAborted} lingering/in-progress games and marked ${((markOldGames as any).nModified || (markOldGames as any).modifiedCount || 0)} old games as complete.`
     };
   } catch (error) {
-    console.error('Error purging stale games:', error);
+    logger.log({ level: 'error', event: 'purge_stale_games_internal_error', context: { error: (error as any)?.message || String(error) } });
     return {
       success: false,
       deletedCount: 0,

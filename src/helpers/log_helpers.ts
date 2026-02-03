@@ -1,4 +1,4 @@
-import logger from './axiom_logger';
+import logger from './logger';
 
 export interface LogContext {
   context: string;

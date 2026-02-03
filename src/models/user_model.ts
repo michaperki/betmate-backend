@@ -14,7 +14,7 @@ const BotConfigSchema = new Schema({
 }, { _id: false });
 
 const UserSchema = new Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
   password: { type: String, required: true },
   first_name: { type: String, default: '' },
   last_name: { type: String, default: '' },
@@ -34,6 +34,14 @@ const UserSchema = new Schema({
   kyc_status: { type: String, enum: ['none', 'required', 'pending', 'approved', 'rejected'], default: 'none', index: true },
   kyc_meta: { type: Schema.Types.Mixed, default: undefined },
   kyc_updated_at: { type: Date },
+  // Email verification fields
+  email_verified: { type: Boolean, default: false },
+  verification_token: { type: String, default: undefined },
+  verification_token_expires: { type: Date, default: undefined },
+  // Magic link (beta access) fields
+  magic_login_token: { type: String, default: undefined, index: true },
+  magic_login_expires: { type: Date, default: undefined },
+  magic_login_used_at: { type: Date, default: undefined },
   role: {
     type: String,
     default: UserRole.USER,

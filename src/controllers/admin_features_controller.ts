@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import Config from '../models/config_model';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 type FeatureFlags = {
   realModeEnabled: boolean;
@@ -8,6 +9,12 @@ type FeatureFlags = {
   pricingModelVersion: string;
   enableWithdrawals?: boolean;
   requireKyc?: boolean;
+  requireEmailVerification?: boolean;
+  enableEmailDeposits?: boolean;
+  enableEmailWithdrawals?: boolean;
+  enableEmailInvites?: boolean;
+  pauseGameIntake?: boolean;
+  pauseMessage?: string;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -29,6 +36,12 @@ function defaults(): FeatureFlags {
     pricingModelVersion: process.env.PRICING_MODEL_VERSION || 'v0',
     enableWithdrawals: process.env.ENABLE_WITHDRAWALS === 'true',
     requireKyc: process.env.REQUIRE_KYC === 'true',
+    requireEmailVerification: process.env.REQUIRE_EMAIL_VERIFICATION === 'true',
+    enableEmailDeposits: process.env.ENABLE_EMAIL_DEPOSITS === 'true',
+    enableEmailWithdrawals: process.env.ENABLE_EMAIL_WITHDRAWALS === 'true',
+    enableEmailInvites: process.env.ENABLE_EMAIL_INVITES === 'true',
+    pauseGameIntake: false,
+    pauseMessage: '',
   };
 }
 
@@ -45,6 +58,12 @@ async function readFeatures(): Promise<FeatureFlags> {
       pricingModelVersion: String(data.pricingModelVersion ?? d.pricingModelVersion),
       enableWithdrawals: toBool((data as any).enableWithdrawals, d.enableWithdrawals || false),
       requireKyc: toBool((data as any).requireKyc, d.requireKyc || false),
+      requireEmailVerification: toBool((data as any).requireEmailVerification, d.requireEmailVerification || false),
+      enableEmailDeposits: toBool((data as any).enableEmailDeposits, d.enableEmailDeposits || false),
+      enableEmailWithdrawals: toBool((data as any).enableEmailWithdrawals, d.enableEmailWithdrawals || false),
+      enableEmailInvites: toBool((data as any).enableEmailInvites, d.enableEmailInvites || false),
+      pauseGameIntake: toBool((data as any).pauseGameIntake, d.pauseGameIntake || false),
+      pauseMessage: String((data as any).pauseMessage ?? (d.pauseMessage || '')),
     };
   } catch (_e) {
     return defaults();
@@ -69,6 +88,10 @@ export const updateFeatures: RequestHandler = async (req, res) => {
 
     // Return the normalized flags (merged with defaults for missing fields)
     const normalized = await readFeatures();
+    try {
+      const keys = Object.keys(patch || {});
+      await writeAuditEntry(req as any, 'feature.update', 'features', keys.join(','), { keys });
+    } catch {}
     res.status(200).json(normalized);
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Failed to update features' });

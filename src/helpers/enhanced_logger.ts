@@ -2,6 +2,7 @@ import * as axiom from '@axiomhq/axiom-node';
 import { getRequestId } from './request_context';
 import loggerConfig, { LoggerConfig } from './logger_config';
 import chalk from 'chalk';
+import { randomUUID } from 'crypto';
 
 /**
  * EnhancedLogger - An improved logger with better development experience
@@ -35,6 +36,9 @@ class EnhancedLogger {
   private isInitialized: boolean = false;
   private env: string;
   private eventCounts: Record<string, number> = {};
+  // One-time guards for init messages
+  private static warnedNoKeyOnce = false;
+  private static initPrintedOnce = false;
 
   constructor(config: LoggerConfig) {
     this.config = config;
@@ -55,23 +59,31 @@ class EnhancedLogger {
       this.client = new axiom.Client({
         token: apiKey
       });
-      
-      if (env === 'production') {
-        console.log(`Axiom logging initialized successfully for ${env} environment`);
-      } else {
-        this.prettyLog('info', 'logging', 'Axiom logging initialized successfully', { environment: env });
+      if (!EnhancedLogger.initPrintedOnce) {
+        if (env === 'production') {
+          console.log(`Axiom logging initialized successfully for ${env} environment`);
+        } else {
+          this.prettyLog('info', 'logging', 'Axiom logging initialized successfully', { environment: env });
+        }
+        EnhancedLogger.initPrintedOnce = true;
       }
     } else if (!apiKey) {
-      if (env === 'development') {
-        this.prettyLog('warn', 'logging', 'Axiom logging disabled: No AXIOM_API_KEY found in environment');
-      } else {
-        console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
+      if (!EnhancedLogger.warnedNoKeyOnce) {
+        if (env === 'development') {
+          this.prettyLog('warn', 'logging', 'Axiom logging disabled: No AXIOM_API_KEY found in environment');
+        } else {
+          console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
+        }
+        EnhancedLogger.warnedNoKeyOnce = true;
       }
     } else {
-      if (env === 'development') {
-        this.prettyLog('info', 'logging', 'Development mode: logging to console only', { axiom_enabled: false });
-      } else {
-        console.log('Axiom logging disabled in development environment');
+      if (!EnhancedLogger.initPrintedOnce) {
+        if (env === 'development') {
+          this.prettyLog('info', 'logging', 'Development mode: logging to console only', { axiom_enabled: false });
+        } else {
+          console.log('Axiom logging disabled in development environment');
+        }
+        EnhancedLogger.initPrintedOnce = true;
       }
     }
 
@@ -256,7 +268,11 @@ class EnhancedLogger {
    * Generate a new trace ID for request correlation
    */
   generateTraceId(): string {
-    return Math.random().toString(36).substring(2, 10);
+    try {
+      return randomUUID();
+    } catch {
+      return Math.random().toString(36).substring(2, 10);
+    }
   }
 
   /**

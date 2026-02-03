@@ -6,9 +6,20 @@ import {
 } from '../types/models/wager';
 
 import { generateCorrelationId } from './utils';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 const verboseGameLogs = process.env.LOG_GAME_EVENTS === 'true';
+
+// Lightweight in-memory debounce for settlement invocations to avoid duplicate work/log spam
+const recentSettlementMs = 750; // coalesce duplicate triggers within 750ms
+const recentCalls = new Map<string, number>();
+function tooRecent(key: string): boolean {
+  const now = Date.now();
+  const last = recentCalls.get(key) || 0;
+  if (now - last < recentSettlementMs) return true;
+  recentCalls.set(key, now);
+  return false;
+}
 
 /**
  * Construct function to process `WagerDoc` into `ProcessedWager`
@@ -82,7 +93,8 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
   const totalReal = real.reduce((sum, w) => sum + w.amount, 0);
   const winReal = real.filter(w => w.data === correctMove).reduce((s, w) => s + w.amount, 0);
   const returnReal = winReal === 0;
-  const shareReal = returnReal ? Number.MAX_SAFE_INTEGER : ((totalReal * (1 - rake)) / winReal);
+  // When no winners in the real pool, we refund those wagers; avoid misleading MAX_SAFE_INTEGER in logs
+  const shareReal = returnReal ? 0 : ((totalReal * (1 - rake)) / winReal);
 
   const processedWagers: ProcessedWager[] = [];
   processedWagers.push(
@@ -93,8 +105,12 @@ export const processCriticalMoveWagers: WagerProcessor = (wagers, correctMove) =
   const rakeCollected = returnReal ? 0 : (totalReal * rake);
   try {
     const hadAny = (totalArcade + totalReal) > 0;
-    const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
-    logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    const verbose = process.env.LOG_GAME_EVENTS === 'true';
+    // Only log at info when there were wagers. Otherwise, log at debug (or skip entirely unless verbose is enabled)
+    if (hadAny || verbose) {
+      const level: 'info' | 'debug' = hadAny ? 'info' : 'debug';
+      logger.log({ level, event: 'move_settlement', context: { move: correctMove, totals: { totalArcade, totalReal }, winReal, returnReal, shareReal, rake, rakeCollected } });
+    }
   } catch {}
 
   return { processedWagers, meta: { totalReal, winReal, returnReal, shareReal, rake, rakeCollected } };
@@ -301,6 +317,15 @@ export const resolveCriticalMoveWagers = async (gameId: string, chessHistory: st
   // The correct move is always the actual move played, regardless of predictions
   const correctMove = lastMove;
 
+  // Debounce identical invocations that can occur due to overlapping triggers
+  try {
+    const key = settlementService.makeJobId(gameId, 'critical_move', moveNum);
+    if (tooRecent(key)) {
+      if (verboseGameLogs) logger.log({ level: 'debug', event: 'critical_move_debounced', context: { gameId, moveNum } });
+      return {};
+    }
+  } catch {}
+
   if (verboseGameLogs) {
     logger.log({ level: 'debug', event: 'critical_move_resolution_start', context: { correlationId, gameId, moveNum, lastMove, topMoves } });
   }
@@ -383,6 +408,12 @@ export const cancelCriticalMoveWagers = async (gameId: string, chessHistory: str
   if (verboseGameLogs) {
     logger.log({ level: 'debug', event: 'critical_move_cancel_all', context: { correlationId, gameId, moveNum } });
   }
+
+  // Debounce identical invocations
+  try {
+    const key = settlementService.makeJobId(gameId, 'critical_move', moveNum);
+    if (tooRecent(key)) return {};
+  } catch {}
 
   // Acquire job for cancel path as well to ensure single execution
   const claim = await settlementService.acquire(gameId, 'critical_move', moveNum);

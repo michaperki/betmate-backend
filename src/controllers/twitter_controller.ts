@@ -5,7 +5,7 @@
 
 import { Request, Response } from 'express';
 import twitterService from '../services/twitter_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 /**
  * Check if Twitter API is properly configured

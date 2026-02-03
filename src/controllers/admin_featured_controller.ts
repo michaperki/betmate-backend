@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import featuredSelector from '../services/featured_selector';
+import { FeaturedSnapshot } from '../models';
 
 export const getFeaturedCandidates: RequestHandler = async (_req, res) => {
   try {
@@ -32,5 +33,19 @@ export const getFeaturedCandidates: RequestHandler = async (_req, res) => {
   }
 };
 
-export default { getFeaturedCandidates };
+export const getFeaturedSnapshot: RequestHandler = async (_req, res) => {
+  try {
+    const snap = await (FeaturedSnapshot as any).findOne({ key: 'current' }).lean();
+    if (!snap) return res.status(200).json({ generated_at: null, selected_id: null, items: [], weights: {} });
+    return res.status(200).json({
+      generated_at: snap.generated_at,
+      selected_id: snap.selected_id,
+      items: snap.items || [],
+      weights: snap.weights || {},
+    });
+  } catch (error: any) {
+    return res.status(500).json({ error: error?.message || 'Failed to fetch featured snapshot' });
+  }
+};
 
+export default { getFeaturedCandidates, getFeaturedSnapshot };

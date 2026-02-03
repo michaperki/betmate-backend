@@ -7,7 +7,7 @@ import { TopMoveSchema, WDLSchema, MoveAnalysisSchema } from '../validation/micr
 import { validate } from '../validation';
 import { generateCorrelationId } from '../helpers/utils';
 import { getRequestId } from '../helpers/request_context';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
 
 /**
@@ -110,7 +110,6 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
         context: {
           latency_ms: latency,
           fen_hash: fen.substring(0, 10),
-          full_fen: fen,
           move_count: n,
           returned_moves: res.data.data.length
         }
@@ -123,9 +122,9 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           event: 'top_moves_empty_result',
           trace_id,
           context: {
-            full_fen: fen,
+            fen_hash: fen.substring(0, 10),
             expected_moves: n,
-            microservice_response: res.data
+            returned_moves: 0
           }
         });
       }
@@ -144,8 +143,7 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           context: {
             timeout_ms: 5000,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10),
-            full_fen: fen
+            fen_hash: fen.substring(0, 10)
           }
         });
       } else {
@@ -157,9 +155,7 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
             error: error.message,
             latency_ms: latency,
             fen_hash: fen.substring(0, 10),
-            full_fen: fen,
-            status: error.response?.status,
-            response_data: error.response?.data
+            status: error.response?.status
           }
         });
       }
@@ -200,8 +196,7 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
         context: {
           latency_ms: latency,
           fen_hash: fen.substring(0, 10),
-          move,
-          response_data: JSON.stringify(res.data) // Log full response for debugging
+          move
         }
       });
 
@@ -253,7 +248,7 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
         is_best_move: false
       } as MoveAnalysisData;
 
-      console.log(`Returning fallback analysis for ${move}:`, fallback);
+      logger.log({ level: 'warn', event: 'move_analysis_fallback', trace_id, context: { move } });
       return fallback;
     });
 };

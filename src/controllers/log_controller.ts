@@ -1,5 +1,5 @@
 import { RequestHandler } from 'express';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 // Use Node 18 global fetch if available; otherwise lazy import node-fetch
 const getFetch = async () => (typeof (global as any).fetch !== 'undefined'
@@ -53,7 +53,7 @@ const clientLogRequest: RequestHandler = async (req, res) => {
 
     return res.status(200).json({ message: 'Log recorded successfully' });
   } catch (error) {
-    console.error('Error processing client log:', error);
+    logger.log({ level: 'error', event: 'client_log_processing_error', context: { error: (error as Error)?.message || String(error) } });
     // Always return 200 even on error to prevent frontend issues
     return res.status(200).json({ message: 'Log request received' });
   }

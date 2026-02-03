@@ -8,7 +8,7 @@ import { ReplaySchema, GameData } from '../types/game_loop';
 import { chessService, microserviceService, moveBadgeService } from '../services';
 import moveBadgeConfig from '../config/move_badges';
 import dominanceTracker from '../services/dominance_tracker';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 
 import data300 from '../assets/game_data_300.json';
 import data900 from '../assets/game_data_900.json';
@@ -201,7 +201,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
         context: {
           gameId,
           moveNumber: nextMoveNumber,
-          full_fen: currentFen,
           move_just_played: move.san,
           fen_valid: isFenValid,
           fen_validation_error: fenValidationError
@@ -220,7 +219,6 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             context: {
               gameId,
               moveNumber: nextMoveNumber,
-              full_fen: currentFen,
               error: error.message
             }
           });
@@ -245,7 +243,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             moveNumber: nextMoveNumber,
             topMoves,
             topMovesCount: topMoves.length,
-            full_fen: currentFen
+            fen_hash: currentFen.substring(0, 10)
           }
         });
 
@@ -257,7 +255,7 @@ const runLoop = (gameTime: number, increment: number, data: ReplaySchema[]) => a
             context: {
               gameId,
               moveNumber: nextMoveNumber,
-              full_fen: currentFen,
+              fen_hash: currentFen.substring(0, 10),
               move_just_played: move.san,
               message: 'No legal moves returned from microservice - this will cause move wager cancellation'
             }

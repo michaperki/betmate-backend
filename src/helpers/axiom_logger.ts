@@ -1,5 +1,6 @@
 import * as axiom from '@axiomhq/axiom-node';
 import { getRequestId } from './request_context';
+import { randomUUID } from 'crypto';
 
 /**
  * AxiomLogger - A utility for logging events to Axiom
@@ -26,6 +27,8 @@ class AxiomLogger {
   private service: string;
   private env: string;
   private minLevel: 'debug' | 'info' | 'warn' | 'error';
+  private static warnedNoKeyOnce = false;
+  private static initPrintedOnce = false;
 
   constructor(dataset: string = 'betmate-logs', service: string = 'backend') {
     this.dataset = dataset;
@@ -54,11 +57,20 @@ class AxiomLogger {
       this.client = new axiom.Client({
         token: apiKey
       });
-      console.log(`Axiom logging initialized successfully for ${env} environment`);
+      if (!AxiomLogger.initPrintedOnce) {
+        console.log(`Axiom logging initialized successfully for ${env} environment`);
+        AxiomLogger.initPrintedOnce = true;
+      }
     } else if (!apiKey) {
-      console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
+      if (!AxiomLogger.warnedNoKeyOnce) {
+        console.warn('Axiom logging disabled: No AXIOM_API_KEY found in environment');
+        AxiomLogger.warnedNoKeyOnce = true;
+      }
     } else {
-      console.log('Axiom logging disabled in development environment');
+      if (!AxiomLogger.initPrintedOnce) {
+        console.log('Axiom logging disabled in development environment');
+        AxiomLogger.initPrintedOnce = true;
+      }
     }
 
     this.isInitialized = true;
@@ -138,7 +150,11 @@ class AxiomLogger {
    * Generate a new trace ID for request correlation
    */
   generateTraceId(): string {
-    return Math.random().toString(36).substring(2, 10);
+    try {
+      return randomUUID();
+    } catch {
+      return Math.random().toString(36).substring(2, 10);
+    }
   }
 
   /**

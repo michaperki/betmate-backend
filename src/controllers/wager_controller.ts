@@ -5,7 +5,7 @@ import { Types } from 'mongoose';
 import { RequestWithJWT, ValidatedRequestWithJWT } from '../types/requests';
 import { chessService, userService, wagerService, microserviceService } from '../services';
 import { getRiskConfig, oddsFromP, scaleCapsForConfidence, getFeatureFlags } from '../helpers/risk_config';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { getGameExposure, getGlobalExposure, getPlayerGameLiability } from '../services/exposure_service';
 import { CreateWagerRequest, GetWagersRequest } from '../validation/wager';
 import { handleFailure, handleSuccess } from './utils';

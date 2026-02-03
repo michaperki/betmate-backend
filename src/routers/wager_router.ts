@@ -3,6 +3,7 @@ import express from 'express';
 import { createValidator } from 'express-joi-validation';
 
 import { requireAuth } from '../authentication';
+import requireVerifiedEmail from '../authentication/requireVerifiedEmail';
 import { wagerController } from '../controllers';
 import { CreateWagerSchema, GetWagersSchema } from '../validation/wager';
 import { handleValidationError } from '../validation';
@@ -18,6 +19,7 @@ if (process.env.NODE_ENV === 'test') {
 }
 
 router.use(requireAuth);
+router.use(requireVerifiedEmail);
 
 // get all wagers
 router.route('/')

@@ -1,6 +1,7 @@
 import { LichessGame, LichessStreamer } from '../types/lichess';
 import lichessService from './lichess_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
+import { FeaturedSnapshot } from '../models';
 import featuredPlayers from '../config/featured_players.json';
 
 type Channel = 'classical' | 'rapid' | 'blitz';
@@ -188,6 +189,34 @@ export async function selectFeaturedGame(): Promise<LichessGame> {
     } });
   }
   logger.log({ level: 'info', event: 'featured_selected', context: { id: top.id, score: Number(top.score.toFixed(4)) } });
+
+  // Persist a snapshot for admin view until the next selection overwrites it
+  try {
+    const items = scored.slice(0, 25).map((c) => ({
+      id: c.id,
+      score: Number(c.score.toFixed(4)),
+      components: c.components,
+      summary: c.summary,
+      game: {
+        id: c.game.id,
+        speed: (c.game as any).speed,
+        status: (c.game as any).status,
+        clock: (c.game as any).clock,
+        players: {
+          white: { id: (c.game as any).players?.white?.user?.id, name: (c.game as any).players?.white?.user?.name, title: (c.game as any).players?.white?.user?.title, rating: (c.game as any).players?.white?.rating },
+          black: { id: (c.game as any).players?.black?.user?.id, name: (c.game as any).players?.black?.user?.name, title: (c.game as any).players?.black?.user?.title, rating: (c.game as any).players?.black?.rating },
+        },
+      },
+      selected: c.id === top.id,
+    }));
+    await (FeaturedSnapshot as any).findOneAndUpdate(
+      { key: 'current' },
+      { $set: { key: 'current', generated_at: new Date(generated_at), selected_id: top.id, weights, items } },
+      { upsert: true }
+    );
+  } catch (_e) {
+    // do not block selection on snapshot failures
+  }
 
   return top.game;
 }

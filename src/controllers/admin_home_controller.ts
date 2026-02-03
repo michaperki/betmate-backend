@@ -31,6 +31,13 @@ export const getAdminHome: RequestHandler = async (_req, res) => {
     const dbOk = mongoose.connection?.readyState === 1 || mongoose.connection?.readyState === 2;
     const microserviceUrl = process.env.MICROSERVICE_URL || '';
 
+    // Email provider info (best-effort)
+    let email = { provider: 'unset' } as any;
+    try {
+      const { getMailProviderInfo } = require('../services/email_service');
+      email = getMailProviderInfo();
+    } catch {}
+
     const env = {
       nodeEnv: process.env.NODE_ENV || 'development',
       version: version.appVersion,
@@ -38,6 +45,7 @@ export const getAdminHome: RequestHandler = async (_req, res) => {
       release: version.release,
       uptimeMs: (Date.now() - ((global as any).serverStartTime || Date.now())),
       provider: process.env.PAYMENTS_PROVIDER || 'unset',
+      email,
     };
 
     const riskSnap = risk ? {
@@ -59,4 +67,3 @@ export const getAdminHome: RequestHandler = async (_req, res) => {
 };
 
 export default { getAdminHome };
-

@@ -6,7 +6,7 @@
  * Only tweets about new games, not game results or betting events.
  */
 
-import logger from './axiom_logger';
+import logger from './logger';
 
 // Types for tweet queue management
 interface QueuedTweet {

@@ -74,10 +74,6 @@ app.use(cors({
       // Log and fail CORS
       try {
         logger.log({ level: 'warn', event: 'cors_block', context: { origin, allowedOrigins } });
-        // Temporary debug: print exact Origin seen by server
-        // Remove after confirming correct value is added to ALLOWED_ORIGINS
-        // eslint-disable-next-line no-console
-        console.log('CORS origin blocked:', origin, '\nAllowed:', allowedOrigins);
       } catch {}
       callback(new Error('Not allowed by CORS'));
     }
@@ -264,6 +260,8 @@ app.get('/api/status', async (_req, res) => {
       enableWithdrawals: !!(f as any).enableWithdrawals,
       requireKyc: !!(f as any).requireKyc,
       onboardingEnabled: (typeof (f as any).onboardingEnabled === 'boolean') ? !!(f as any).onboardingEnabled : true,
+      pauseGameIntake: !!(f as any).pauseGameIntake,
+      pauseMessage: (f as any).pauseMessage || undefined,
     };
     pricingModelVersion = f.pricingModelVersion || pricingModelVersion;
   } catch (_e) {
@@ -401,7 +399,9 @@ const connectSuccess = () => {
         logger.log({ level: 'error', event: 'purge_stale_games_error', context: { error: error?.message || String(error) } });
       } finally {
         // Start listening for Lichess games regardless
-        streamLoop(chessWebsocket).catch(console.error);
+        streamLoop(chessWebsocket).catch((e: any) => {
+          logger.log({ level: 'error', event: 'stream_loop_error', context: { error: e?.message || String(e) } });
+        });
       }
     })();
   }
@@ -468,7 +468,7 @@ function constructSrvUri(mongoUri) {
     // Build SRV URI with proper format
     return `mongodb+srv://${encodedUsername}:${encodedPassword}@${hostname}${pathname}${searchParams}`;
   } catch (error) {
-    console.error('Failed to parse MongoDB URI:', error.message);
+    logger.log({ level: 'error', event: 'mongo_uri_parse_error', context: { error: (error as Error)?.message || String(error) } });
     throw error;
   }
 }

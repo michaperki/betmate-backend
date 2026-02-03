@@ -11,6 +11,11 @@ import adminOpsController from '../controllers/admin_ops_controller';
 import adminWagerController from '../controllers/admin_wager_controller';
 import adminKycController from '../controllers/admin_kyc_controller';
 import adminFeaturedController from '../controllers/admin_featured_controller';
+import adminInvitesController from '../controllers/admin_invites_controller';
+import billingController from '../controllers/billing_controller';
+import adminAuditController from '../controllers/admin_audit_controller';
+import adminEmailController from '../controllers/admin_email_controller';
+import adminUsersController from '../controllers/admin_users_controller';
 
 const router = express.Router();
 
@@ -27,11 +32,18 @@ router.get('/exposure/games/:gameId', requireAdminAccess, adminRiskController.ge
 router.get('/features', requireAdminAccess, adminFeaturesController.getFeatures);
 router.put('/features', express.json(), requireAdminAccess, adminFeaturesController.updateFeatures);
 
+// Email (admin-only)
+router.post('/email/test', express.json(), requireAdminAccess, adminEmailController.sendTestEmail);
+router.post('/email/resend-verification', express.json(), requireAdminAccess, adminEmailController.resendVerification);
+router.post('/email/invites/bulk', express.json(), requireAdminAccess, adminEmailController.sendInviteEmailsBulk);
+router.post('/email/preprovision-invites', express.json(), requireAdminAccess, adminEmailController.preprovisionInvites);
+
 // Admin home snapshot
 router.get('/home', requireAdminAccess, adminHomeController.getAdminHome);
 
 // Wallet/deposits (admin view)
 router.get('/wallet/deposits', requireAdminAccess, adminWalletController.listDeposits);
+router.get('/wallet/volume/daily', requireAdminAccess, adminWalletController.getDailyPaymentVolume);
 // Dev/staging helper: clear stale pending invoices
 router.post('/dev/clear-stale-invoices', requireAdminAccess, express.json(), adminWalletController.clearStaleInvoices);
 // Wallet/withdrawals (admin view + actions)
@@ -47,11 +59,20 @@ router.post('/dev/clear-stale-wagers', requireAdminAccess, express.json(), admin
 // Ops & health
 router.get('/ops/stats', requireAdminAccess, adminOpsController.getOpsStats);
 router.get('/ops/ping', requireAdminAccess, adminOpsController.pingMicroservice);
+router.get('/ops/latency', requireAdminAccess, adminOpsController.latencySample);
+router.get('/ops/runtime', requireAdminAccess, adminOpsController.runtimeSnapshot);
 
 // KYC queue
 router.get('/kyc/users', requireAdminAccess, adminKycController.listKycUsers);
 router.post('/kyc/:id/approve', requireAdminAccess, adminKycController.approveKyc);
 router.post('/kyc/:id/reject', requireAdminAccess, adminKycController.rejectKyc);
+
+// Users (search + ledger)
+router.get('/users/search', requireAdminAccess, adminUsersController.searchUsers);
+router.get('/users/:id/ledger', requireAdminAccess, adminUsersController.getUserLedger);
+router.post('/users/:id/adjust-balance', express.json(), requireAdminAccess, adminUsersController.adjustBalance);
+router.post('/users/:id/role', express.json(), requireAdminAccess, adminUsersController.updateRole);
+router.delete('/users/:id', requireAdminAccess, adminUsersController.deleteUser);
 
 // Optional: reset in‑memory overrides (dev/staging convenience)
 router.post('/risk/reset', requireAdminAccess, (req, res) => {
@@ -99,5 +120,22 @@ router.post('/dev/stop-simulate', express.json(), requireAuth, (req, res, next) 
 
 // Inspect featured-game selector candidates and scores (admin)
 router.get('/featured/candidates', requireAdminAccess, adminFeaturedController.getFeaturedCandidates);
+router.get('/featured/snapshot', requireAdminAccess, adminFeaturedController.getFeaturedSnapshot);
+
+// Invite code management
+router.get('/invites', requireAdminAccess, adminInvitesController.listInviteCodes);
+router.get('/invites/stats', requireAdminAccess, adminInvitesController.getInviteStats);
+router.post('/invites', express.json(), requireAdminAccess, adminInvitesController.createInviteCode);
+router.post('/invites/bulk', express.json(), requireAdminAccess, adminInvitesController.createBulkInviteCodes);
+router.put('/invites/:id', express.json(), requireAdminAccess, adminInvitesController.updateInviteCode);
+router.delete('/invites/:id', requireAdminAccess, adminInvitesController.deleteInviteCode);
+
+// Payments reconciliation (admin wrapper around billing controller)
+router.post('/payments/reconcile/deposits', requireAdminAccess, billingController.reconcileNowpaymentsPending);
+router.post('/payments/reconcile/payouts', requireAdminAccess, billingController.reconcileNowpaymentsPayouts);
+router.post('/payments/reissue/:id', requireAdminAccess, billingController.reissueNowpaymentsInvoice);
+
+// Audit (stub read-only until model lands)
+router.get('/audit', requireAdminAccess, adminAuditController.getAuditEntries);
 
 export default router;

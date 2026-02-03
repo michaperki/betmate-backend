@@ -5,10 +5,11 @@ import { createCharge } from '../services/providers/coinbase_commerce';
 import { createTransaction, verifyIPN } from '../services/providers/coinpayments';
 import { createPayment as createNowPayment, createInvoice as createNowInvoice, estimatePayAmountUSD, verifyWebhookSignature as verifyNowpSig, getPayment as getNowPayment } from '../services/providers/nowpayments';
 import userService from '../services/user_service';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import type { RequestWithJWT } from '../types/requests';
 import { verifyWebhookSignature as verifyNowSig } from '../services/providers/nowpayments';
 import { getPayout as getNowPayout } from '../services/providers/nowpayments_payouts';
+import { writeAuditEntry } from '../utils/admin_audit';
 
 export const createDepositIntent: RequestHandler = async (req: ValidatedRequestWithJWT<any>, res) => {
   try {
@@ -152,6 +153,18 @@ export const coinpaymentsWebhook: RequestHandler = async (req, res) => {
       try {
         await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
         await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
+        // Notify user (best-effort)
+        try {
+          const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+          const ff = await getRuntimeFeatures();
+          if ((ff as any)?.enableEmailDeposits) {
+            const user = await Users.findById(dep.user_id).lean();
+            if (user && (user as any).email) {
+              const { sendDepositReceipt } = require('../services/email_service');
+              await sendDepositReceipt((user as any).email, Number(dep.amount || 0), String(dep.currency || 'USDT'), String(dep._id));
+            }
+          }
+        } catch {}
       } catch (creditErr) {
         logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
       }
@@ -324,21 +337,25 @@ export const faucetCredit: RequestHandler = async (req: ValidatedRequestWithJWT<
     const isDev = process.env.NODE_ENV === 'development';
     const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
     const ff = await getRuntimeFeatures();
-    const enabled = ff.enableFaucet || process.env.ENABLE_FAUCET === 'true';
+    // If faucet is enabled via admin feature flag, treat it as fully enabled without extra admin-key guard.
+    const enabledViaFeature = !!ff.enableFaucet;
+    const enabledViaEnv = process.env.ENABLE_FAUCET === 'true';
+    const enabled = enabledViaFeature || enabledViaEnv;
     if (!enabled) {
       return res.status(403).json({ error: 'Faucet disabled' });
     }
 
-    // In non-dev environments, require an admin key by default to prevent abuse.
-    // You can explicitly disable this requirement by setting FAUCET_REQUIRE_ADMIN_KEY=false
-    // (useful on staging). If unset, the default is to require the key.
-    const requireKeyEnv = process.env.FAUCET_REQUIRE_ADMIN_KEY;
-    const requireAdminKey = (requireKeyEnv == null) ? true : (String(requireKeyEnv).toLowerCase() === 'true');
-    if (!isDev && requireAdminKey) {
-      const adminKey = process.env.ADMIN_API_KEY;
-      const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
-      if (!adminKey || !provided || provided !== adminKey) {
-        return res.status(401).json({ error: 'Unauthorized' });
+    // If faucet is enabled via DB feature toggle, allow any authenticated user to use it.
+    // Otherwise (enabled only via env), enforce the admin key outside of dev unless explicitly disabled.
+    if (!enabledViaFeature) {
+      const requireKeyEnv = process.env.FAUCET_REQUIRE_ADMIN_KEY;
+      const requireAdminKey = (requireKeyEnv == null) ? true : (String(requireKeyEnv).toLowerCase() === 'true');
+      if (!isDev && requireAdminKey) {
+        const adminKey = process.env.ADMIN_API_KEY;
+        const provided = req.header('X-Admin-Key') || req.header('x-admin-key');
+        if (!adminKey || !provided || provided !== adminKey) {
+          return res.status(401).json({ error: 'Unauthorized' });
+        }
       }
     }
 
@@ -501,6 +518,15 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
       return res.status(500).json({ error: 'Failed to place hold' });
     }
 
+    try {
+      const { getFeatures: getRuntimeFeatures } = require('../utils/features_runtime');
+      const ff = await getRuntimeFeatures();
+      if ((ff as any)?.enableEmailWithdrawals) {
+        const { sendWithdrawalStatusEmail } = require('../services/email_service');
+        await sendWithdrawalStatusEmail((freshUser as any).email, 'requested', amt, payCurrency, String(wd._id));
+      }
+    } catch {}
+
     return res.status(200).json({ ok: true, withdrawal_id: String(wd._id) });
   } catch (e) {
     return res.status(500).json({ error: 'Withdrawal request error' });
@@ -538,6 +564,7 @@ export const cancelWithdrawal: RequestHandler = async (req: RequestWithJWT, res)
 // Admin-only: reconcile NOWPayments pending deposits by polling provider
 export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
   try {
+    const dry = String((req.query.dryRun || req.query.dry_run || '') as string).toLowerCase() === 'true';
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const items = await Deposit.find({ provider: 'nowpayments', status: 'pending' }).sort({ created_at: 1 }).limit(limit);
     const results: any[] = [];
@@ -550,26 +577,31 @@ export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
         const confirmed = status === 'confirmed' || status === 'finished' || status === 'completed' || status === 'paid';
         const failed = status === 'failed' || status === 'cancelled';
         if (confirmed && dep.status !== 'confirmed') {
-          dep.status = 'confirmed';
-          await dep.save();
-          try {
-            await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
-            await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
-          } catch (creditErr) {
-            logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
+          if (!dry) {
+            dep.status = 'confirmed';
+            await dep.save();
+            try {
+              await userService.updateUserData(dep.user_id, { $inc: { cash_balance: dep.amount } });
+              await userService.recordBalanceChange(dep.user_id, dep.amount, 'Deposit', String(dep._id), 'Deposit', 'USDT');
+            } catch (creditErr) {
+              logger.log({ level: 'error', event: 'deposit_credit_error', context: { deposit_id: String(dep._id), message: (creditErr as any)?.message } });
+            }
           }
-          results.push({ id: String(dep._id), provider_ref: ref, status: 'confirmed' });
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'confirmed', dryRun: dry });
         } else if (failed && dep.status !== 'confirmed') {
-          dep.status = 'failed';
-          await dep.save();
-          results.push({ id: String(dep._id), provider_ref: ref, status: 'failed' });
+          if (!dry) {
+            dep.status = 'failed';
+            await dep.save();
+          }
+          results.push({ id: String(dep._id), provider_ref: ref, status: 'failed', dryRun: dry });
         } else {
-          results.push({ id: String(dep._id), provider_ref: ref, status: dep.status });
+          results.push({ id: String(dep._id), provider_ref: ref, status: dep.status, dryRun: dry });
         }
       } catch (e) {
-        results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+        results.push({ id: String(dep._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed', dryRun: dry });
       }
     }
+    try { await writeAuditEntry(req as any, 'payments.reconcile.deposits', undefined, `count=${results.length}`); } catch {}
     return res.status(200).json({ ok: true, count: results.length, results });
   } catch (e) {
     return res.status(500).json({ error: 'Reconciliation error' });
@@ -579,6 +611,7 @@ export const reconcileNowpaymentsPending: RequestHandler = async (req, res) => {
 // Admin-only: reconcile NOWPayments pending payouts by polling provider
 export const reconcileNowpaymentsPayouts: RequestHandler = async (req, res) => {
   try {
+    const dry = String((req.query.dryRun || req.query.dry_run || '') as string).toLowerCase() === 'true';
     const limit = Math.max(1, Math.min(100, Number(req.query.limit) || 20));
     const items = await Withdrawal.find({ provider: 'nowpayments', status: { $in: ['processing','approved'] } }).sort({ created_at: 1 }).limit(limit);
     const results: any[] = [];
@@ -591,24 +624,29 @@ export const reconcileNowpaymentsPayouts: RequestHandler = async (req, res) => {
         const confirmed = ['confirmed','finished','completed','paid','success'].includes(status);
         const failed = ['failed','cancelled','rejected','error'].includes(status);
         if (confirmed && wd.status !== 'paid') {
-          wd.status = 'paid';
-          await wd.save();
-          results.push({ id: String(wd._id), provider_ref: ref, status: 'paid' });
+          if (!dry) {
+            wd.status = 'paid';
+            await wd.save();
+          }
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'paid', dryRun: dry });
         } else if (failed && wd.status !== 'paid') {
-          try {
-            await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
-            await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
-          } catch {}
-          wd.status = 'failed';
-          await wd.save();
-          results.push({ id: String(wd._id), provider_ref: ref, status: 'failed' });
+          if (!dry) {
+            try {
+              await userService.updateUserData(wd.user_id, { $inc: { cash_balance: wd.amount } });
+              await userService.recordBalanceChange(wd.user_id, wd.amount, 'Withdrawal refund', String(wd._id), 'Withdrawal', 'USDT');
+            } catch {}
+            wd.status = 'failed';
+            await wd.save();
+          }
+          results.push({ id: String(wd._id), provider_ref: ref, status: 'failed', dryRun: dry });
         } else {
-          results.push({ id: String(wd._id), provider_ref: ref, status: wd.status });
+          results.push({ id: String(wd._id), provider_ref: ref, status: wd.status, dryRun: dry });
         }
       } catch (e) {
-        results.push({ id: String(wd._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed' });
+        results.push({ id: String(wd._id), provider_ref: ref, error: (e as any)?.message || 'fetch_failed', dryRun: dry });
       }
     }
+    try { await writeAuditEntry(req as any, 'payments.reconcile.payouts', undefined, `count=${results.length}`); } catch {}
     return res.status(200).json({ ok: true, count: results.length, results });
   } catch (e) {
     return res.status(500).json({ error: 'Reconciliation error' });
@@ -654,6 +692,7 @@ export const reissueNowpaymentsInvoice: RequestHandler = async (req, res) => {
     dep.status = 'pending';
     await dep.save();
     const url = (dep.metadata as any)?.payment_url || '#';
+    try { await writeAuditEntry(req as any, 'payments.reissue.invoice', String(dep._id), String(dep.provider_ref || '')); } catch {}
     return res.status(200).json({ ok: true, deposit_id: String(dep._id), provider_ref: dep.provider_ref, payment_url: url });
   } catch (e) {
     return res.status(500).json({ error: 'Reissue error' });

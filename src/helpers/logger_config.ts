@@ -47,7 +47,7 @@ const defaultConfig: LoggerConfig = {
 
 // Development environment configuration
 const developmentConfig: Partial<LoggerConfig> = {
-  minLevel: 'debug',
+  minLevel: 'info',
   prettyPrint: true,
   enableColors: true,
   requestSampleRate: 0.1,
@@ -57,7 +57,9 @@ const developmentConfig: Partial<LoggerConfig> = {
   mutedEvents: [
     'featured_candidate_scored',
     'wdl_timeout',
-    'top_moves_timeout'
+    'top_moves_timeout',
+    'logging',
+    'lichess_cooldown_wait'
   ],
   verboseFeatures: []
 };
@@ -67,7 +69,9 @@ const productionConfig: Partial<LoggerConfig> = {
   minLevel: 'info',
   prettyPrint: false,
   enableColors: false,
-  requestSampleRate: 0.01,
+  requestSampleRate: 0.005,
+  slowRequestThreshold: 1500,
+  pollingSlowRequestThreshold: 800,
   includePerformanceMetrics: true,
   includeResourceMetrics: true
 };

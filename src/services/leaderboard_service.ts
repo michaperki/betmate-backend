@@ -21,14 +21,20 @@ const getLeaderboardSection = (start: number, end: number, id?: Types.ObjectId |
     .sort({ created_at: -1 })
     .select(['rankings', 'rankings_size', '_id'])
     .slice('rankings', [start, end - start])
-    .then(dbNullDocHandler)
     .then((doc): LeaderboardSection => {
-      // Ensure _id is included by explicitly including it in the return type
+      // If no leaderboard exists yet, return an empty section instead of 404
+      if (!doc) {
+        return {
+          _id: 'empty' as unknown as any,
+          rankings: [],
+          rankings_size: 0,
+        } as unknown as LeaderboardSection;
+      }
       return {
         _id: doc._id,
         rankings: doc.rankings,
         rankings_size: doc.rankings_size
-      };
+      } as LeaderboardSection;
     })
     .catch(dbErrorHandler)
 );
@@ -39,8 +45,8 @@ const getUserRanking = (userID: Types.ObjectId | string, id?: Types.ObjectId | s
     .findOne(id ? { _id: id } : undefined)
     .sort({ created_at: -1 })
     .select(`user_ranks.${userID}`)
-    .then(dbNullDocHandler)
     .then((doc) => {
+      if (!doc) return { has_rank: false };
       const rank = doc.user_ranks.get(String(userID));
       if (!rank) return { has_rank: false };
       return rank as Rank;

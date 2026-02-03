@@ -8,7 +8,7 @@
  * Uses environment variable ENABLE_TWITTER=true to activate
  */
 
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import tweetQueue from '../helpers/tweet_queue';
 
 const twitterDebug = process.env.LOG_TWITTER_DEBUG === 'true';

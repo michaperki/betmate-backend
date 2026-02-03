@@ -2,7 +2,7 @@ import { RequestHandler } from 'express';
 import { ValidatedRequest } from 'express-joi-validation';
 
 import { chessService } from '../services';
-import logger from '../helpers/axiom_logger';
+import logger from '../helpers/logger';
 import { GetManyGamesRequest } from '../validation/chess';
 import { handleSuccess, handleFailure } from './utils';
 
