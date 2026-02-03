@@ -36,6 +36,7 @@ router.put('/features', express.json(), requireAdminAccess, adminFeaturesControl
 router.post('/email/test', express.json(), requireAdminAccess, adminEmailController.sendTestEmail);
 router.post('/email/resend-verification', express.json(), requireAdminAccess, adminEmailController.resendVerification);
 router.post('/email/invites/bulk', express.json(), requireAdminAccess, adminEmailController.sendInviteEmailsBulk);
+router.post('/email/preprovision-invites', express.json(), requireAdminAccess, adminEmailController.preprovisionInvites);
 
 // Admin home snapshot
 router.get('/home', requireAdminAccess, adminHomeController.getAdminHome);

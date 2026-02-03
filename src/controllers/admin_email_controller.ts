@@ -106,6 +106,74 @@ const adminEmailController = {
       return res.status(500).json({ ok: false, error: 'Bulk invite failed' });
     }
   },
+  // Admin-only: pre-provision users and send magic login links (beta campaign)
+  async preprovisionInvites(req: Request, res: Response) {
+    try {
+      const { recipients, campaign, ttl_min, grant_tokens, grant_cash_usd, deleteExisting } = (req.body || {}) as any;
+      const list: Array<{ email: string; first_name?: string; last_name?: string; name?: string }> = Array.isArray(recipients) ? recipients : [];
+      if (!Array.isArray(list) || list.length === 0) {
+        return res.status(400).json({ ok: false, error: 'Missing recipients' });
+      }
+      const camp = String(campaign || 'BETA');
+      const ttlMin = Math.max(5, Number(ttl_min || (60 * 24 * 7))); // default 7 days
+      const grantTok = Number(grant_tokens || 0);
+      const grantCash = Number(grant_cash_usd || 0);
+
+      const base = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+      const results: any[] = [];
+      for (const r of list) {
+        const email = String(r?.email || '').toLowerCase().trim();
+        const first = safeString(r?.first_name || r?.name, 80) || '';
+        const last = safeString(r?.last_name, 80) || '';
+        if (!email || !validator.validate(email)) {
+          results.push({ email, error: 'invalid_email' });
+          continue;
+        }
+        let user = await userService.getUserByEmail(email);
+        try {
+          if (!user && deleteExisting === true) {
+            // no-op; kept for symmetry
+          }
+        } catch {}
+        if (!user) {
+          // Create with random strong password; mark verified
+          const randomPass = crypto.randomBytes(18).toString('hex');
+          user = await userService.createUser({ email, password: randomPass, first_name: first, last_name: last });
+          try { await userService.updateUserData(user._id, { $set: { email_verified: true } } as any); } catch {}
+        } else {
+          // Ensure verified for frictionless magic-login
+          try { await userService.updateUserData(user._id, { $set: { email_verified: true } } as any); } catch {}
+        }
+        // Apply optional signup grants
+        try {
+          const inc: any = {};
+          if (grantTok > 0) inc.token_balance = grantTok;
+          if (grantCash > 0) inc.cash_balance = grantCash;
+          if (Object.keys(inc).length) {
+            await userService.updateUserData((user as any)._id, { $inc: inc } as any);
+            if (grantTok > 0) await userService.recordBalanceChange((user as any)._id, grantTok, 'Signup bonus', undefined, 'Invite', 'BET');
+            if (grantCash > 0) await userService.recordBalanceChange((user as any)._id, grantCash, 'Signup bonus', undefined, 'Invite', 'USDT');
+          }
+        } catch {}
+
+        // Issue magic link
+        const token = crypto.randomBytes(24).toString('hex');
+        const expires = new Date(Date.now() + ttlMin * 60 * 1000);
+        await userService.updateUserData((user as any)._id, { $set: { magic_login_token: token, magic_login_expires: expires, magic_login_used_at: undefined } } as any);
+        const magicUrl = `${base}/magic/${encodeURIComponent(token)}?tour=1`;
+        try {
+          await sendMagicLinkEmail(email, magicUrl, first || undefined, camp);
+          results.push({ email, user_id: String((user as any)._id), magicUrl });
+        } catch (_e) {
+          results.push({ email, user_id: String((user as any)._id), magicUrl, error: 'send_failed' });
+        }
+      }
+      try { await writeAuditEntry(req as any, 'email.preprovision', undefined, `count=${results.length}`, { campaign: camp }); } catch {}
+      return res.status(200).json({ ok: true, count: results.length, results });
+    } catch (e: any) {
+      return res.status(500).json({ ok: false, error: 'preprovision_failed' });
+    }
+  },
 };
 
 export default adminEmailController;
@@ -117,18 +185,41 @@ function autoCode(prefix = 'BETA') {
 }
 
 async function sendInviteEmail(to: string, code: string, campaign?: string) {
-  // Lightweight invite email via email_service
+  // Lightweight invite email with link + accessible pill
   const transporter = getEmailTransporterLazy();
   const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
   const replyTo = process.env.REPLY_TO || undefined;
   const subject = `You're invited to BetMate${campaign ? ` — ${campaign}` : ''}`;
-  const body = `You're invited to BetMate! Use invite code ${code} during signup.`;
+  const base = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+  const link = `${base}/onboarding?code=${encodeURIComponent(code)}`;
+  const body = `You're invited to BetMate! Use invite code ${code} during signup, or click ${link}`;
   const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px;">
     <p>You're invited to <strong>BetMate</strong>!</p>
     <p>Use this invite code during signup:</p>
-    <p style="font-size:16px;background:#111;padding:8px 10px;border-radius:4px;display:inline-block;letter-spacing:1px">${escapeHtml(code)}</p>
+    <p style="font-size:16px;background:#111;color:#fff;padding:8px 10px;border-radius:4px;display:inline-block;letter-spacing:1px">${escapeHtml(code)}</p>
+    <p style="margin:12px 0 6px">Or start onboarding with your code pre‑applied:</p>
+    <p><a href="${link}" style="background:#4a90e2;color:#fff;padding:10px 14px;border-radius:4px;text-decoration:none;display:inline-block">Start Onboarding</a></p>
+    <p style="color:#666">Plain link: <a href="${link}">${link}</a></p>
   </div>`;
   const tx: any = { from, to, subject, text: body, html };
+  if (replyTo) tx.replyTo = replyTo;
+  await transporter.sendMail(tx);
+}
+
+async function sendMagicLinkEmail(to: string, magicUrl: string, name?: string, campaign?: string) {
+  const transporter = getEmailTransporterLazy();
+  const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
+  const replyTo = process.env.REPLY_TO || undefined;
+  const subject = `Your BetMate access${campaign ? ` — ${campaign}` : ''}`;
+  const displayName = name ? escapeHtml(name) : 'there';
+  const text = `Hi ${displayName},\n\nTap this link to access your BetMate account:\n${magicUrl}\n\nThis link will expire soon. If you did not expect this, you can ignore the email.`;
+  const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px;">
+    <p>Hi ${displayName},</p>
+    <p>Your beta access is ready. Tap the button to jump in:</p>
+    <p><a href="${magicUrl}" style="background:#4a90e2;color:#fff;padding:10px 14px;border-radius:4px;text-decoration:none;display:inline-block">Open BetMate</a></p>
+    <p style="color:#666">Or open this link: <a href="${magicUrl}">${magicUrl}</a></p>
+  </div>`;
+  const tx: any = { from, to, subject, text, html };
   if (replyTo) tx.replyTo = replyTo;
   await transporter.sendMail(tx);
 }

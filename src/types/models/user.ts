@@ -38,6 +38,9 @@ export interface UserDoc extends Document {
   email_verified?: boolean,
   verification_token?: string,
   verification_token_expires?: Date,
+  magic_login_token?: string,
+  magic_login_expires?: Date,
+  magic_login_used_at?: Date,
   isNew: boolean,
   isModified: (path: string) => boolean,
   comparePassword: (password: string, callback: CompareCallback) => void

@@ -14,6 +14,8 @@ import { SignUpUserSchema } from '../validation/auth';
 import { handleValidationError } from '../validation';
 import crypto from 'crypto';
 import { sendVerificationEmail } from '../services/email_service';
+import { refreshTokenService, userService } from '../services';
+import { tokenForUser } from '../helpers/utils';
 
 const router = express();
 const validator = createValidator({ passError: true });
@@ -59,6 +61,30 @@ router.route('/refresh-token')
 
 router.route('/logout')
   .post(requireAuth, authController.logout);
+
+// Magic-link login: exchange single-use token for JWT
+router.route('/magic/:token')
+  .get(sensitiveActionLimiter, async (req, res) => {
+    try {
+      const token = String(req.params.token || '').trim();
+      if (!token) return res.status(400).json({ error: 'Invalid token' });
+      const users = await userService.getUsers({ magic_login_token: token } as any);
+      const match = (users || []).find((u: any) => u.magic_login_token === token);
+      if (!match) return res.status(400).json({ error: 'Invalid token' });
+      const now = Date.now();
+      const exp = match.magic_login_expires ? new Date(match.magic_login_expires).getTime() : 0;
+      if (!exp || exp < now) return res.status(400).json({ error: 'Token expired' });
+      // Invalidate token (single-use) and mark verified (frictionless beta)
+      const updated = await userService.updateUserData(match._id, { $unset: { magic_login_token: '', magic_login_expires: '' } as any, $set: { magic_login_used_at: new Date(), email_verified: true } as any });
+      // Generate CSRF token
+      const csrfToken = uuidv4();
+      const refreshToken = await refreshTokenService.createRefreshToken(updated._id);
+      const jwtToken = tokenForUser(updated, 15);
+      return res.status(200).json({ token: jwtToken, refreshToken: refreshToken.token, csrfToken, user: updated });
+    } catch (e) {
+      return res.status(500).json({ error: 'Magic login failed' });
+    }
+  });
 
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
