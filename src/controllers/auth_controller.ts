@@ -27,9 +27,10 @@ const signUpUserRequest: RequestHandler = async (req: ValidatedRequest<SignUpUse
       email, password, firstName, lastName, invite_code, device_id,
     } = req.body;
 
-    // Enforce invite gating only when enabled
-    const gatingEnabled = (process.env.INVITE_GATING_ENABLED || '').toLowerCase() === 'true'
-      || (process.env.NODE_ENV === 'production');
+    // Enforce invite gating only when explicitly enabled via env.
+    // Previously this defaulted to true in production which blocked normal onboarding.
+    // Now gating is controlled solely by INVITE_GATING_ENABLED to allow normal signup flows in staging/prod.
+    const gatingEnabled = (process.env.INVITE_GATING_ENABLED || '').toLowerCase() === 'true';
     const rawCode = String(invite_code || '').trim();
 
     let invite: any = null;
