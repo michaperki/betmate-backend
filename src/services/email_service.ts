@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import getEmailTransporter from './email_transporter';
+import getFrontendBase from '../helpers/frontend_base';
 import logger from '../helpers/logger';
 
 type SendTestEmailInput = {
@@ -45,8 +46,8 @@ export async function sendVerificationEmail(to: string, token: string, firstName
   const transporter = getEmailTransporter();
   const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
   const replyTo = process.env.REPLY_TO || undefined;
-  const base = process.env.FRONTEND_URL || 'http://localhost:8080';
-  const link = `${base.replace(/\/$/, '')}/verify-email/${encodeURIComponent(token)}`;
+  const base = getFrontendBase();
+  const link = `${base}/verify-email/${encodeURIComponent(token)}`;
   const name = firstName ? escapeHtml(firstName) : 'there';
   const subject = 'Verify your BetMate email';
   const text = `Hi ${firstName || 'there'},\n\nPlease verify your email by clicking this link:\n${link}\n\nIf you did not sign up, you can ignore this email.`;

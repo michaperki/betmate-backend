@@ -6,6 +6,7 @@ import userService from '../services/user_service';
 import { InviteCode } from '../models';
 import crypto from 'crypto';
 import { writeAuditEntry } from '../utils/admin_audit';
+import getFrontendBase from '../helpers/frontend_base';
 
 const MAX_SUBJECT = 200;
 const MAX_MESSAGE = 2000;
@@ -119,7 +120,7 @@ const adminEmailController = {
       const grantTok = Number(grant_tokens || 0);
       const grantCash = Number(grant_cash_usd || 0);
 
-      const base = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+      const base = getFrontendBase();
       const results: any[] = [];
       for (const r of list) {
         const email = String(r?.email || '').toLowerCase().trim();
@@ -190,7 +191,7 @@ async function sendInviteEmail(to: string, code: string, campaign?: string) {
   const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
   const replyTo = process.env.REPLY_TO || undefined;
   const subject = `You're invited to BetMate${campaign ? ` — ${campaign}` : ''}`;
-  const base = (process.env.FRONTEND_URL || 'http://localhost:8080').replace(/\/$/, '');
+  const base = getFrontendBase();
   const link = `${base}/onboarding?code=${encodeURIComponent(code)}`;
   const body = `You're invited to BetMate! Use invite code ${code} during signup, or click ${link}`;
   const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px;">
