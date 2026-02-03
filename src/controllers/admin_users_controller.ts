@@ -1,6 +1,6 @@
 import { RequestHandler } from 'express';
 import mongoose, { Types } from 'mongoose';
-import { Users } from '../models';
+import { Users, Wager, BalanceHistory } from '../models';
 import userService from '../services/user_service';
 import { writeAuditEntry } from '../utils/admin_audit';
 
@@ -104,4 +104,38 @@ export const updateRole: RequestHandler = async (req, res) => {
   }
 };
 
-export default { searchUsers, getUserLedger, adjustBalance, updateRole };
+export const deleteUser: RequestHandler = async (req, res) => {
+  try {
+    const id = String(req.params.id || '');
+    if (!mongoose.isValidObjectId(id)) return res.status(400).json({ error: 'Invalid user id' });
+
+    const target = await Users.findById(id).lean();
+    if (!target) return res.status(404).json({ error: 'User not found' });
+
+    // Prevent deleting the last admin account
+    if ((target as any).role === 'admin') {
+      const countAdmins = await Users.countDocuments({ role: 'admin' });
+      if (countAdmins <= 1) {
+        return res.status(400).json({ error: 'Cannot delete the last admin account' });
+      }
+    }
+
+    const cascade = String(req.query.cascade || '1') !== '0';
+    if (cascade) {
+      await Promise.all([
+        // Remove wagers and balance history owned by the user to keep admin UI tidy
+        Wager.deleteMany({ better_id: new Types.ObjectId(id) }),
+        BalanceHistory.deleteMany({ user_id: new Types.ObjectId(id) }),
+      ]);
+    }
+
+    const ok = await userService.deleteUser(id);
+    if (!ok) return res.status(404).json({ error: 'User not found' });
+    try { await writeAuditEntry(req as any, 'user.delete', id, cascade ? 'cascade' : 'no-cascade'); } catch {}
+    return res.status(200).json({ ok: true, deleted: id, cascade });
+  } catch (e: any) {
+    return res.status(500).json({ error: e?.message || 'Delete failed' });
+  }
+};
+
+export default { searchUsers, getUserLedger, adjustBalance, updateRole, deleteUser };

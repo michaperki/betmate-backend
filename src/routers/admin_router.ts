@@ -72,6 +72,7 @@ router.get('/users/search', requireAdminAccess, adminUsersController.searchUsers
 router.get('/users/:id/ledger', requireAdminAccess, adminUsersController.getUserLedger);
 router.post('/users/:id/adjust-balance', express.json(), requireAdminAccess, adminUsersController.adjustBalance);
 router.post('/users/:id/role', express.json(), requireAdminAccess, adminUsersController.updateRole);
+router.delete('/users/:id', requireAdminAccess, adminUsersController.deleteUser);
 
 // Optional: reset in‑memory overrides (dev/staging convenience)
 router.post('/risk/reset', requireAdminAccess, (req, res) => {
