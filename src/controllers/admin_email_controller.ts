@@ -236,8 +236,8 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
   const subject = `Your BetMate beta access${campaign ? ` — ${campaign}` : ''}`;
 
   const grantLines: string[] = [];
-  if (grantCash > 0) grantLines.push(`• $${grantCash.toFixed(2)} USDT credit`);
-  if (grantTokens > 0) grantLines.push(`• ${Math.round(grantTokens)} BET tokens`);
+  if (grantCash > 0) grantLines.push(`• $${grantCash.toFixed(2)} BetMate Cash`);
+  if (grantTokens > 0) grantLines.push(`• ${Math.round(grantTokens)} K‑Bits`);
 
   const text = [
     `Hi ${displayName},`,
@@ -248,7 +248,7 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
     ...(hasGrant ? [`We’ve also added a beta grant to your account:`, ...grantLines, ''] : []),
     `Important notes:`,
     `• This is a beta product. Features may change and availability is not guaranteed.`,
-    `• Only cash (USDT) winnings are eligible for withdrawal (subject to limits/verification and Terms).`,
+    `• Only BetMate Cash winnings are eligible for withdrawal (subject to limits/verification and Terms).`,
     `• This link is single‑use and will expire${expText ? ` on ${expText}` : ' soon'}.`,
     '',
     `If you did not request this, you can ignore this email.`,
@@ -258,8 +258,8 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
     ? `<div style="margin:14px 0;padding:12px;border:1px solid #eee;border-radius:8px;background:#fafafa">
         <div style="font-weight:600;margin-bottom:6px">Your beta grant</div>
         <ul style="margin:0;padding-left:18px;color:#333">
-          ${grantCash > 0 ? `<li><strong>$${grantCash.toFixed(2)} USDT</strong> credit</li>` : ''}
-          ${grantTokens > 0 ? `<li><strong>${escapeHtml(String(Math.round(grantTokens)))} BET</strong> tokens</li>` : ''}
+          ${grantCash > 0 ? `<li><strong>$${grantCash.toFixed(2)} BetMate Cash</strong></li>` : ''}
+          ${grantTokens > 0 ? `<li><strong>${escapeHtml(String(Math.round(grantTokens)))} K‑Bits</strong></li>` : ''}
         </ul>
       </div>`
     : '';
@@ -280,7 +280,7 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
       <div style="font-weight:600;margin-bottom:6px">Important notes</div>
       <ul style="margin:0;padding-left:18px">
         <li>This is a beta product; features may change and availability is not guaranteed.</li>
-        <li>Only cash (USDT) winnings are eligible for withdrawal (subject to limits/verification and Terms).</li>
+        <li>Only <strong>BetMate Cash</strong> winnings are eligible for withdrawal (subject to limits/verification and Terms).</li>
         <li>This link is single‑use and will expire${expText ? ` on <strong>${escapeHtml(expText)}</strong>` : ' soon'}.</li>
       </ul>
     </div>
