@@ -312,8 +312,8 @@ app.get('/api/status', async (_req, res) => {
   // Quick microservice health probe (non-fatal)
   let microservice: any = {};
   try {
-    const base = runtimeConfig.microservice.baseUrl;
-    const url = `${base}/dev/health`;
+    const base = (runtimeConfig.microservice.baseUrl || '').replace(/\/+$/, '');
+    const url = `${base}/health`;
     const started = Date.now();
     const timeoutMs = Math.max(200, Number(process.env.MICROSERVICE_HEALTH_TIMEOUT_MS || 1500));
     const resp = await axios.get(url, { timeout: timeoutMs }).catch(() => null);
