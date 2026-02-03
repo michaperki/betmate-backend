@@ -312,11 +312,7 @@ app.get('/api/status', async (_req, res) => {
   // Quick microservice health probe (non-fatal)
   let microservice: any = {};
   try {
-    const rawBase = (runtimeConfig.microservice.baseUrl || '').replace(/\/+$/, '');
-    // Append '/dev' stage automatically in non-production if the base doesn't already include a stage suffix
-    const isProd = (process.env.NODE_ENV || 'development') === 'production';
-    const needsStage = !isProd && !/\/(dev|staging|prod)$/i.test(rawBase);
-    const base = needsStage ? `${rawBase}/dev` : rawBase;
+    const base = (runtimeConfig.microservice.baseUrl || '').replace(/\/+$/, '');
     const url = `${base}/health`;
     const started = Date.now();
     const timeoutMs = Math.max(200, Number(process.env.MICROSERVICE_HEALTH_TIMEOUT_MS || 1500));
