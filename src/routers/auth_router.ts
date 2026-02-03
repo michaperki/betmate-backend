@@ -14,7 +14,7 @@ import { SignUpUserSchema } from '../validation/auth';
 import { handleValidationError } from '../validation';
 import crypto from 'crypto';
 import { sendVerificationEmail } from '../services/email_service';
-import { refreshTokenService, userService } from '../services';
+import { refreshTokenService } from '../services';
 import { tokenForUser } from '../helpers/utils';
 
 const router = express();
