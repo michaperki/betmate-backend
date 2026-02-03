@@ -3,6 +3,7 @@ import mongoose, { Types } from 'mongoose';
 import { Users, Wager, BalanceHistory } from '../models';
 import userService from '../services/user_service';
 import { writeAuditEntry } from '../utils/admin_audit';
+import { UserRole } from '../types/models/user';
 
 export const searchUsers: RequestHandler = async (req, res) => {
   try {
@@ -93,9 +94,12 @@ export const updateRole: RequestHandler = async (req, res) => {
   try {
     const id = String(req.params.id || '');
     const { role } = (req.body || {}) as { role?: string };
-    const allowed = ['user', 'admin'];
-    if (!allowed.includes(String(role))) return res.status(400).json({ error: 'Invalid role' });
-    const u = await Users.findByIdAndUpdate(id, { $set: { role: role } }, { new: true });
+    const allowed = ['user', 'admin'] as const;
+    const r = String(role).toLowerCase();
+    if (!allowed.includes(r as any)) return res.status(400).json({ error: 'Invalid role' });
+
+    const newRole = r === 'admin' ? UserRole.ADMIN : UserRole.USER;
+    const u = await Users.findByIdAndUpdate(id, { $set: { role: newRole } }, { new: true });
     if (!u) return res.status(404).json({ error: 'User not found' });
     try { await writeAuditEntry(req as any, 'user.update_role', id, String(role)); } catch {}
     return res.status(200).json({ ok: true, user: { _id: String(u._id), role: (u as any).role } });
@@ -113,8 +117,8 @@ export const deleteUser: RequestHandler = async (req, res) => {
     if (!target) return res.status(404).json({ error: 'User not found' });
 
     // Prevent deleting the last admin account
-    if ((target as any).role === 'admin') {
-      const countAdmins = await Users.countDocuments({ role: 'admin' });
+    if ((target as any).role === UserRole.ADMIN) {
+      const countAdmins = await Users.countDocuments({ role: UserRole.ADMIN });
       if (countAdmins <= 1) {
         return res.status(400).json({ error: 'Cannot delete the last admin account' });
       }
@@ -124,8 +128,9 @@ export const deleteUser: RequestHandler = async (req, res) => {
     if (cascade) {
       await Promise.all([
         // Remove wagers and balance history owned by the user to keep admin UI tidy
-        Wager.deleteMany({ better_id: new Types.ObjectId(id) }),
-        BalanceHistory.deleteMany({ user_id: new Types.ObjectId(id) }),
+        // Pass string ids; mongoose will cast to ObjectId and TS types remain compatible.
+        Wager.deleteMany({ better_id: id as any }),
+        BalanceHistory.deleteMany({ user_id: id as any }),
       ]);
     }
 
