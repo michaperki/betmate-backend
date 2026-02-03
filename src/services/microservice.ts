@@ -18,9 +18,14 @@ const apiKey = env.get('MICROSERVICE_API_KEY').required().asString();
  * @param correlationId optional correlation ID for tracking related logs
  * @returns Promise of win/draw/loss odds, or null if issue occurs
  */
+// Normalize base URL and append local stage prefix in development if missing
+const RAW_BASE = (MICROSERVICE_URL || '').replace(/\/+$/, '');
+const IS_DEV_ENV = (process.env.NODE_ENV || 'development') !== 'production';
+const BASE_WITH_STAGE = (IS_DEV_ENV && !/\/(dev|staging|prod)$/i.test(RAW_BASE)) ? `${RAW_BASE}/dev` : RAW_BASE;
+
 const getWDL = (fen: string, white_time: number, black_time: number, correlationId?: string): Promise<WDLData> => {
   const trace_id = correlationId || getRequestId() || generateCorrelationId();
-  const url = `${MICROSERVICE_URL}/wdl?${querystring.stringify({ fen, white_time, black_time })}`;
+  const url = `${BASE_WITH_STAGE}/wdl?${querystring.stringify({ fen, white_time, black_time })}`;
   const startTime = Date.now();
 
   return axios
@@ -38,7 +43,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
         level: 'debug',
         event: 'wdl_success',
         trace_id,
-        context: { latency_ms: latency, fen_hash: fen.substring(0, 10) }
+        context: { latency_ms: latency, fen_hash: fen.substring(0, 10), url, base: BASE_WITH_STAGE }
       });
       return res.data.data;
     })
@@ -54,7 +59,9 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
           context: {
             timeout_ms: 5000,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10)
+            fen_hash: fen.substring(0, 10),
+            url,
+            base: BASE_WITH_STAGE,
           }
         });
       } else {
@@ -66,7 +73,9 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
             error: error.message,
             status: error.response?.status,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10)
+            fen_hash: fen.substring(0, 10),
+            url,
+            base: BASE_WITH_STAGE,
           }
         });
       }
@@ -89,7 +98,7 @@ const getWDL = (fen: string, white_time: number, black_time: number, correlation
  */
 const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<TopMoveData> => {
   const trace_id = correlationId || getRequestId() || generateCorrelationId();
-  const url = `${MICROSERVICE_URL}/top-moves?${querystring.stringify({ fen, n, enhanced: 'true' })}`;
+  const url = `${BASE_WITH_STAGE}/top-moves?${querystring.stringify({ fen, n, enhanced: 'true' })}`;
   const startTime = Date.now();
 
   return axios
@@ -111,7 +120,9 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           latency_ms: latency,
           fen_hash: fen.substring(0, 10),
           move_count: n,
-          returned_moves: res.data.data.length
+          returned_moves: res.data.data.length,
+          url,
+          base: BASE_WITH_STAGE,
         }
       });
 
@@ -143,7 +154,9 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
           context: {
             timeout_ms: 5000,
             latency_ms: latency,
-            fen_hash: fen.substring(0, 10)
+            fen_hash: fen.substring(0, 10),
+            url,
+            base: BASE_WITH_STAGE,
           }
         });
       } else {
@@ -155,7 +168,9 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
             error: error.message,
             latency_ms: latency,
             fen_hash: fen.substring(0, 10),
-            status: error.response?.status
+            status: error.response?.status,
+            url,
+            base: BASE_WITH_STAGE,
           }
         });
       }
@@ -175,7 +190,7 @@ const getTopMoves = (fen: string, n: number, correlationId?: string): Promise<To
 const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Promise<MoveAnalysisData> => {
   const trace_id = correlationId || getRequestId() || generateCorrelationId();
   // Add the enhanced flag to get the new format with move data
-  const url = `${MICROSERVICE_URL}/move-analysis?${querystring.stringify({ fen, move, enhanced: 'true' })}`;
+  const url = `${BASE_WITH_STAGE}/move-analysis?${querystring.stringify({ fen, move, enhanced: 'true' })}`;
   const startTime = Date.now();
 
   return axios
@@ -196,7 +211,9 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
         context: {
           latency_ms: latency,
           fen_hash: fen.substring(0, 10),
-          move
+          move,
+          url,
+          base: BASE_WITH_STAGE,
         }
       });
 
@@ -235,7 +252,9 @@ const getMoveAnalysis = (fen: string, move: string, correlationId?: string): Pro
             status: error.response?.status,
             latency_ms: latency,
             fen_hash: fen.substring(0, 10),
-            move
+            move,
+            url,
+            base: BASE_WITH_STAGE,
           }
         });
       }
