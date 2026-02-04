@@ -1,5 +1,6 @@
 import nodemailer, { Transporter } from 'nodemailer';
 import logger from '../helpers/logger';
+import sgMail from '@sendgrid/mail';
 
 let cachedTransporter: Transporter | null = null;
 
@@ -25,6 +26,37 @@ function hasGenericSmtp() {
 
 export function getEmailTransporter(): Transporter {
   if (cachedTransporter) return cachedTransporter;
+
+  // Prefer SendGrid API transport when SENDGRID_API_KEY is set
+  const sgKey = envOr('SENDGRID_API_KEY');
+  if (sgKey) {
+    try {
+      sgMail.setApiKey(sgKey);
+      const sgTransport: any = {
+        __provider: 'sendgrid-api',
+        options: { service: 'sendgrid-api' },
+        async sendMail(tx: any) {
+          const msg: any = {
+            to: tx.to,
+            from: tx.from || process.env.EMAIL_FROM,
+            subject: tx.subject,
+            text: tx.text,
+            html: tx.html,
+          };
+          if (tx.replyTo) msg.replyTo = tx.replyTo;
+          // SendGrid expects a string or array for 'to'
+          await sgMail.send(msg);
+          // SG returns an array of responses; message id is not always surfaced, so return undefined
+          return { messageId: undefined };
+        },
+      };
+      cachedTransporter = sgTransport as Transporter;
+      return cachedTransporter;
+    } catch (e) {
+      // If SG init fails, continue to other transports
+      try { logger.log({ level: 'error', event: 'sendgrid_init_error', context: { error: (e as any)?.message || String(e) } }); } catch {}
+    }
+  }
 
   // Prefer explicit SMTP URL when provided
   const smtpUrl = envOr('SMTP_URL');
