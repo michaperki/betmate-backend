@@ -1,5 +1,6 @@
 import { RequestHandler } from 'express';
 import logger from '../helpers/logger';
+import getEmailTransporter from '../services/email_transporter';
 
 // Use Node 18 global fetch if available; otherwise lazy import node-fetch
 const getFetch = async () => (typeof (global as any).fetch !== 'undefined'
@@ -85,6 +86,59 @@ const reportIssue: RequestHandler = async (req, res) => {
     };
 
     await logger.log(payload);
+
+    // Send email to the configured recipient (defaults to Mike)
+    try {
+      const transporter = getEmailTransporter();
+      const to = process.env.ISSUE_REPORT_EMAIL_TO || 'mike@betmate.dev';
+      const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
+      const replyTo = process.env.REPLY_TO || undefined;
+      const envName = process.env.TARGET_ENV || process.env.NODE_ENV || 'development';
+
+      const subject = `Issue Report${category ? ` [${String(category)}]` : ''} — ${envName}`;
+      const safe = (v: any) => (v == null ? '' : String(v));
+      const contextLines = [
+        `Category: ${safe(payload.context?.category)}`,
+        `URL: ${safe(payload.context?.url)}`,
+        `User-Agent: ${safe(payload.context?.user_agent)}`,
+        `Client IP: ${safe(payload.context?.client_ip)}`,
+      ];
+      const extraJson = payload.context?.extra ? JSON.stringify(payload.context.extra, null, 2) : undefined;
+      const text = [
+        'A new issue was reported from the frontend.',
+        '',
+        ...contextLines,
+        '',
+        'Description:',
+        safe(payload.message),
+        ...(extraJson ? ['','Extra:', extraJson] : []),
+      ].join('\n');
+      const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px; line-height: 1.5; color: #111;">
+        <div style="font-weight:600;margin-bottom:6px">New Issue Reported</div>
+        <div style="margin:8px 0;padding:10px;border:1px solid #eee;border-radius:8px;background:#fafafa">
+          <div><strong>Category:</strong> ${safe(payload.context?.category)}</div>
+          <div><strong>URL:</strong> ${safe(payload.context?.url)}</div>
+          <div><strong>User-Agent:</strong> ${safe(payload.context?.user_agent)}</div>
+          <div><strong>Client IP:</strong> ${safe(payload.context?.client_ip)}</div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-weight:600;margin-bottom:4px">Description</div>
+          <div style="white-space:pre-wrap">${safe(payload.message)}</div>
+        </div>
+        ${extraJson ? `<div style="margin-top:12px">
+          <div style=\"font-weight:600;margin-bottom:4px\">Extra</div>
+          <pre style=\"margin:0;padding:10px;background:#111;color:#fff;border-radius:6px;overflow:auto\">${extraJson.replace(/</g, '&lt;')}</pre>
+        </div>` : ''}
+        <div style="color:#777;margin-top:12px">Environment: ${envName}</div>
+      </div>`;
+      const tx: any = { from, to, subject, text, html };
+      if (replyTo) tx.replyTo = replyTo;
+      await transporter.sendMail(tx);
+    } catch (e: any) {
+      try {
+        await logger.log({ level: 'error', event: 'client_issue_email_failed', context: { error: e?.message || String(e) } });
+      } catch {}
+    }
 
     // Optional Discord webhook relay (non-blocking)
     try {
