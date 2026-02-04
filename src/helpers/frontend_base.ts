@@ -1,5 +1,9 @@
 export function getFrontendBase(): string {
-  const raw = process.env.FRONTEND_URL || 'http://localhost:8080';
+  const raw = process.env.FRONTEND_URL
+    || process.env.PUBLIC_FRONTEND_URL
+    || process.env.PROD_FRONTEND_URL
+    || process.env.PRODUCTION_FRONTEND_URL
+    || 'http://localhost:8080';
   try {
     const u = new URL(raw);
     const isLocalHost = (u.hostname === 'localhost' || u.hostname === '127.0.0.1');
@@ -16,4 +20,3 @@ export function getFrontendBase(): string {
 }
 
 export default getFrontendBase;
-

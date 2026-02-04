@@ -96,7 +96,7 @@ const adminEmailController = {
         });
         await inv.save();
         try {
-          await sendInviteEmail(to, code, camp);
+          await sendInviteEmail(to, code, camp, { grantTokens: grantTok, grantCashUsd: grantCash });
           created.push({ to, code });
         } catch (e: any) {
           logger.log({ level: 'error', event: 'admin_invite_send_failed', context: { to, code, error: e?.message || String(e) } });
@@ -195,7 +195,7 @@ function autoCode(prefix = 'BETA') {
   return `${prefix}-${rnd}`;
 }
 
-async function sendInviteEmail(to: string, code: string, campaign?: string) {
+async function sendInviteEmail(to: string, code: string, campaign?: string, grants?: { grantTokens?: number; grantCashUsd?: number }) {
   // Lightweight invite email with link + accessible pill
   const transporter = getEmailTransporterLazy();
   const from = process.env.EMAIL_FROM || 'BetMate <noreply@betmate.app>';
@@ -203,9 +203,27 @@ async function sendInviteEmail(to: string, code: string, campaign?: string) {
   const subject = `You're invited to BetMate${campaign ? ` — ${campaign}` : ''}`;
   const base = getFrontendBase();
   const link = `${base}/onboarding?code=${encodeURIComponent(code)}`;
-  const body = `You're invited to BetMate! Use invite code ${code} during signup, or click ${link}`;
+  const grantTokens = Math.round(Number(grants?.grantTokens || 0));
+  const grantCash = Number(grants?.grantCashUsd || 0);
+  const grantLines: string[] = [];
+  if (grantCash > 0) grantLines.push(`• $${grantCash.toFixed(2)} BetMate Cash`);
+  if (grantTokens > 0) grantLines.push(`• ${grantTokens} K‑Bits`);
+
+  const body = [
+    `You're invited to BetMate!`,
+    ...(grantLines.length ? ['', 'Your beta grant includes:', ...grantLines, ''] : []),
+    `Use invite code ${code} during signup, or open:`,
+    link,
+  ].join('\n');
   const html = `<div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; font-size: 14px;">
     <p>You're invited to <strong>BetMate</strong>!</p>
+    ${grantLines.length ? `<div style="margin:14px 0;padding:12px;border:1px solid #eee;border-radius:8px;background:#fafafa">
+        <div style=\"font-weight:600;margin-bottom:6px\">Your beta grant</div>
+        <ul style=\"margin:0;padding-left:18px;color:#333\">
+          ${grantCash > 0 ? `<li><strong>$${grantCash.toFixed(2)} BetMate Cash</strong></li>` : ''}
+          ${grantTokens > 0 ? `<li><strong>${escapeHtml(String(grantTokens))} K‑Bits</strong></li>` : ''}
+        </ul>
+      </div>` : ''}
     <p>Use this invite code during signup:</p>
     <p style="font-size:16px;background:#111;color:#fff;padding:8px 10px;border-radius:4px;display:inline-block;letter-spacing:1px">${escapeHtml(code)}</p>
     <p style="margin:12px 0 6px">Or start onboarding with your code pre‑applied:</p>
