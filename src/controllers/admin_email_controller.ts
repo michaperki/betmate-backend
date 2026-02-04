@@ -270,7 +270,7 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
     ...(hasGrant ? [`We’ve also added a beta grant to your account:`, ...grantLines, ''] : []),
     `Important notes:`,
     `• This is a beta product. Features may change and availability is not guaranteed.`,
-    `• Only BetMate Cash winnings are eligible for withdrawal (subject to limits/verification and Terms).`,
+    `• Only BetMate Cash winnings are eligible for withdrawal (subject to limits/verification and Terms). Max $50 during Beta.`,
     `• This link is single‑use and will expire${expText ? ` on ${expText}` : ' soon'}.`,
     '',
     `If you did not request this, you can ignore this email.`,
@@ -294,7 +294,6 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
         Open BetMate
       </a>
     </p>
-    <p style="color:#666;margin-top:8px">Or open this link: <a href="${magicUrl}">${magicUrl}</a></p>
 
     ${htmlGrant}
 
@@ -302,7 +301,7 @@ async function sendMagicLinkEmail(to: string, magicUrl: string, opts: MagicEmail
       <div style="font-weight:600;margin-bottom:6px">Important notes</div>
       <ul style="margin:0;padding-left:18px">
         <li>This is a beta product; features may change and availability is not guaranteed.</li>
-        <li>Only <strong>BetMate Cash</strong> winnings are eligible for withdrawal (subject to limits/verification and Terms).</li>
+        <li>Only <strong>BetMate Cash</strong> winnings are eligible for withdrawal (subject to limits/verification and Terms). Max <strong>$50</strong> during Beta.</li>
         <li>This link is single‑use and will expire${expText ? ` on <strong>${escapeHtml(expText)}</strong>` : ' soon'}.</li>
       </ul>
     </div>
