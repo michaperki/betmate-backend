@@ -36,20 +36,48 @@ export function getEmailTransporter(): Transporter {
       if (sgRegion && typeof (sgMail as any).setDataResidency === 'function') {
         (sgMail as any).setDataResidency(sgRegion);
       }
+      function parseFrom(input?: any): any {
+        const envEmail = envOr('SENDGRID_FROM_EMAIL');
+        const envName = envOr('SENDGRID_FROM_NAME');
+        if (envEmail) return envName ? { email: envEmail, name: envName } : { email: envEmail };
+        const raw = input || envOr('EMAIL_FROM');
+        if (!raw) return undefined;
+        if (typeof raw === 'string') {
+          const m = raw.match(/^(.*)<([^>]+)>\s*$/);
+          if (m) {
+            const name = m[1].trim().replace(/^"|"$/g, '');
+            const email = m[2].trim();
+            return name ? { email, name } : { email };
+          }
+          // if raw looks like plain email
+          if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw.trim())) return { email: raw.trim() };
+          return { email: String(raw) };
+        }
+        if (raw && typeof raw === 'object' && raw.email) return raw;
+        return undefined;
+      }
+
       const sgTransport: any = {
         __provider: 'sendgrid-api',
         options: { service: 'sendgrid-api' },
         async sendMail(tx: any) {
+          const from = parseFrom(tx?.from);
           const msg: any = {
             to: tx.to,
-            from: tx.from || process.env.EMAIL_FROM,
+            from,
             subject: tx.subject,
             text: tx.text,
             html: tx.html,
           };
           if (tx.replyTo) msg.replyTo = tx.replyTo;
           // SendGrid expects a string or array for 'to'
-          await sgMail.send(msg);
+          try {
+            await sgMail.send(msg);
+          } catch (e: any) {
+            // Surface SendGrid error details for admin debug
+            const details = e?.response?.body?.errors || e?.response?.body || e?.message || e;
+            throw new Error(typeof details === 'string' ? details : JSON.stringify(details));
+          }
           // SG returns an array of responses; message id is not always surfaced, so return undefined
           return { messageId: undefined };
         },
