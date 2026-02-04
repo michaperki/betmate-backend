@@ -3,6 +3,7 @@ import { getGlobalExposure as svcGetGlobal, getGameExposure as svcGetGame } from
 import { getRiskConfig, updateOverrides } from '../helpers/risk_config';
 import { writeAuditEntry } from '../utils/admin_audit';
 import { handleFailure } from './utils';
+import Config from '../models/config_model';
 
 export const getRiskConfigHandler: RequestHandler = async (_req, res) => {
   try {
@@ -157,6 +158,22 @@ export const applyRiskPresetHandler: import('express').RequestHandler = async (r
     }
     const patch = PRESETS[lvl];
     const cfg = updateOverrides(patch);
+    // Also coordinate withdrawal caps with preset level: enforce $50 on beta, clear overrides otherwise
+    try {
+      if (lvl === 'beta') {
+        await Config.updateOne(
+          { key: 'features' },
+          { $set: { 'data.withdrawMaxUsd': 50, 'data.withdrawMaxDailyUsd': 50 } },
+          { upsert: true }
+        ).exec();
+      } else {
+        await Config.updateOne(
+          { key: 'features' },
+          { $unset: { 'data.withdrawMaxUsd': '', 'data.withdrawMaxDailyUsd': '' } },
+          { upsert: true }
+        ).exec();
+      }
+    } catch {}
     try { await writeAuditEntry(req as any, 'risk.preset', undefined, lvl); } catch {}
     return res.status(200).json(cfg);
   } catch (e: any) {

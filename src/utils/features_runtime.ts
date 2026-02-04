@@ -14,6 +14,11 @@ export type FeatureFlags = {
   // Ops toggles
   pauseGameIntake?: boolean;
   pauseMessage?: string;
+  // Withdrawal policy (overrides env when set)
+  withdrawMinUsd?: number;
+  withdrawMaxUsd?: number;
+  withdrawMaxDailyUsd?: number;
+  withdrawMaxOpen?: number;
 };
 
 const toBool = (v: any, d: boolean): boolean => {
@@ -41,6 +46,11 @@ function defaults(): FeatureFlags {
     enableEmailInvites: process.env.ENABLE_EMAIL_INVITES === 'true',
     pauseGameIntake: false,
     pauseMessage: undefined,
+    // Withdrawal limits (env fallbacks)
+    withdrawMinUsd: Number(process.env.WITHDRAW_MIN_USD || 10),
+    withdrawMaxUsd: Number(process.env.WITHDRAW_MAX_USD || 5000),
+    withdrawMaxDailyUsd: Number(process.env.WITHDRAW_MAX_DAILY_USD || 500),
+    withdrawMaxOpen: Number(process.env.WITHDRAW_MAX_OPEN || 1),
   };
 }
 
@@ -63,6 +73,10 @@ export async function getFeatures(): Promise<FeatureFlags> {
       enableEmailInvites: toBool((data as any).enableEmailInvites, d.enableEmailInvites || false),
       pauseGameIntake: toBool((data as any).pauseGameIntake, d.pauseGameIntake || false),
       pauseMessage: String((data as any).pauseMessage ?? (d.pauseMessage || '')),
+      withdrawMinUsd: Number((data as any).withdrawMinUsd ?? d.withdrawMinUsd),
+      withdrawMaxUsd: Number((data as any).withdrawMaxUsd ?? d.withdrawMaxUsd),
+      withdrawMaxDailyUsd: Number((data as any).withdrawMaxDailyUsd ?? d.withdrawMaxDailyUsd),
+      withdrawMaxOpen: Number((data as any).withdrawMaxOpen ?? d.withdrawMaxOpen),
     };
   } catch {
     return defaults();
