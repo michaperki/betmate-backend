@@ -32,6 +32,10 @@ export function getEmailTransporter(): Transporter {
   if (sgKey) {
     try {
       sgMail.setApiKey(sgKey);
+      const sgRegion = envOr('SENDGRID_DATA_RESIDENCY', 'SENDGRID_REGION');
+      if (sgRegion && typeof (sgMail as any).setDataResidency === 'function') {
+        (sgMail as any).setDataResidency(sgRegion);
+      }
       const sgTransport: any = {
         __provider: 'sendgrid-api',
         options: { service: 'sendgrid-api' },
