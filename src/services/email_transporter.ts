@@ -1,4 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
+import logger from '../helpers/logger';
 
 let cachedTransporter: Transporter | null = null;
 
@@ -64,6 +65,20 @@ export function getEmailTransporter(): Transporter {
       auth: { user: etherealUser, pass: etherealPass },
     });
     return cachedTransporter;
+  }
+
+  // Development fallback: use in-memory stream transport when not configured
+  // Emails will not be delivered; content is buffered for logs/testing
+  if (process.env.NODE_ENV !== 'production') {
+    try {
+      cachedTransporter = nodemailer.createTransport({
+        streamTransport: true,
+        newline: 'unix',
+        buffer: true,
+      } as any);
+      try { logger.log({ level: 'warn', event: 'email_dev_stream_fallback' }); } catch {}
+      return cachedTransporter;
+    } catch {}
   }
 
   // Last resort: throw a clear error
