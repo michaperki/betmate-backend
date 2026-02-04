@@ -86,7 +86,7 @@ router.route('/magic/:token')
     }
   });
 
-// Update current user's basic profile (e.g., username)
+// Update current user's basic profile (e.g., username) and selected user flags
 router.route('/me')
   .put(requireAuth, async (req, res) => {
     try {
@@ -98,6 +98,12 @@ router.route('/me')
       }
       const update: any = {};
       if (first != null) update.first_name = first;
+      // Allow updating onboarding_version_seen for tour skip/persistence
+      if (body.onboarding_version_seen !== undefined) {
+        const n = Number(body.onboarding_version_seen);
+        if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Invalid onboarding_version_seen' });
+        update.onboarding_version_seen = n;
+      }
       if (!Object.keys(update).length) return res.status(400).json({ error: 'No valid fields' });
       const updated = await userService.updateUserData(user._id, { $set: update } as any);
       return res.status(200).json({ user: updated });
