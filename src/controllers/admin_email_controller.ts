@@ -35,7 +35,8 @@ async function sendTestEmailHandler(req: Request, res: Response) {
       return res.status(200).json({ ok: true, messageId: result.messageId, previewUrl: result.previewUrl });
     } catch (e: any) {
       logger.log({ level: 'error', event: 'admin_test_email_failed', context: { to, error: e?.message || String(e) } });
-      return res.status(500).json({ ok: false, error: 'Failed to send email' });
+      const debug = process.env.DEBUG_PROVIDER_ERRORS === 'true';
+      return res.status(500).json({ ok: false, error: 'Failed to send email', ...(debug ? { provider_error: String(e?.message || e) } : {}) });
     }
   } catch (err: any) {
     logger.log({ level: 'error', event: 'admin_test_email_unexpected', context: { error: err?.message || String(err) } });
@@ -99,7 +100,8 @@ const adminEmailController = {
           created.push({ to, code });
         } catch (e: any) {
           logger.log({ level: 'error', event: 'admin_invite_send_failed', context: { to, code, error: e?.message || String(e) } });
-          created.push({ to, code, error: 'send_failed' });
+          const debug = process.env.DEBUG_PROVIDER_ERRORS === 'true';
+          created.push({ to, code, error: 'send_failed', ...(debug ? { provider_error: String(e?.message || e) } : {}) });
         }
       }
       try { await writeAuditEntry(req as any, 'email.invites.bulk', undefined, `count=${created.length}`, { campaign: camp }); } catch {}
@@ -172,8 +174,9 @@ const adminEmailController = {
             expiresAt: expires,
           });
           results.push({ email, user_id: String((user as any)._id), magicUrl });
-        } catch (_e) {
-          results.push({ email, user_id: String((user as any)._id), magicUrl, error: 'send_failed' });
+        } catch (_e: any) {
+          const debug = process.env.DEBUG_PROVIDER_ERRORS === 'true';
+          results.push({ email, user_id: String((user as any)._id), magicUrl, error: 'send_failed', ...(debug ? { provider_error: String(_e?.message || _e) } : {}) });
         }
       }
       try { await writeAuditEntry(req as any, 'email.preprovision', undefined, `count=${results.length}`, { campaign: camp }); } catch {}
