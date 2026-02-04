@@ -1,6 +1,6 @@
 {
   "name": "betmate-backend",
-  "version": "2.0.11",
+  "version": "2.0.12",
   "description": "API for BetMate",
   "productionURL": "https://betmate-backend-prod.herokuapp.com",
   "productionClientURL": "https://betmate-prod.netlify.app/",
@@ -34,7 +34,7 @@
     "deadcode:all": "npm run deadcode:unimported && npm run deadcode:tsprune && npm run deadcode:depcheck"
   },
   "dependencies": {
-    "@sendgrid/mail": "^8.1.0",
+    "@sendgrid/mail": "8.1.6",
     "@axiomhq/axiom-node": "0.12.0",
     "@babel/core": "^7.13.0",
     "@babel/plugin-proposal-class-properties": "^7.13.0",
@@ -43,7 +43,6 @@
     "@babel/preset-typescript": "^7.13.0",
     "@babel/runtime": "^7.14.0",
     "@prisma/client": "^5.10.2",
-    "@sendgrid/mail": "8.1.6",
     "@types/aws-lambda": "^8.10.134",
     "@types/bcrypt": "^3.0.0",
     "@types/chess.js": "^0.10.1",
