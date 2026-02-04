@@ -109,6 +109,7 @@ export function getMailProviderInfo(): { provider: string; host?: string; servic
 
 function providerName(transporter: any): string {
   try {
+    if (transporter?.options?.streamTransport === true) return 'dev-stream';
     const host = transporter?.options?.host || '';
     if (host.includes('ethereal')) return 'ethereal';
     if (host.includes('amazonaws') || host.includes('ses')) return 'ses-smtp';

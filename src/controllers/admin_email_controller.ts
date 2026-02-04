@@ -97,7 +97,8 @@ const adminEmailController = {
         try {
           await sendInviteEmail(to, code, camp);
           created.push({ to, code });
-        } catch (_e) {
+        } catch (e: any) {
+          logger.log({ level: 'error', event: 'admin_invite_send_failed', context: { to, code, error: e?.message || String(e) } });
           created.push({ to, code, error: 'send_failed' });
         }
       }
