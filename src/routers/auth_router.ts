@@ -86,6 +86,26 @@ router.route('/magic/:token')
     }
   });
 
+// Update current user's basic profile (e.g., username)
+router.route('/me')
+  .put(requireAuth, async (req, res) => {
+    try {
+      const user = req.user as UserDoc;
+      const body = (req.body || {}) as any;
+      const first = typeof body.first_name === 'string' ? String(body.first_name).trim() : undefined;
+      if (first != null) {
+        if (first.length < 1 || first.length > 80) return res.status(400).json({ error: 'Invalid first_name length' });
+      }
+      const update: any = {};
+      if (first != null) update.first_name = first;
+      if (!Object.keys(update).length) return res.status(400).json({ error: 'No valid fields' });
+      const updated = await userService.updateUserData(user._id, { $set: update } as any);
+      return res.status(200).json({ user: updated });
+    } catch (e: any) {
+      return res.status(500).json({ error: 'Update failed' });
+    }
+  });
+
 router.route('/balance-history')
   .get(requireAuth, authController.getBalanceHistory);
 

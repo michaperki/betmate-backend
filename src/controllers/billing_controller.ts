@@ -432,8 +432,15 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
 
     const amt = Number(amount);
     if (!Number.isFinite(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid amount' });
-    const minUSD = Math.max(1, Number(process.env.WITHDRAW_MIN_USD || 10));
-    const maxUSD = Math.max(minUSD, Number(process.env.WITHDRAW_MAX_USD || 5000));
+    // Limits: from features overrides if present, else env
+    let minUSD = Math.max(1, Number(process.env.WITHDRAW_MIN_USD || 10));
+    let maxUSD = Math.max(minUSD, Number(process.env.WITHDRAW_MAX_USD || 5000));
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const f = await getFeatures();
+      if (typeof (f as any).withdrawMinUsd === 'number') minUSD = Math.max(1, Number((f as any).withdrawMinUsd));
+      if (typeof (f as any).withdrawMaxUsd === 'number') maxUSD = Math.max(minUSD, Number((f as any).withdrawMaxUsd));
+    } catch {}
     if (amt < minUSD || amt > maxUSD) return res.status(400).json({ error: `Amount out of bounds (${minUSD}-${maxUSD})` });
 
     // Allowed payout currencies
@@ -473,12 +480,22 @@ export const requestWithdrawal: RequestHandler = async (req: RequestWithJWT, res
     }
 
     // Velocity limit: restrict concurrent open withdrawals
-    const maxOpen = Math.max(1, Number(process.env.WITHDRAW_MAX_OPEN || 1));
+    let maxOpen = Math.max(1, Number(process.env.WITHDRAW_MAX_OPEN || 1));
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const f = await getFeatures();
+      if (typeof (f as any).withdrawMaxOpen === 'number') maxOpen = Math.max(1, Number((f as any).withdrawMaxOpen));
+    } catch {}
     const openCount = await Withdrawal.countDocuments({ user_id: req.user._id, status: { $in: ['requested', 'approved', 'processing'] } });
     if (openCount >= maxOpen) return res.status(429).json({ error: 'Too many open withdrawals' });
 
     // Daily limit: cap total requested in the last 24h
-    const maxDailyUSD = Math.max(0, Number(process.env.WITHDRAW_MAX_DAILY_USD || 500));
+    let maxDailyUSD = Math.max(0, Number(process.env.WITHDRAW_MAX_DAILY_USD || 500));
+    try {
+      const { getFeatures } = require('../utils/features_runtime');
+      const f = await getFeatures();
+      if (typeof (f as any).withdrawMaxDailyUsd === 'number') maxDailyUSD = Math.max(0, Number((f as any).withdrawMaxDailyUsd));
+    } catch {}
     if (maxDailyUSD > 0) {
       const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
       const recent = await Withdrawal.aggregate([
